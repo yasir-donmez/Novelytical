@@ -1,8 +1,132 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿@model List<Novelytical.Data.Novel>
 
+@{
+    ViewData["Title"] = "Ana Sayfa";
+}
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Novelytical</h1>
+    <p>Roman Analiz ve Takip Sistemi</p>
+    
+    <form asp-controller="Home" asp-action="Index" method="get" class="mb-4">
+        <div class="input-group w-50 mx-auto">
+            <input type="text" name="searchString" class="form-control" placeholder="Roman adı, yazar veya etiket ara...">
+            <button class="btn btn-primary" type="submit">Ara 🔍</button>
+            <a asp-action="Index" class="btn btn-secondary">Sıfırla</a>
+        </div>
+    </form>
+
+    <div class="mb-4 text-center">
+        <span class="text-muted me-2">Sıralama:</span>
+        
+        <a asp-action="Index" asp-route-sortOrder="@ViewData["RatingSortParm"]" asp-route-searchString="@ViewData["CurrentFilter"]" 
+           class="btn btn-sm btn-outline-warning me-1">
+           ⭐ Puana Göre
+        </a>
+
+        <a asp-action="Index" asp-route-sortOrder="chapters_desc" asp-route-searchString="@ViewData["CurrentFilter"]" 
+           class="btn btn-sm btn-outline-secondary me-1">
+           📚 Bölüm Sayısına Göre
+        </a>
+
+        <a asp-action="Index" asp-route-sortOrder="date_desc" asp-route-searchString="@ViewData["CurrentFilter"]" 
+           class="btn btn-sm btn-outline-success">
+           📅 Son Eklenen
+        </a>
+    </div>
+</div>
+
+
+<div class="text-center mb-5">
+    <h1 class="display-4">Novelytical</h1>
+    <p>Roman Analiz ve Takip Sistemi</p>
+</div>
+
+<div class="container">
+    <div class="row">
+        @if (Model.Count == 0)
+        {
+            <div class="alert alert-warning">
+                Henüz hiç roman eklenmemiş veya aradığınız kriterde kitap bulunamadı.
+            </div>
+        }
+        else
+        {
+            @foreach (var novel in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="position-relative">
+                            <img src="@novel.CoverUrl" class="card-img-top" alt="@novel.Title"
+                                style="height: 250px; object-fit: cover;">
+                            <div class="position-absolute top-0 end-0 bg-warning text-dark px-2 py-1 rounded-start mt-2 fw-bold">
+                                ⭐ @novel.Rating
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate" title="@novel.Title">@novel.Title</h5>
+                            <h6 class="card-subtitle mb-2 text-muted d-flex justify-content-between">
+                                <span>✍️ @novel.Author</span>
+                                <span title="Bölüm Sayısı">📚 @novel.ChapterCount</span>
+                            </h6>
+                            <p class="card-text small text-muted">
+                                @(novel.Description?.Length > 100 ? novel.Description.Substring(0, 100) + "..." :
+                                                        novel.Description ?? "Açıklama yok.")
+                            </p>
+
+                            <div class="mb-3">
+                                @if (novel.NovelTags != null)
+                                {
+                                    foreach (var nt in novel.NovelTags.Take(3)) // Sadece ilk 3 etiketi göster, taşmasın
+                                    {
+                                        if (nt.Tag != null)
+                                        {
+                                            <span class="badge bg-light text-secondary border me-1">@nt.Tag.Name</span>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-top-0">
+                            <a asp-action="Details" asp-route-id="@novel.Id" class="btn btn-primary w-100 mt-auto">İncele 🧐</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- SAYFALAMA BUTONLARI -->
+    @{
+        var prevDisabled = ViewData["HasPreviousPage"] as bool? == true ? "" : "disabled";
+        var nextDisabled = ViewData["HasNextPage"] as bool? == true ? "" : "disabled";
+        var pageIndex = ViewData["PageIndex"] as int? ?? 1;
+        var totalPages = ViewData["TotalPages"] as int? ?? 1;
+    }
+
+    <nav aria-label="Sayfa Gezintisi" class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @prevDisabled">
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["CurrentSort"]"
+                   asp-route-pageNumber="@(pageIndex - 1)"
+                   asp-route-searchString="@ViewData["CurrentFilter"]"
+                   class="page-link">
+                   &laquo; Önceki
+                </a>
+            </li>
+            
+            <li class="page-item disabled"><span class="page-link">Sayfa @pageIndex / @totalPages</span></li>
+
+            <li class="page-item @nextDisabled">
+                <a asp-action="Index"
+                   asp-route-sortOrder="@ViewData["CurrentSort"]"
+                   asp-route-pageNumber="@(pageIndex + 1)"
+                   asp-route-searchString="@ViewData["CurrentFilter"]"
+                   class="page-link">
+                   Sonraki &raquo;
+                </a>
+            </li>
+        </ul>
+    </nav>
 </div>
