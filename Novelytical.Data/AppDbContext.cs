@@ -20,6 +20,9 @@ namespace Novelytical.Data
             // Yani bir roman ve etiket çifti sadece bir kez eşleşebilir.
             modelBuilder.Entity<NovelTag>()
                 .HasKey(nt => new { nt.NovelId, nt.TagId });
+
+            // 🧠 Vektör eklentisini aktif et (Pgvector)
+            modelBuilder.HasPostgresExtension("vector");
         }
     }
 }

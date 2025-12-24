@@ -4,17 +4,20 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Veritabanı araçları
 using Novelytical.Data; // Veri modellerimiz
 using Novelytical.Web.Models;
+using Pgvector.EntityFrameworkCore; // CosineDistance için gerekli
 
 namespace Novelytical.Web.Controllers;
 
 public class HomeController : Controller
 {
     private readonly AppDbContext _context; // Veritabanı bağlantımız
+    private readonly SmartComponents.LocalEmbeddings.LocalEmbedder _embedder; // Yapay Zeka
 
-    // Garson (Controller) işe başlarken veritabanı anahtarını alıyor
-    public HomeController(AppDbContext context)
+    // Garson (Controller) işe başlarken veritabanı anahtarını ve YZ modelini alıyor
+    public HomeController(AppDbContext context, SmartComponents.LocalEmbeddings.LocalEmbedder embedder)
     {
         _context = context;
+        _embedder = embedder;
     }
 
   // Parantez içine 'string searchString' ekledik. Arama kutusundan gelen yazı buraya düşecek.
@@ -35,32 +38,40 @@ public class HomeController : Controller
             .ThenInclude(nt => nt.Tag)
             .AsQueryable();
 
-        // 3. Arama Filtresi (Önceki kodun aynısı)
+        // 3. 🧠 AKILLI ARAMA (Semantic Search)
         if (!string.IsNullOrEmpty(searchString))
         {
-            string search = searchString.ToLower();
-            novelsQuery = novelsQuery.Where(n => 
-                n.Title.ToLower().Contains(search) || 
-                (n.Author != null && n.Author.ToLower().Contains(search)) ||
-                n.NovelTags.Any(nt => nt.Tag.Name.ToLower().Contains(search))
-            );
-        }
+            // Kullanıcının yazdığı metni vektöre çevir
+            var searchVector = _embedder.Embed(searchString);
+            var searchVectorPg = new Pgvector.Vector(searchVector.Values.ToArray());
 
-        // 4. SIRALAMA MEKANİZMASI (YENİ)
-        switch (sortOrder)
+            // Veritabanında vektör benzerliğine göre sırala (En benzer en üstte)
+            // CosineDistance: İki vektör arasındaki açı farkı. Sıfıra ne kadar yakınsa o kadar benzerdir.
+            // Bu yüzden küçükten büyüğe sıralıyoruz (OrderBy)
+            novelsQuery = novelsQuery
+                .OrderBy(n => n.DescriptionEmbedding!.CosineDistance(searchVectorPg));
+            
+            // Eğer istersen: Hem benzerlik hem de klasik arama aynı anda olsun dersen 'Where' de ekleyebilirsin.
+            // Ama şimdilik sadece benzerlik araması yapıyoruz, yani "anlam" olarak en yakını bulacak.
+        }
+        else
         {
-            case "rating_lowest": // Puanı En Düşük (Meraktan bakanlar için)
-                novelsQuery = novelsQuery.OrderBy(n => n.Rating);
-                break;
-            case "chapters_desc": // En Çok Bölüm
-                novelsQuery = novelsQuery.OrderByDescending(n => n.ChapterCount);
-                break;
-            case "date_desc": // Son Güncellenen
-                novelsQuery = novelsQuery.OrderByDescending(n => n.LastUpdated);
-                break;
-            default: // Varsayılan: Puanı En Yüksek (Best Rated)
-                novelsQuery = novelsQuery.OrderByDescending(n => n.Rating);
-                break;
+            // 4. Standart Sıralama (Arama yoksa çalışır veya kullanıcı özel sıralama isterse)
+             switch (sortOrder)
+            {
+                case "rating_lowest": // Puanı En Düşük
+                    novelsQuery = novelsQuery.OrderBy(n => n.Rating);
+                    break;
+                case "chapters_desc": // En Çok Bölüm
+                    novelsQuery = novelsQuery.OrderByDescending(n => n.ChapterCount);
+                    break;
+                case "date_desc": // Son Güncellenen
+                    novelsQuery = novelsQuery.OrderByDescending(n => n.LastUpdated);
+                    break;
+                default: // Varsayılan: Puanı En Yüksek
+                    novelsQuery = novelsQuery.OrderByDescending(n => n.Rating);
+                    break;
+            }
         }
 
         // 5. SAYFALAMA MEKANİZMASI (YENİ)

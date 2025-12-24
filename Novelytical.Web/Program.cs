@@ -5,10 +5,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, o => o.UseVector())); 
 
 // Add services to the container.
+// Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// 🧠 Yapay Zeka Servisi (Singleton: Tek bir tane yaratılır, herkes onu kullanır)
+// Bu sayede model her istekte tekrar tekrar yüklenmez, performans artar.
+builder.Services.AddSingleton<SmartComponents.LocalEmbeddings.LocalEmbedder>();
 
 var app = builder.Build();
 
