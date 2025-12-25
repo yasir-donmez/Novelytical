@@ -10,8 +10,8 @@ Sistem **Monolitik** yapıda olup, veritabanı seviyesinde ayrışmış iki ana 
 
 ```mermaid
 graph LR
-    Worker[Web Scraper (Worker)] -- Veri & Vektör --> DB[(PostgreSQL + pgvector)]
-    Web[ASP.NET Core MVC (Web)] -- Sorgu --> DB
+    Worker["Web Scraper (Worker)"] -- "Veri & Vektör" --> DB[("PostgreSQL + pgvector")]
+    Web["ASP.NET Core MVC (Web)"] -- Sorgu --> DB
 ```
 
 1. **Novelytical.Worker:** Arka planda çalışır. Kaynak siteden (Royal Road) veriyi çeker (`Scraping`), metni temizler, yapay zeka vektörüne dönüştürür (`Embedding`) ve kaydeder.
