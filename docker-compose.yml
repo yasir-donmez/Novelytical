@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: novelytical-postgres
+    environment:
+      POSTGRES_DB: NovelyticalDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  seq:
+    image: datalust/seq:latest
+    container_name: novelytical-seq
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports:
+      - "5341:5341"
+      - "8888:80"
+    volumes:
+      - seqdata:/data
+    restart: always
+
+  novelytical-web:
+    build:
+      context: .
+      dockerfile: Novelytical.Web/Dockerfile
+    container_name: novelytical-web
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=NovelyticalDb;Username=postgres;Password=password
+      - Seq__ServerUrl=http://seq:5341
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "5050:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seq:
+        condition: service_started
+    restart: on-failure
+
+  novelytical-worker:
+    build:
+      context: .
+      dockerfile: Novelytical.Worker/Dockerfile
+    container_name: novelytical-worker
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=NovelyticalDb;Username=postgres;Password=password
+      - Seq__ServerUrl=http://seq:5341
+      - DOTNET_ENVIRONMENT=Development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seq:
+        condition: service_started
+    restart: on-failure
+
+volumes:
+  pgdata:
+  seqdata:

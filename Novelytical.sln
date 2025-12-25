@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Novelytical.Web", "Novelyti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Novelytical.Worker", "Novelytical.Worker\Novelytical.Worker.csproj", "{2E3F385B-20A0-488C-A313-1527A7927014}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Novelytical.Tests", "Novelytical.Tests\Novelytical.Tests.csproj", "{7540D0BB-2054-42DA-AD70-88A135D56480}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{2E3F385B-20A0-488C-A313-1527A7927014}.Release|x64.Build.0 = Release|Any CPU
 		{2E3F385B-20A0-488C-A313-1527A7927014}.Release|x86.ActiveCfg = Release|Any CPU
 		{2E3F385B-20A0-488C-A313-1527A7927014}.Release|x86.Build.0 = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|x64.Build.0 = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Debug|x86.Build.0 = Debug|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|x64.ActiveCfg = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|x64.Build.0 = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|x86.ActiveCfg = Release|Any CPU
+		{7540D0BB-2054-42DA-AD70-88A135D56480}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
