@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Novelytical.Data; // Data projesini içeri alıyoruz
+using Novelytical.Application;  // 🚀 Application layer
+using Novelytical.Data;          // 🚀 Data layer
+using Novelytical.Web.Middleware; // Global Exception Handler
+using Microsoft.AspNetCore.RateLimiting; // Rate Limiting
+using System.Threading.RateLimiting; // Rate Limiting
 
 
 using Serilog;
@@ -20,9 +24,11 @@ try
         .WriteTo.Seq(context.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString, o => o.UseVector())); 
-
+    
+    // 🚀 Phase 2: Clean Architecture Layers
+    builder.Services.AddDataLayer(connectionString!);          // Data layer (DbContext, Repositories)
+    builder.Services.AddApplicationLayer();                    // Application layer (Services, Cache)
+    
     // Health Check servisi
     builder.Services.AddHealthChecks()
         .AddNpgSql(connectionString);
@@ -34,6 +40,40 @@ try
     // Bu sayede model her istekte tekrar tekrar yüklenmez, performans artar.
     builder.Services.AddSingleton<SmartComponents.LocalEmbeddings.LocalEmbedder>();
 
+    // 🌐 CORS - Frontend erişimi için
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",  // Next.js dev
+                    "http://localhost:5173",  // Vite dev
+                    "https://yourdomain.com"  // Production
+                )
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+    });
+
+    // ⚡ Rate Limiting - API koruma
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.AddFixedWindowLimiter("fixed", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 100; // 100 requests
+            limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
+            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            limiterOptions.QueueLimit = 5;
+        });
+
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    });
+
+    // 📚 Swagger - API Documentation
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
     var app = builder.Build();
 
     // Auto-Migration
@@ -44,6 +84,9 @@ try
         db.Database.Migrate();
     }
 
+    // ⚠️ Global Exception Handler - Must be FIRST middleware
+    app.UseGlobalExceptionHandler();
+
     // Configure the HTTP request pipeline.
     if (!app.Environment.IsDevelopment())
     {
@@ -51,8 +94,26 @@ try
         // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
         app.UseHsts();
     }
+    
+    // 📚 Swagger UI (Development only)
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Novelytical API v1");
+            c.RoutePrefix = "swagger"; // /swagger
+        });
+    }
 
     app.UseHttpsRedirection();
+    
+    // 🌐 CORS - Must be after UseHttpsRedirection and before UseRouting
+    app.UseCors("AllowFrontend");
+    
+    // ⚡ Rate Limiting - Must be after CORS and before UseRouting
+    app.UseRateLimiter();
+    
     app.UseRouting();
 
     app.UseAuthorization();

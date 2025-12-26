@@ -1,4 +1,4 @@
-@model Novelytical.Data.Novel
+@model Novelytical.Application.DTOs.NovelDetailDto
 
 @{
     ViewData["Title"] = Model.Title;
@@ -36,11 +36,11 @@
             </div>
 
             <div class="mb-4">
-                @if (Model.NovelTags != null)
+                @if (Model.Tags != null && Model.Tags.Any())
                 {
-                    @foreach (var nt in Model.NovelTags)
+                    @foreach (var tag in Model.Tags)
                     {
-                        <span class="badge bg-info text-dark me-1">@nt.Tag!.Name</span>
+                        <span class="badge bg-info text-dark me-1">@tag</span>
                     }
                 }
             </div>

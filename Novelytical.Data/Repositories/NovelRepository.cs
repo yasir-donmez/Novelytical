@@ -1,0 +1,44 @@
+using Microsoft.EntityFrameworkCore;
+using Novelytical.Data.Interfaces;
+
+namespace Novelytical.Data.Repositories;
+
+/// <summary>
+/// Repository implementation for Novel with performance optimizations
+/// </summary>
+public class NovelRepository : INovelRepository
+{
+    private readonly AppDbContext _context;
+
+    public NovelRepository(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    /// <summary>
+    /// Returns optimized IQueryable with AsNoTracking + AsSplitQuery for best performance
+    /// </summary>
+    public IQueryable<Novel> GetOptimizedQuery()
+    {
+        return _context.Novels
+            .AsNoTracking()           // 🚀 Read-only, no change tracking
+            .AsSplitQuery()            // 🚀 Separate queries for includes (avoid cartesian explosion)
+            .Include(n => n.NovelTags)
+            .ThenInclude(nt => nt.Tag);
+    }
+
+    public async Task<int> GetCountAsync()
+    {
+        return await _context.Novels.CountAsync();
+    }
+
+    public async Task<Novel?> GetByIdAsync(int id)
+    {
+        return await _context.Novels
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(n => n.NovelTags)
+            .ThenInclude(nt => nt.Tag)
+            .FirstOrDefaultAsync(n => n.Id == id);
+    }
+}

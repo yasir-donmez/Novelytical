@@ -1,4 +1,4 @@
-﻿@model List<Novelytical.Data.Novel>
+﻿@model List<Novelytical.Application.DTOs.NovelListDto>
 
 @{
     ViewData["Title"] = "Ana Sayfa";
@@ -69,20 +69,14 @@
                                 <span>✍️ @novel.Author</span>
                                 <span title="Bölüm Sayısı">📚 @novel.ChapterCount</span>
                             </h6>
-                            <p class="card-text small text-muted">
-                                @(novel.Description?.Length > 100 ? novel.Description.Substring(0, 100) + "..." :
-                                                        novel.Description ?? "Açıklama yok.")
-                            </p>
+                            @* Description removed - not in NovelListDto *@
 
                             <div class="mb-3">
-                                @if (novel.NovelTags != null)
+                                @if (novel.Tags != null && novel.Tags.Any())
                                 {
-                                    foreach (var nt in novel.NovelTags.Take(3)) // Sadece ilk 3 etiketi göster, taşmasın
+                                    foreach (var tag in novel.Tags.Take(3))
                                     {
-                                        if (nt.Tag != null)
-                                        {
-                                            <span class="badge bg-light text-secondary border me-1">@nt.Tag.Name</span>
-                                        }
+                                        <span class="badge bg-light text-secondary border me-1">@tag</span>
                                     }
                                 }
                             </div>
