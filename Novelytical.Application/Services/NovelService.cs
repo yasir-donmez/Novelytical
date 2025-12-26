@@ -9,6 +9,7 @@ using Novelytical.Data.Interfaces;
 using Pgvector.EntityFrameworkCore;
 using Polly;
 using Polly.Timeout;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Novelytical.Application.Services;
 
@@ -23,17 +24,20 @@ public class NovelService : INovelService
     private readonly IMemoryCache _cache;
     private readonly ILogger<NovelService> _logger;
     private readonly ResiliencePipeline _embeddingPipeline;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public NovelService(
         INovelRepository repository,
         SmartComponents.LocalEmbeddings.LocalEmbedder embedder,
         IMemoryCache cache,
-        ILogger<NovelService> logger)
+        ILogger<NovelService> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _repository = repository;
         _embedder = embedder;
         _cache = cache;
         _logger = logger;
+        _scopeFactory = scopeFactory;
 
         // 🛡️ Polly Resilience Pipeline for Embedding calls
         _embeddingPipeline = new ResiliencePipelineBuilder()
@@ -59,8 +63,8 @@ public class NovelService : INovelService
         int pageNumber = 1,
         int pageSize = 9)
     {
-        // Cache key
-        string cacheKey = $"novels_page{pageNumber}_sort{sortOrder}_search{searchString}";
+        // Cache key (Bump version to v2 to clear old cache)
+        string cacheKey = $"novels_v2_page{pageNumber}_sort{sortOrder}_search{searchString}";
 
         // Try cache first
         if (_cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) && cachedNovels != null)
@@ -71,21 +75,28 @@ public class NovelService : INovelService
 
         List<NovelListDto> novels;
 
+        int totalRecords;
+
         // 🔥 HYBRID SEARCH: Full-Text + Vector + RRF
         if (!string.IsNullOrEmpty(searchString))
         {
-            novels = await HybridSearchWithRRF(searchString, pageNumber, pageSize);
+            var searchResult = await HybridSearchWithRRF(searchString, sortOrder, pageNumber, pageSize);
+            novels = searchResult.Novels;
+            totalRecords = searchResult.TotalCount;
         }
         else
         {
             // Standard sorting (no search)
+            totalRecords = await _repository.GetCountAsync();
+
             var query = _repository.GetOptimizedQuery();
             query = sortOrder switch
             {
-                "rating_asc" => query.OrderBy(n => n.Rating),
+                "rating_asc" => query.OrderByDescending(n => n.Rating), // Kullanıcı İsteği: 5->1
+                "rating_desc" => query.OrderBy(n => n.Rating),          // Kullanıcı İsteği: 1->5
                 "chapters_desc" => query.OrderByDescending(n => n.ChapterCount),
                 "date_desc" => query.OrderByDescending(n => n.LastUpdated),
-                _ => query.OrderByDescending(n => n.Rating)
+                _ => query.OrderByDescending(n => n.Rating) // Varsayılan: En Yüksek Puanlılar
             };
 
             novels = await query
@@ -107,16 +118,17 @@ public class NovelService : INovelService
 
         // Cache for 5 minutes
         _cache.Set(cacheKey, novels, TimeSpan.FromMinutes(5));
-
-        int totalRecords = await _repository.GetCountAsync();
+        
         return new PagedResponse<NovelListDto>(novels, pageNumber, pageSize, totalRecords);
     }
 
     /// <summary>
     /// Hybrid Search: Full-Text + Vector Search combined with RRF Algorithm
+    /// Returns (Novels, TotalCount)
     /// </summary>
-    private async Task<List<NovelListDto>> HybridSearchWithRRF(
-        string searchString, 
+    private async Task<(List<NovelListDto> Novels, int TotalCount)> HybridSearchWithRRF(
+        string searchString,
+        string? sortOrder,
         int pageNumber, 
         int pageSize)
     {
@@ -129,7 +141,7 @@ public class NovelService : INovelService
             .Select(n => new { Novel = n, Rank = n.SearchVector!.Rank(EF.Functions.ToTsQuery("simple", tsQuery)) })
             .OrderByDescending(x => x.Rank)
             .Select(x => x.Novel) // Project to Novel only
-            .Take(pageSize * 3)
+            .Take(50)
             .ToListAsync();
 
         // Task B: Vector Search -> Returns List<Novel>
@@ -137,6 +149,10 @@ public class NovelService : INovelService
         {
             try
             {
+                // Create a new scope to avoid DbContext threading issues
+                using var scope = _scopeFactory.CreateScope();
+                var scopedRepo = scope.ServiceProvider.GetRequiredService<INovelRepository>();
+
                 // B1: Generate Embedding
                 var searchVector = await _embeddingPipeline.ExecuteAsync(async ct =>
                 {
@@ -144,15 +160,15 @@ public class NovelService : INovelService
                 });
                 var searchVectorPg = new Pgvector.Vector(searchVector.Values.ToArray());
 
-                // B2: Vector Query
-                return await _repository.GetOptimizedQuery()
+                // B2: Vector Query (Using scopedRepo)
+                return await scopedRepo.GetOptimizedQuery()
                     .Select(n => new { 
                         Novel = n, 
                         Distance = n.DescriptionEmbedding!.CosineDistance(searchVectorPg) 
                     })
                     .OrderBy(x => x.Distance)
                     .Select(x => x.Novel) // Project to Novel only
-                    .Take(pageSize * 3)
+                    .Take(50)
                     .ToListAsync();
             }
             catch (TimeoutRejectedException)
@@ -176,36 +192,49 @@ public class NovelService : INovelService
         // Fallback check: If vector search failed (empty) and full-text has results, use full-text only
         if ((vectorResults == null || vectorResults.Count == 0) && fullTextResults.Count > 0)
         {
-             return fullTextResults
-                    Title = x.Novel.Title,
-                    Author = x.Novel.Author,
-                    Rating = x.Novel.Rating,
-                    ChapterCount = x.Novel.ChapterCount,
-                    LastUpdated = x.Novel.LastUpdated,
-                    CoverUrl = x.Novel.CoverUrl,
-                    Tags = x.Novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+             var fallbackResults = fullTextResults
+                .Select(n => new NovelListDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Author = n.Author,
+                    Rating = n.Rating,
+                    ChapterCount = n.ChapterCount,
+                    LastUpdated = n.LastUpdated,
+                    CoverUrl = n.CoverUrl,
+                    Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
                 })
-                .ToList();
+                .ToList(); // Full result set for counting
+
+             return (fallbackResults.Take(pageSize).ToList(), fallbackResults.Count);
         }
         
-        var vectorResults = await _repository.GetOptimizedQuery()
-            .Select(n => new { 
-                Novel = n, 
-                Distance = n.DescriptionEmbedding!.CosineDistance(searchVectorPg) 
-            })
-            .OrderBy(x => x.Distance)
-            .Take(pageSize * 3)
-            .ToListAsync();
+
 
         // 3️⃣ RRF FUSION (Reciprocal Rank Fusion - k=60)
         var fusedNovels = ApplyRRF(
-            fullTextResults.Select((x, i) => (x.Novel, i + 1)).ToList(),
-            vectorResults.Select((x, i) => (x.Novel, i + 1)).ToList(),
+            fullTextResults.Select((x, i) => (x, i + 1)).ToList(),
+            vectorResults.Select((x, i) => (x, i + 1)).ToList(),
             k: 60
         );
 
-        // 4️⃣ Pagination + Projection to DTO
-        var pagedNovels = fusedNovels
+        // 4️⃣ Apply Sorting (If requested)
+        IEnumerable<Novel> processedList = fusedNovels;
+        
+        if (!string.IsNullOrEmpty(sortOrder))
+        {
+            processedList = sortOrder switch
+            {
+                "rating_asc" => fusedNovels.OrderByDescending(n => n.Rating), // Kullanıcı İsteği: asc = En Yüksek (5->1)
+                "rating_desc" => fusedNovels.OrderBy(n => n.Rating),          // Kullanıcı İsteği: desc = En Düşük (1->5)
+                "chapters_desc" => fusedNovels.OrderByDescending(n => n.ChapterCount),
+                "date_desc" => fusedNovels.OrderByDescending(n => n.LastUpdated),
+                _ => fusedNovels.OrderByDescending(n => n.Rating)
+            };
+        }
+
+        // 5️⃣ Pagination + Projection to DTO
+        var pagedNovels = processedList
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .Select(n => new NovelListDto
@@ -221,7 +250,7 @@ public class NovelService : INovelService
             })
             .ToList();
 
-        return pagedNovels;
+        return (pagedNovels, processedList.Count());
     }
 
     /// <summary>
