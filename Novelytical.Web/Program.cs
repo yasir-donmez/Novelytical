@@ -36,9 +36,7 @@ try
     // Add services to the container.
     builder.Services.AddControllersWithViews();
 
-    // 🧠 Yapay Zeka Servisi (Singleton: Tek bir tane yaratılır, herkes onu kullanır)
-    // Bu sayede model her istekte tekrar tekrar yüklenmez, performans artar.
-    builder.Services.AddSingleton<SmartComponents.LocalEmbeddings.LocalEmbedder>();
+
 
     // 🌐 CORS - Frontend erişimi için
     builder.Services.AddCors(options =>

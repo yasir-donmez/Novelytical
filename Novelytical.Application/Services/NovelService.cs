@@ -20,7 +20,7 @@ namespace Novelytical.Application.Services;
 public class NovelService : INovelService
 {
     private readonly INovelRepository _repository;
-    private readonly SmartComponents.LocalEmbeddings.LocalEmbedder _embedder;
+    private readonly IEmbedder _embedder;
     private readonly IMemoryCache _cache;
     private readonly ILogger<NovelService> _logger;
     private readonly ResiliencePipeline _embeddingPipeline;
@@ -28,7 +28,7 @@ public class NovelService : INovelService
 
     public NovelService(
         INovelRepository repository,
-        SmartComponents.LocalEmbeddings.LocalEmbedder embedder,
+        IEmbedder embedder,
         IMemoryCache cache,
         ILogger<NovelService> logger,
         IServiceScopeFactory scopeFactory)
@@ -156,9 +156,9 @@ public class NovelService : INovelService
                 // B1: Generate Embedding
                 var searchVector = await _embeddingPipeline.ExecuteAsync(async ct =>
                 {
-                    return await Task.Run(() => _embedder.Embed(searchString), ct);
+                    return await _embedder.EmbedAsync(searchString);
                 });
-                var searchVectorPg = new Pgvector.Vector(searchVector.Values.ToArray());
+                var searchVectorPg = new Pgvector.Vector(searchVector);
 
                 // B2: Vector Query (Using scopedRepo)
                 return await scopedRepo.GetOptimizedQuery()

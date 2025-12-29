@@ -1,7 +1,7 @@
 using Novelytical.Data; // Veri katmanını tanı
 using Microsoft.EntityFrameworkCore; // Veritabanı araçlarını tanı
 using Novelytical.Worker; // Worker sınıfını tanı
-
+using Novelytical.Application;
 
 using Serilog;
 
@@ -24,10 +24,13 @@ try
     // (Gizli kasadaki şifreyi alıp sisteme tanıtıyoruz)
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString, o => o.UseVector()));
+    // 1. Veritabanı ve Repository'leri Ekliyoruz (Data Layer)
+    builder.Services.AddDataLayer(connectionString!);
 
-    // 2. Robotu (Worker) İşe Alıyoruz
+    // 2. Uygulama Katmanını Ekliyoruz (Embedder vb. için)
+    builder.Services.AddApplicationLayer();
+
+    // 3. Robotu (Worker) İşe Alıyoruz
     builder.Services.AddHostedService<Worker>();
 
     var host = builder.Build();

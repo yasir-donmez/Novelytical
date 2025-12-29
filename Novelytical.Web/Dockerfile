@@ -7,8 +7,10 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["NuGet.Config", "."]
 COPY ["Novelytical.Web/Novelytical.Web.csproj", "Novelytical.Web/"]
 COPY ["Novelytical.Data/Novelytical.Data.csproj", "Novelytical.Data/"]
+COPY ["Novelytical.Application/Novelytical.Application.csproj", "Novelytical.Application/"]
 RUN dotnet restore "./Novelytical.Web/Novelytical.Web.csproj"
 COPY . .
 WORKDIR "/src/Novelytical.Web"

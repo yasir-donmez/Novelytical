@@ -5,8 +5,10 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["NuGet.Config", "."]
 COPY ["Novelytical.Worker/Novelytical.Worker.csproj", "Novelytical.Worker/"]
 COPY ["Novelytical.Data/Novelytical.Data.csproj", "Novelytical.Data/"]
+COPY ["Novelytical.Application/Novelytical.Application.csproj", "Novelytical.Application/"]
 RUN dotnet restore "./Novelytical.Worker/Novelytical.Worker.csproj"
 COPY . .
 WORKDIR "/src/Novelytical.Worker"

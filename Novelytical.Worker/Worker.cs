@@ -3,8 +3,8 @@ using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Novelytical.Data;
 using System.Net;
-using SmartComponents.LocalEmbeddings; // <-- YENİ KÜTÜPHANE
-using Pgvector; // <-- VEKTÖR İÇİN
+using Novelytical.Application.Interfaces;
+using Pgvector;
 
 namespace Novelytical.Worker
 {
@@ -12,21 +12,23 @@ namespace Novelytical.Worker
     {
         private readonly ILogger<Worker> _logger;
         private readonly IServiceProvider _serviceProvider;
-        
-        // Yapay Zeka Çevirmeni (Embedder)
-        // Bu arkadaş metinleri 384 tane sayıya çevirecek.
-        private readonly LocalEmbedder _embedder = new LocalEmbedder();
+        private readonly IEmbedder _embedder; // Injected Embedder
 
         private const string BaseUrl = "https://www.royalroad.com/fictions/best-rated";
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, IEmbedder embedder)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _embedder = embedder;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // 🚀 MIGRATION: Re-index all novels on startup
+            // This ensures all vectors are compatible with the new multilingual model
+            await ReindexAllNovels(stoppingToken);
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("🧠 Robot V12 (AI Modu): Vektörler hesaplanıyor...");
@@ -102,10 +104,10 @@ namespace Novelytical.Worker
                                     if (!string.IsNullOrEmpty(cleanDescription))
                                     {
                                         // Embedder metni okur ve float[] dizisi verir
-                                        var embeddingResult = _embedder.Embed(cleanDescription);
+                                        var embeddingResult = await _embedder.EmbedAsync(cleanDescription);
                                         
                                         // Biz bunu Neon veritabanının anlayacağı 'Vector' türüne çeviriyoruz
-                                        embeddingVector = new Vector(embeddingResult.Values.ToArray());
+                                        embeddingVector = new Vector(embeddingResult);
                                     }
 
                                     // --- VERİTABANI KAYIT ---
@@ -168,6 +170,90 @@ namespace Novelytical.Worker
                 {
                     _logger.LogError(ex, "❌ Hata oluştu!");
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                }
+            }
+        }
+
+        private async Task ReindexAllNovels(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("🔄 MIGRATION BAŞLADI: Tüm romanlar yeniden vektörleniyor (Re-indexing)...");
+            
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                
+                // Fetch only necessary fields to calculate embeddings
+                // We bring all into memory (assuming reasonable count < 10k for this worker)
+                var novels = await dbContext.Novels
+                    .Where(n => !string.IsNullOrEmpty(n.Description))
+                    .ToListAsync(stoppingToken);
+
+                _logger.LogInformation($"Found {novels.Count} novels to re-index.");
+                var count = novels.Count;
+                int processed = 0;
+                
+                // Use parallel processing for Embedding generation (CPU intensive)
+                // DbContext is NOT thread-safe, so we cannot update entities inside the parallel loop directly attached to context if we want to save incrementally safely without locking.
+                // Better approach: Generate embeddings in parallel, store them, then batch update.
+                
+                var parallelOptions = new ParallelOptions 
+                { 
+                    MaxDegreeOfParallelism = Environment.ProcessorCount, 
+                    CancellationToken = stoppingToken 
+                };
+
+                var embeddingResults = new System.Collections.Concurrent.ConcurrentBag<(int Id, Vector Vec)>();
+
+                await Parallel.ForEachAsync(novels, parallelOptions, async (novel, token) =>
+                {
+                    try 
+                    {
+                        var vector = await _embedder.EmbedAsync(novel.Description!);
+                        embeddingResults.Add((novel.Id, new Vector(vector)));
+                        Interlocked.Increment(ref processed);
+                        if (processed % 50 == 0) _logger.LogInformation($"⚡ Generating Embeddings: {processed}/{count}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Embedding generation failed for novel {Id}", novel.Id);
+                    }
+                });
+
+                _logger.LogInformation("Saving embeddings to database in batches...");
+                
+                int savedCount = 0;
+                // Batch Update
+                foreach(var result in embeddingResults)
+                {
+                    var novel = novels.First(n => n.Id == result.Id);
+                    novel.DescriptionEmbedding = result.Vec;
+                    dbContext.Entry(novel).State = EntityState.Modified;
+                    
+                    savedCount++;
+                    if (savedCount % 100 == 0)
+                    {
+                        try 
+                        {
+                            await dbContext.SaveChangesAsync(stoppingToken);
+                            _logger.LogInformation($"💾 Saved batch {savedCount}/{embeddingResults.Count}");
+                            // Detach to keep memory clean if list is huge (optional, but good for batched jobs)
+                            // dbContext.ChangeTracker.Clear(); // Can't clear if we reuse 'novels' list references or need them later. Keeping tracked is fine for now as we don't reload.
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "❌ DB Save Error: {Message} Inner: {Inner}", ex.Message, ex.InnerException?.Message);
+                        }
+                    }
+                }
+
+                try 
+                {
+                    await dbContext.SaveChangesAsync(stoppingToken); // Final save
+                    _logger.LogInformation("✅ MIGRATION TAMAMLANDI: Tüm romanlar güncellendi.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Final DB Save Error: {Message} Inner: {Inner}", ex.Message, ex.InnerException?.Message);
                 }
             }
         }
