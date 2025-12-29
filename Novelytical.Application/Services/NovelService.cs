@@ -141,7 +141,7 @@ public class NovelService : INovelService
             .Select(n => new { Novel = n, Rank = n.SearchVector!.Rank(EF.Functions.ToTsQuery("simple", tsQuery)) })
             .OrderByDescending(x => x.Rank)
             .Select(x => x.Novel) // Project to Novel only
-            .Take(50)
+                    .Take(24)
             .ToListAsync();
 
         // Task B: Vector Search -> Returns List<Novel>
@@ -166,9 +166,10 @@ public class NovelService : INovelService
                         Novel = n, 
                         Distance = n.DescriptionEmbedding!.CosineDistance(searchVectorPg) 
                     })
+                    .Where(x => x.Distance < 0.55) // 🎯 Filter out irrelevant results (Similarity > 0.45)
                     .OrderBy(x => x.Distance)
                     .Select(x => x.Novel) // Project to Novel only
-                    .Take(50)
+                    .Take(20)
                     .ToListAsync();
             }
             catch (TimeoutRejectedException)
