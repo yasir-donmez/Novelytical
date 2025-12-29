@@ -74,8 +74,19 @@ export default function RootLayout({
           >
             {/* Header with Theme Toggle */}
             <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="container flex h-14 max-w-screen-2xl items-center justify-between px-8">
-                <h1 className="text-xl font-bold">Novelytical</h1>
+              <div className="container flex h-16 items-center justify-between px-8 sm:px-12 lg:px-16 xl:px-24">
+                <a href="/" className="flex items-center gap-1 group">
+                  <img
+                    src="/logo.png"
+                    alt="N"
+                    width={40}
+                    height={40}
+                    className="transition-transform group-hover:scale-110 duration-300"
+                  />
+                  <span className="font-bold text-xl group-hover:text-primary transition-colors">
+                    ovelytical
+                  </span>
+                </a>
                 <ThemeToggle />
               </div>
             </header>

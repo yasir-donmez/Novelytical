@@ -22,7 +22,7 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
-  const debouncedSearch = useDebounce(searchInput, 500);
+  const debouncedSearch = useDebounce(searchInput, 800);
 
   // Sayfa numarasını URL'den oku, varsayılan 1
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
@@ -34,6 +34,8 @@ function HomeContent() {
       pageNumber: currentPage,
       pageSize: 12
     }),
+    // Only fetch if search is empty OR has at least 2 characters
+    enabled: debouncedSearch === '' || debouncedSearch.length >= 2,
   });
 
   // Sayfa değiştiğinde yukarı scroll
@@ -77,44 +79,63 @@ function HomeContent() {
 
         <div className="container relative z-10 mx-auto px-8 sm:px-12 lg:px-16 xl:px-24 py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Bir Sonraki <span className="text-primary">Maceranı</span> Keşfet
+            <div className="space-y-6">
+              {/* Site Branding */}
+              <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+                <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
+                  Novelytical
+                </span>
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Yapay zeka destekli arama ile binlerce roman arasından ruh haline ve zevkine en uygun olanı saniyeler içinde bul.
-              </p>
-            </div>
 
-            {/* Search Bar - Functional */}
-            <div className="relative max-w-2xl mx-auto group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-              <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Hangi hikayeyi arıyorsun? (Örn: Ejderha binicisi)"
-                  className="w-full pl-14 pr-14 py-4 rounded-full border-2 border-input bg-background/80 backdrop-blur-sm text-lg shadow-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/50"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => handleSearch('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Aramayı temizle"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+              {/* Typewriter Subtitle */}
+              <div className="h-16 flex items-center justify-center">
+                <p className="typewriter text-xl md:text-2xl text-muted-foreground leading-relaxed inline-block">
+                  Yapay zeka ile roman keşfet
+                </p>
               </div>
             </div>
 
-            {/* Results count */}
+            {/* AI Premium Search Bar */}
+            <div className="relative max-w-2xl mx-auto">
+              {/* Outer Glow Layer */}
+              <div className="absolute -inset-2 bg-gradient-to-r from-primary/30 via-purple-500/30 to-blue-500/30 rounded-full blur-xl opacity-0 group-focus-within:opacity-60 transition-all duration-500 animate-pulse"></div>
+
+              {/* Search Container */}
+              <div className="relative ai-search-input rounded-full">
+                <div className="relative bg-background/95 backdrop-blur-md rounded-full border-2 border-input transition-all duration-300 focus-within:border-transparent focus-within:shadow-2xl">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground transition-all duration-300 group-focus-within:text-primary group-focus-within:scale-110" />
+
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    placeholder="Hangi hikayeyi arıyorsun? (Örn: Ejderha binicisi)"
+                    className="w-full pl-16 pr-16 py-5 rounded-full bg-transparent text-lg font-medium focus:outline-none placeholder:text-muted-foreground/60 transition-all"
+                  />
+
+                  {searchInput && (
+                    <button
+                      onClick={() => handleSearch('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all hover:scale-110"
+                      aria-label="Aramayı temizle"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Results count with animation */}
             {data && (
-              <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2">
-                <span className="text-foreground">{data.totalRecords}</span> roman bulundu
-                {debouncedSearch && <span className="text-primary"> "{debouncedSearch}"</span>}
+              <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <span className="text-lg font-bold text-primary">{data.totalRecords}</span>
+                {' '}roman bulundu
+                {debouncedSearch && (
+                  <span className="inline-block ml-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                    "{debouncedSearch}"
+                  </span>
+                )}
               </p>
             )}
           </div>

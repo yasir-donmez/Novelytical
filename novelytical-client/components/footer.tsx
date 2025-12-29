@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Github, Twitter, Linkedin, BookOpen } from "lucide-react"
+import { Github, Twitter, Linkedin } from "lucide-react"
 
 export function Footer() {
     return (
@@ -7,9 +7,9 @@ export function Footer() {
             <div className="container px-8 sm:px-12 lg:px-16 xl:px-24 py-12 md:py-16">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <BookOpen className="h-6 w-6 text-primary" />
-                            <span className="text-xl font-bold">Novelytical</span>
+                        <div className="flex items-center gap-1">
+                            <img src="/logo.png" alt="N" width={32} height={32} />
+                            <span className="text-xl font-bold">ovelytical</span>
                         </div>
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             Yapay zeka destekli roman keşif ve analiz platformu. Okuma deneyiminizi bir sonraki seviyeye taşıyın.
