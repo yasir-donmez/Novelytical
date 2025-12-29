@@ -25,18 +25,20 @@
 ## 🎯 ŞU ANKİ ODAK: Aşama 3 (Frontend & Modern UI)
 > **Hedef:** Next.js 14+ (App Router) kullanarak yüksek performanslı ve modern bir arayüz oluşturmak.
 
-- [ ] **Kurulum**: Next.js (App Router) + TypeScript kurulumu.
-- [ ] **UI Kütüphanesi**: shadcn/ui kurulumu.
-- [ ] **Tema**: next-themes ile Karanlık/Aydınlık mod desteği.
-- [ ] **API İstemcisi**: Axios + TanStack Query v5 entegrasyonu.
-- [ ] **Formlar**: React Hook Form + Zod validasyonları.
-- [ ] **Arama Optimizasyonu**: URL tabanlı arama yönetimi ve useDebounce.
-- [ ] **Tasarım**: Tailwind CSS + clsx + tailwind-merge.
-- [ ] **Bileşenler**: NovelCard, SearchBar, Pagination, Layout.
-- [ ] **UX**: Skeleton Loading (Yükleme İskeletleri).
-- [ ] **Güvenlik**: Next.js Middleware (HttpOnly Cookie okuma ve rota koruma).
-- [ ] **SEO**: Dinamik Metadata ve Open Graph ayarları.
-- [ ] **State Yönetimi**: Zustand.
+- [x] **Kurulum**: Next.js (App Router) + TypeScript kurulumu.
+- [x] **UI Kütüphanesi**: shadcn/ui kurulumu.
+- [x] **Tema**: next-themes ile Karanlık/Aydınlık mod desteği.
+- [x] **API İstemcisi**: Axios + TanStack Query v5 entegrasyonu.
+- [x] **Arama Optimizasyonu**: URL tabanlı arama yönetimi ve useDebounce.
+- [x] **Sayfalama (Pagination)**: URL tabanlı sayfa yönetimi ve navigasyon kontrolleri.
+- [x] **Tasarım**: Tailwind CSS + clsx + tailwind-merge.
+- [x] **Bileşenler**: NovelCard, NovelCardSkeleton, SearchBar, Pagination.
+- [x] **Ana Sayfa**: Novel Listesi ve Arama Fonksiyonalitesi (Türkçe/İngilizce destek).
+- [x] **Detay Sayfası**: Novel Detay Sayfası (Next.js 15 uyumlu).
+- [x] **Pagination**: Sayfalama kontrolleri (URL tabanlı sayfa yönetimi).
+
+- [x] **Güvenlik**: Next.js Middleware (HttpOnly Cookie okuma ve rota koruma).
+- [x] **SEO**: Dinamik Metadata ve Open Graph ayarları.
 
 ---
 
@@ -46,6 +48,7 @@
 - [ ] **Kimlik Doğrulama (Auth)**:
     - .NET Identity + JWT (HttpOnly Cookie) altyapısı.
     - Kayıt Ol (Register) ve Giriş Yap (Login) sayfaları.
+    - React Hook Form + Zod validasyonları (Login/Register formları için).
 - [ ] **Topluluk Özellikleri [YENİ]**:
     - Roman detay sayfalarına Yorum/Sohbet bölümü.
     - Puanlama ve Değerlendirme sistemi.
