@@ -19,6 +19,7 @@ public class NovelsController : ControllerBase
     /// Get paginated list of novels with optional search and sorting
     /// </summary>
     /// <param name="searchString">Search query for semantic search</param>
+    /// <param name="tag">Filter by tag (case-insensitive)</param>
     /// <param name="sortOrder">Sort order (rating_asc, chapters_desc, date_desc)</param>
     /// <param name="pageNumber">Page number (default: 1)</param>
     /// <param name="pageSize">Items per page (default: 9)</param>
@@ -28,6 +29,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetNovels(
         [FromQuery] string? searchString,
+        [FromQuery(Name = "tag")] List<string>? tags,
         [FromQuery] string? sortOrder,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 9)
@@ -35,7 +37,7 @@ public class NovelsController : ControllerBase
         if (pageNumber < 1 || pageSize < 1)
             return BadRequest("Page number and page size must be greater than 0");
 
-        var result = await _novelService.GetNovelsAsync(searchString, sortOrder, pageNumber, pageSize);
+        var result = await _novelService.GetNovelsAsync(searchString, tags, sortOrder, pageNumber, pageSize);
 
         if (!result.Succeeded)
             return BadRequest(result.Message);
@@ -48,7 +50,7 @@ public class NovelsController : ControllerBase
     /// </summary>
     /// <param name="id">Novel ID</param>
     /// <returns>Novel details</returns>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetNovel(int id)
@@ -58,6 +60,61 @@ public class NovelsController : ControllerBase
         if (!result.Succeeded)
             return NotFound(result.Message);
 
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get novels by the same author
+    /// </summary>
+    /// <param name="author">Author name</param>
+    /// <param name="excludeId">Novel ID to exclude (typically the current novel)</param>
+    /// <param name="pageSize">Number of novels to return (default: 6)</param>
+    /// <returns>List of novels by author</returns>
+    [HttpGet("by-author")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNovelsByAuthor(
+        [FromQuery] string author,
+        [FromQuery] int excludeId = 0,
+        [FromQuery] int pageSize = 6)
+    {
+        if (string.IsNullOrWhiteSpace(author))
+            return BadRequest("Author name is required");
+
+        var result = await _novelService.GetNovelsByAuthorAsync(author, excludeId, pageSize);
+
+        if (!result.Succeeded)
+            return BadRequest(result.Message);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get AI-powered similar novels based on description embeddings
+    /// </summary>
+    /// <param name="id">Novel ID</param>
+    /// <param name="limit">Number of similar novels to return (default: 6)</param>
+    /// <returns>List of similar novels</returns>
+    [HttpGet("{id:int}/similar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSimilarNovels(int id, [FromQuery] int limit = 12)
+    {
+        var result = await _novelService.GetSimilarNovelsAsync(id, limit);
+
+        if (!result.Succeeded)
+            return BadRequest(result.Message);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get all available tags for filtering
+    /// </summary>
+    /// <returns>List of tag names</returns>
+    [HttpGet("tags")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTags()
+    {
+        var result = await _novelService.GetAllTagsAsync();
         return Ok(result);
     }
 }

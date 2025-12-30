@@ -41,4 +41,12 @@ public class NovelRepository : INovelRepository
             .ThenInclude(nt => nt.Tag)
             .FirstOrDefaultAsync(n => n.Id == id);
     }
+
+    public async Task<List<Tag>> GetAllTagsAsync()
+    {
+        return await _context.Tags
+            .AsNoTracking()
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
 }

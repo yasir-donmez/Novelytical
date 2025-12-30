@@ -1,5 +1,5 @@
 services:
-  postgres:
+  novelytical-postgres:
     image: pgvector/pgvector:pg16
     container_name: novelytical-postgres
     environment:
@@ -9,10 +9,12 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - novelytical-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
     restart: always
@@ -36,16 +38,18 @@ services:
       dockerfile: Novelytical.Web/Dockerfile
     container_name: novelytical-web
     environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=NovelyticalDb;Username=postgres;Password=password
+      - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=NovelyticalDb;Username=postgres;Password=password
       - Seq__ServerUrl=http://seq:5341
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
       - "5050:8080"
     depends_on:
-      postgres:
+      novelytical-postgres:
         condition: service_healthy
       seq:
         condition: service_started
+    networks:
+      - novelytical-network
     restart: on-failure
 
   novelytical-worker:
@@ -54,16 +58,22 @@ services:
       dockerfile: Novelytical.Worker/Dockerfile
     container_name: novelytical-worker
     environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=NovelyticalDb;Username=postgres;Password=password
+      - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=NovelyticalDb;Username=postgres;Password=password
       - Seq__ServerUrl=http://seq:5341
       - DOTNET_ENVIRONMENT=Development
     depends_on:
-      postgres:
+      novelytical-postgres:
         condition: service_healthy
       seq:
         condition: service_started
+    networks:
+      - novelytical-network
     restart: on-failure
 
+networks:
+  novelytical-network:
+    driver: bridge
+
 volumes:
-  pgdata:
+  postgres_data:
   seqdata:

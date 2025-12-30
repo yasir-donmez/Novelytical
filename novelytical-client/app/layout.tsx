@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Footer } from "@/components/footer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -90,6 +91,7 @@ export default function RootLayout({
                 <ThemeToggle />
               </div>
             </header>
+            <Toaster position="top-right" richColors />
             {children}
             <Footer />
           </ThemeProvider>

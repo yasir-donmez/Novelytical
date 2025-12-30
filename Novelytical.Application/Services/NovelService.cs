@@ -59,15 +59,19 @@ public class NovelService : INovelService
 
     public async Task<PagedResponse<NovelListDto>> GetNovelsAsync(
         string? searchString = null,
+        List<string>? tags = null,
         string? sortOrder = null,
         int pageNumber = 1,
         int pageSize = 9)
     {
-        // Cache key (Bump version to v2 to clear old cache)
-        string cacheKey = $"novels_v2_page{pageNumber}_sort{sortOrder}_search{searchString}";
+        // Cache key (Bump version to v4 for multi-tag support)
+        string tagsKey = tags != null && tags.Any() ? string.Join("_", tags.OrderBy(t => t)) : "none";
+        string cacheKey = $"novels_v4_page{pageNumber}_sort{sortOrder}_search{searchString}_tags{tagsKey}";
 
-        // Try cache first
-        if (_cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) && cachedNovels != null)
+        // Try cache first (but skip if tag filtering is active - needs fresh count)
+        if ((tags == null || !tags.Any()) && 
+            _cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) && 
+            cachedNovels != null)
         {
             var totalCount = await _repository.GetCountAsync();
             return new PagedResponse<NovelListDto>(cachedNovels, pageNumber, pageSize, totalCount);
@@ -77,19 +81,30 @@ public class NovelService : INovelService
 
         int totalRecords;
 
-        // 🔥 HYBRID SEARCH: Full-Text + Vector + RRF
         if (!string.IsNullOrEmpty(searchString))
         {
-            var searchResult = await HybridSearchWithRRF(searchString, sortOrder, pageNumber, pageSize);
+            var searchResult = await HybridSearchWithRRF(searchString, tags, sortOrder, pageNumber, pageSize);
             novels = searchResult.Novels;
             totalRecords = searchResult.TotalCount;
         }
         else
         {
             // Standard sorting (no search)
-            totalRecords = await _repository.GetCountAsync();
-
             var query = _repository.GetOptimizedQuery();
+            
+            // Tag filtering (case-insensitive, AND logic)
+            if (tags != null && tags.Any())
+            {
+                foreach (var tag in tags)
+                {
+                    var lowerTag = tag.ToLower();
+                    query = query.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                }
+            }
+            
+            // Count AFTER filtering
+            totalRecords = await query.CountAsync();
+            
             query = sortOrder switch
             {
                 "rating_asc" => query.OrderByDescending(n => n.Rating), // Kullanıcı İsteği: 5->1
@@ -128,6 +143,7 @@ public class NovelService : INovelService
     /// </summary>
     private async Task<(List<NovelListDto> Novels, int TotalCount)> HybridSearchWithRRF(
         string searchString,
+        List<string>? tags,
         string? sortOrder,
         int pageNumber, 
         int pageSize)
@@ -136,7 +152,18 @@ public class NovelService : INovelService
         var tsQuery = string.Join(" & ", searchString.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         // Task A: Full-Text Search -> Returns List<Novel>
-        var fullTextTask = _repository.GetOptimizedQuery()
+        var fullTextQuery = _repository.GetOptimizedQuery();
+        
+        if (tags != null && tags.Any())
+        {
+            foreach (var tag in tags)
+            {
+                var lowerTag = tag.ToLower();
+                fullTextQuery = fullTextQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+            }
+        }
+
+        var fullTextTask = fullTextQuery
             .Where(n => n.SearchVector!.Matches(EF.Functions.ToTsQuery("simple", tsQuery)))
             .Select(n => new { Novel = n, Rank = n.SearchVector!.Rank(EF.Functions.ToTsQuery("simple", tsQuery)) })
             .OrderByDescending(x => x.Rank)
@@ -161,12 +188,23 @@ public class NovelService : INovelService
                 var searchVectorPg = new Pgvector.Vector(searchVector);
 
                 // B2: Vector Query (Using scopedRepo)
-                return await scopedRepo.GetOptimizedQuery()
+                var vectorQuery = scopedRepo.GetOptimizedQuery();
+
+                 if (tags != null && tags.Any())
+                 {
+                     foreach (var tag in tags)
+                     {
+                         var lowerTag = tag.ToLower();
+                         vectorQuery = vectorQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                     }
+                 }
+
+                return await vectorQuery
                     .Select(n => new { 
                         Novel = n, 
                         Distance = n.DescriptionEmbedding!.CosineDistance(searchVectorPg) 
                     })
-                    .Where(x => x.Distance < 0.55) // 🎯 Filter out irrelevant results (Similarity > 0.45)
+                    .Where(x => x.Distance < 0.35) // 🎯 Filter out irrelevant results (Similarity > 0.65)
                     .OrderBy(x => x.Distance)
                     .Select(x => x.Novel) // Project to Novel only
                     .Take(20)
@@ -313,6 +351,148 @@ public class NovelService : INovelService
             Tags = novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).ToList()
         };
 
+        // Mock rating data (Phase 4'te gerçek rating sistemi gelecek)
+        var seed = novel.Id * 17 + 42; // Consistent seed
+        var random = new Random(seed);
+        dto.AverageRating = Math.Round(3.5 + (random.NextDouble() * 1.5), 1); // 3.5-5.0
+        dto.RatingCount = random.Next(100, 5000); // 100-5000 arası
+
         return new Response<NovelDetailDto>(dto);
+    }
+
+    public async Task<Response<List<NovelListDto>>> GetNovelsByAuthorAsync(
+        string author, 
+        int excludeId, 
+        int pageSize)
+    {
+        try
+        {
+            var novels = await _repository.GetOptimizedQuery()
+                .Where(n => n.Author == author && n.Id != excludeId)
+                .OrderByDescending(n => n.Rating)
+                .Take(pageSize)
+                .Select(n => new NovelListDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Author = n.Author,
+                    Rating = n.Rating,
+                    ChapterCount = n.ChapterCount,
+                    LastUpdated = n.LastUpdated,
+                    CoverUrl = n.CoverUrl,
+                    Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+                })
+                .ToListAsync();
+
+            return new Response<List<NovelListDto>>(novels);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting novels by author: {Author}", author);
+            return new Response<List<NovelListDto>>("Yazarın diğer romanları alınamadı");
+        }
+    }
+
+    public async Task<Response<List<NovelListDto>>> GetSimilarNovelsAsync(int novelId, int limit)
+    {
+        try
+        {
+            // 1. Get Current Novel & Its Embedding
+            var currentNovel = await _repository.GetByIdAsync(novelId);
+            
+            if (currentNovel == null)
+                return new Response<List<NovelListDto>>("Roman bulunamadı");
+
+            List<NovelListDto> similarNovels = new();
+
+            // 2. Vector Search (Primary Strategy)
+            if (currentNovel.DescriptionEmbedding != null)
+            {
+                var currentVector = new Pgvector.Vector(currentNovel.DescriptionEmbedding);
+                
+                // Use a new scope for vector query to ensure thread safety/isolation if needed
+                using var scope = _scopeFactory.CreateScope();
+                var scopedRepo = scope.ServiceProvider.GetRequiredService<INovelRepository>();
+
+                similarNovels = await scopedRepo.GetOptimizedQuery()
+                    .Where(n => n.Id != novelId)
+                    .Select(n => new { 
+                        Novel = n, 
+                        Distance = n.DescriptionEmbedding!.CosineDistance(currentVector) 
+                    })
+                    .Where(x => x.Distance < 0.35) // 🎯 Relevance Threshold (Lower is more similar)
+                    .OrderBy(x => x.Distance)
+                    .Take(limit)
+                    .Select(x => new NovelListDto
+                    {
+                        Id = x.Novel.Id,
+                        Title = x.Novel.Title,
+                        Author = x.Novel.Author,
+                        Rating = x.Novel.Rating,
+                        ChapterCount = x.Novel.ChapterCount,
+                        LastUpdated = x.Novel.LastUpdated,
+                        CoverUrl = x.Novel.CoverUrl,
+                        Tags = x.Novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+                    })
+                    .ToListAsync();
+            }
+
+            // 3. Fallback / Fill Strategy: Tag-Based (If vector search didn't return enough)
+            if (similarNovels.Count < limit)
+            {
+                var remainingCount = limit - similarNovels.Count;
+                var currentTags = currentNovel.NovelTags.Select(nt => nt.TagId).ToList();
+                var existingIds = similarNovels.Select(n => n.Id).Append(novelId).ToList();
+
+                var tagBasedNovels = await _repository.GetOptimizedQuery()
+                    .Where(n => !existingIds.Contains(n.Id)) // Exclude already found
+                    .Where(n => n.NovelTags.Any(nt => currentTags.Contains(nt.TagId)))
+                    .Select(n => new
+                    {
+                        Novel = n,
+                        SharedTags = n.NovelTags.Count(nt => currentTags.Contains(nt.TagId))
+                    })
+                    .OrderByDescending(x => x.SharedTags)
+                    .ThenByDescending(x => x.Novel.Rating)
+                    .Take(remainingCount)
+                    .Select(x => new NovelListDto
+                    {
+                        Id = x.Novel.Id,
+                        Title = x.Novel.Title,
+                        Author = x.Novel.Author,
+                        Rating = x.Novel.Rating,
+                        ChapterCount = x.Novel.ChapterCount,
+                        LastUpdated = x.Novel.LastUpdated,
+                        CoverUrl = x.Novel.CoverUrl,
+                        Tags = x.Novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+                    })
+                    .ToListAsync();
+
+                similarNovels.AddRange(tagBasedNovels);
+            }
+
+            return new Response<List<NovelListDto>>(similarNovels);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting similar novels for ID: {NovelId}", novelId);
+            return new Response<List<NovelListDto>>("Benzer romanlar alınamadı");
+        }
+    }
+    public async Task<Response<List<string>>> GetAllTagsAsync()
+    {
+        string cacheKey = "all_tags";
+        if (_cache.TryGetValue(cacheKey, out List<string>? cachedTags) && cachedTags != null)
+        {
+            return new Response<List<string>>(cachedTags);
+        }
+
+        var tags = await _repository.GetAllTagsAsync();
+        var tagNames = tags.Select(t => t.Name).ToList();
+
+        // Cache for 1 hour (tags don't change often)
+        _cache.Set(cacheKey, tagNames, TimeSpan.FromHours(1));
+
+        return new Response<List<string>>(tagNames);
     }
 }

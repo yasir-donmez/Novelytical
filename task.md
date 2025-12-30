@@ -40,15 +40,109 @@
 - [x] **Güvenlik**: Next.js Middleware (HttpOnly Cookie okuma ve rota koruma).
 - [x] **SEO**: Dinamik Metadata ve Open Graph ayarları.
 
+
 ---
 
-## ⏳ BEKLEYEN: Aşama 4 (Topluluk, Auth ve İleri Backend)
-> **Hedef:** Kullanıcı etkileşimi, yorumlar ve gelişmiş backend özellikleri.
+## 🎨 DEVAM EDEN: Aşama 3.5 (Frontend Polish & UX İyileştirmeleri)
+> **Hedef:** Phase 4'e geçmeden önce frontend'i profesyonel seviyeye çıkarmak
 
-- [ ] **Kimlik Doğrulama (Auth)**:
-    - .NET Identity + JWT (HttpOnly Cookie) altyapısı.
-    - Kayıt Ol (Register) ve Giriş Yap (Login) sayfaları.
-    - React Hook Form + Zod validasyonları (Login/Register formları için).
+### 3.5.1: Detay Sayfası İyileştirmeleri
+- [x] Etiketler tıklanabilir (tag'e tıklayınca o etiketle filtreleme)
+- [x] Rating gösterimi (yıldızlar + ortalama puan)
+- [x] Sosyal paylaşım butonları (Twitter, Facebook)
+- [x] Yazarın diğer romanları bölümü
+- [x] Benzer romanlar önerisi (AI powered - vector similarity)
+
+- [x] **Kategori (Etiket) Filtreleri:**
+  - [x] Tag listesi API endpoint (`GET /api/tags`)
+  - [x] Frontend Dropdown/Multi-select component
+  - [x] URL state ile entegrasyon
+- [~] **Yıl Aralığı Filtresi:** ~*(İptal Edildi)*~
+- [x] **Sıralama Seçenekleri:**
+  - En yeni (tarih)
+  - En popüler (bölüm sayısı)
+  - Alfabetik
+  - Puana göre (artan/azalan)
+  - URL parametrelering (en yüksek puan)
+- [ ] **Filtre State'i:**
+  - URL query params ile kalıcılık
+  - Clear all filters butonu
+  - Active filters badge gösterimi
+
+### 3.5.3: UI/UX İyileştirmeleri
+- [x] **Loading States:**
+  - [x] Novel card skeleton (mevcut)
+  - [x] Detail page skeleton
+  - [x] Filter dropdown skeleton
+- [x] **Empty States:**
+  - [x] "Arama sonucu bulunamadı" ekranı
+  - [x] "Bu kategoride roman yok" mesajı
+  - [x] Öneri butonları (filtreyi temizle, ana sayfaya dön)
+- [ ] **Error Boundary:**
+  - Global error boundary component
+  - 404 sayfası (novel bulunamadı)
+  - 500 error fallback
+  - Network error handling
+- [x] **Animations:**
+  - Scroll-triggered fade-in (framer-motion veya CSS)
+  - [x] Hover card lift effect (mevcut shine'a ek)
+  - Page transition animations
+  - Filter collapse/expand animations
+
+### 3.5.4: Responsive & Accessibility
+- [ ] **Mobil Optimizasyon:**
+  - Touch-friendly button sizes (44x44px minimum)
+  - Swipeable card carousel (mobilde)
+  - Bottom sheet filters (mobil)
+  - Hamburger menu (ileride navbar için)
+- [ ] **Keyboard Navigation:**
+  - Tab order optimization
+  - Escape key handlers (modal/filter close)
+  - Arrow key navigation (card grid)
+- [ ] **Accessibility (a11y):**
+  - ARIA labels (tüm interactive elementler)
+  - Alt text (tüm görseller)
+  - Focus indicators (outline)
+  - Color contrast check (WCAG AA)
+  - Screen reader testing
+
+### 3.5.5: Performance Optimizations
+- [ ] Image optimization (next/image zaten var, lazy loading kontrol)
+- [ ] Code splitting (route-based)
+- [ ] Prefetching (link hover'da)
+- [ ] Bundle size analizi (next-bundle-analyzer)
+- [ ] Lighthouse performance score ≥90
+
+---
+
+
+## ⏳ BEKLEYEN: Aşama 4 (Authentication & Hybrid Mimari) 🔐
+> **Hedef:** Firebase Auth + Firestore (yorumlar) + PostgreSQL (romanlar) + CQRS Pattern
+
+
+### 4.1: CQRS Pattern Migration
+- [ ] MediatR NuGet paketlerini ekle
+- [ ] Commands/Queries/Handlers klasör yapısı oluştur
+- [ ] NovelService → CQRS'e migrate et
+- [ ] Controllers'ı MediatR kullanacak şekilde güncelle
+
+### 4.2: Firebase Authentication
+- [ ] Firebase projesi oluştur (Console)
+- [ ] Frontend: firebase SDK + auth service
+- [ ] Backend: Firebase Admin SDK + JWT validation
+- [ ] Login/Register sayfaları
+
+### 4.3: Firestore Comments (Hybrid DB)
+- [ ] Firestore setup + security rules
+- [ ] Backend: AddCommentCommand (validate + write)
+- [ ] Frontend: Direct read (Firestore SDK)
+- [ ] Real-time listener + UI components
+
+### 4.4: User Features (CQRS)
+- [ ] Favoriler (AddFavoriteCommand, GetFavoritesQuery)
+- [ ] Rating (RateNovelCommand, GetUserRatingQuery)
+- [ ] User profile
+
 - [ ] **Topluluk Özellikleri [YENİ]**:
     - Roman detay sayfalarına Yorum/Sohbet bölümü.
     - Puanlama ve Değerlendirme sistemi.

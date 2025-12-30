@@ -17,6 +17,8 @@ export interface NovelDetailDto extends NovelListDto {
     aiSummary?: string;
     year?: number;
     category?: string;
+    averageRating?: number; // 0-5 rating
+    ratingCount?: number;   // Total number of ratings
     chapters?: {
         id: number;
         chapterNumber: number;

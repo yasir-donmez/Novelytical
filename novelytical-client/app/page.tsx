@@ -17,6 +17,10 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from '@/components/ui/pagination';
+import { CategoryModal } from '@/components/category-modal';
+import { SortSelect } from '@/components/sort-select';
+import { EmptyState } from '@/components/empty-state';
+
 
 function HomeContent() {
   const router = useRouter();
@@ -27,10 +31,19 @@ function HomeContent() {
   // Sayfa numarasını URL'den oku, varsayılan 1
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
 
+  // Tag filtresini URL'den oku (Multi-tag support)
+  const tagFilters = searchParams.getAll('tag');
+
+  // Sıralama seçeneğini URL'den oku
+  const sortOrder = searchParams.get('sort') || 'rating_asc'; // Default: En yüksek puan
+
+  // React Query ile romanları çek
   const { data, isLoading, error } = useQuery({
-    queryKey: ['novels', debouncedSearch, currentPage],
+    queryKey: ['novels', debouncedSearch, currentPage, tagFilters, sortOrder],
     queryFn: () => novelService.getNovels({
       searchString: debouncedSearch || undefined,
+      tags: tagFilters.length > 0 ? tagFilters : undefined,
+      sortOrder: sortOrder,
       pageNumber: currentPage,
       pageSize: 12
     }),
@@ -45,7 +58,7 @@ function HomeContent() {
 
   const handleSearch = (value: string) => {
     setSearchInput(value);
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (value) {
       params.set('q', value);
     } else {
@@ -57,7 +70,7 @@ function HomeContent() {
   };
 
   const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (page === 1) {
       params.delete('page');
     } else {
@@ -126,21 +139,61 @@ function HomeContent() {
               </div>
             </div>
 
+            {/* Selected Tags Display */}
+            {tagFilters.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto animate-in fade-in slide-in-from-top-2 duration-300 mt-6 mb-2">
+                {tagFilters.map(tag => (
+                  <span key={tag} className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-sm font-medium border border-purple-500/20 shadow-sm transition-all hover:bg-purple-500/20 hover:scale-105 cursor-default">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Results count with animation */}
             {data && (
-              <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <span className="text-lg font-bold text-primary">{data.totalRecords}</span>
-                {' '}roman bulundu
-                {debouncedSearch && (
-                  <span className="inline-block ml-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                    "{debouncedSearch}"
-                  </span>
-                )}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <span className="text-lg font-bold text-primary">{data.totalRecords}</span>
+                  {' '}roman bulundu
+                  {debouncedSearch && (
+                    <span className="inline-block ml-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                      "{debouncedSearch}"
+                    </span>
+                  )}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4">
+
+                  {/* Category Modal Filter */}
+                  <CategoryModal
+                    selectedTags={tagFilters}
+                    onChange={(newTags) => {
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.delete('tag'); // Clear existing
+                      newTags.forEach(t => params.append('tag', t)); // Add all current
+
+                      params.set('page', '1');
+                      router.push(`/?${params.toString()}`);
+                    }}
+                  />
+
+                  {/* Sort Dropdown */}
+                  <SortSelect
+                    value={sortOrder}
+                    onChange={(value) => {
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set('sort', value);
+                      params.set('page', '1');
+                      router.push(`/?${params.toString()}`);
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Novel Grid */}
       <section className="max-w-7xl mx-auto px-8 sm:px-12 lg:px-16 xl:px-24 py-8">
@@ -153,89 +206,97 @@ function HomeContent() {
               {(error as Error).message}
             </p>
           </div>
-        )}
+        )
+        }
 
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <NovelCardSkeleton key={i} />
-            ))}
-          </div>
-        )}
-
-        {data && data.data.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">
-              Aradığınız kriterlere uygun roman bulunamadı.
-            </p>
-            {debouncedSearch && (
-              <button
-                onClick={() => handleSearch('')}
-                className="mt-4 text-primary hover:underline"
-              >
-                Tüm romanları göster
-              </button>
-            )}
-          </div>
-        )}
-
-        {data && data.data.length > 0 && (
-          <>
+        {
+          isLoading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {data.data.map((novel) => (
-                <NovelCard
-                  key={novel.id}
-                  novel={novel}
-                  onClick={() => router.push(`/novel/${novel.id}`)}
-                />
+              {Array.from({ length: 12 }).map((_, i) => (
+                <NovelCardSkeleton key={i} />
               ))}
             </div>
+          )
+        }
 
-            {/* Pagination Controls */}
-            {data.totalPages > 1 && (
-              <div className="mt-12 space-y-4">
-                {/* Sayfa Bilgisi */}
-                <div className="text-center text-sm text-muted-foreground">
-                  {((currentPage - 1) * data.pageSize) + 1}-
-                  {Math.min(currentPage * data.pageSize, data.totalRecords)} arası gösteriliyor
-                  {' / '}Toplam {data.totalRecords} roman
-                </div>
+        {
+          data && data.data.length === 0 && (
+            <EmptyState
+              title="Roman Bulunamadı 🐲"
+              description={debouncedSearch
+                ? `"${debouncedSearch}" aramasıyla eşleşen bir hikaye bulamadık.`
+                : "Bu kategoride henüz roman eklenmemiş olabilir."}
+              icon="search"
+              actionLabel={debouncedSearch || tagFilters.length > 0 ? "Filtreleri Temizle" : "Yenile"}
+              onAction={() => {
+                handleSearch('');
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('tag');
+                router.push(`/?${params.toString()}`);
+              }}
+            />
+          )
+        }
 
-                {/* Pagination Buttons */}
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) handlePageChange(currentPage - 1);
-                        }}
-                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-
-                    {/* Sayfa Numaraları */}
-                    {renderPageNumbers(currentPage, data.totalPages, handlePageChange)}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < data.totalPages) handlePageChange(currentPage + 1);
-                        }}
-                        className={currentPage === data.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+        {
+          data && data.data.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {data.data.map((novel) => (
+                  <NovelCard
+                    key={novel.id}
+                    novel={novel}
+                    onClick={() => router.push(`/novel/${novel.id}`)}
+                  />
+                ))}
               </div>
-            )}
-          </>
-        )}
-      </section>
-    </div>
+
+              {/* Pagination Controls */}
+              {data.totalPages > 1 && (
+                <div className="mt-12 space-y-4">
+                  {/* Sayfa Bilgisi */}
+                  <div className="text-center text-sm text-muted-foreground">
+                    {((currentPage - 1) * data.pageSize) + 1}-
+                    {Math.min(currentPage * data.pageSize, data.totalRecords)} arası gösteriliyor
+                    {' / '}Toplam {data.totalRecords} roman
+                  </div>
+
+                  {/* Pagination Buttons */}
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) handlePageChange(currentPage - 1);
+                          }}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+
+                      {/* Sayfa Numaraları */}
+                      {renderPageNumbers(currentPage, data.totalPages, handlePageChange)}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < data.totalPages) handlePageChange(currentPage + 1);
+                          }}
+                          className={currentPage === data.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+          )
+        }
+      </section >
+    </div >
   );
 }
 
