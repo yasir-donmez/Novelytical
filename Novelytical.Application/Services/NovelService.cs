@@ -408,7 +408,7 @@ public class NovelService : INovelService
             // 2. Vector Search (Primary Strategy)
             if (currentNovel.DescriptionEmbedding != null)
             {
-                var currentVector = new Pgvector.Vector(currentNovel.DescriptionEmbedding);
+                var currentVector = currentNovel.DescriptionEmbedding!;
                 
                 // Use a new scope for vector query to ensure thread safety/isolation if needed
                 using var scope = _scopeFactory.CreateScope();
