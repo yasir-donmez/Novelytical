@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { novelService } from '@/services/novelService';
+
 import { useDebounce } from '@/hooks/useDebounce';
 import { NovelCard } from '@/components/novel-card';
 import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
@@ -94,7 +95,7 @@ function HomeContent() {
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <div className="space-y-6">
               {/* Site Branding */}
-              <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              <h1 className="text-4xl md:text-7xl font-bold tracking-tight">
                 <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
                   Novelytical
                 </span>
@@ -126,11 +127,17 @@ function HomeContent() {
                     className="w-full pl-16 pr-16 py-5 rounded-full bg-transparent text-lg font-medium focus:outline-none placeholder:text-muted-foreground/60 transition-all"
                   />
 
-                  {searchInput && (
+                  {(searchInput || tagFilters.length > 0) && (
                     <button
-                      onClick={() => handleSearch('')}
+                      onClick={() => {
+                        handleSearch('');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete('tag');
+                        params.set('page', '1');
+                        router.push(`/?${params.toString()}`);
+                      }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all hover:scale-110"
-                      aria-label="Aramayı temizle"
+                      aria-label="Tüm filtreleri temizle"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -143,25 +150,43 @@ function HomeContent() {
             {tagFilters.length > 0 && (
               <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto animate-in fade-in slide-in-from-top-2 duration-300 mt-6 mb-2">
                 {tagFilters.map(tag => (
-                  <span key={tag} className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-sm font-medium border border-purple-500/20 shadow-sm transition-all hover:bg-purple-500/20 hover:scale-105 cursor-default">
-                    {tag}
-                  </span>
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.delete('tag');
+                      // Keep other tags
+                      tagFilters.filter(t => t !== tag).forEach(t => params.append('tag', t));
+                      // Optional: reset page to 1
+                      params.set('page', '1');
+                      router.push(`/?${params.toString()}`);
+                    }}
+                    className="group flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-sm font-medium border border-purple-500/20 shadow-sm transition-all hover:bg-purple-500/20 hover:border-purple-500/40 hover:scale-105"
+                  >
+                    <span>{tag}</span>
+                    <X className="h-3 w-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
+                  </button>
                 ))}
+
               </div>
             )}
 
             {/* Results count with animation */}
             {data && (
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <span className="text-lg font-bold text-primary">{data.totalRecords}</span>
-                  {' '}roman bulundu
-                  {debouncedSearch && (
-                    <span className="inline-block ml-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                      "{debouncedSearch}"
-                    </span>
-                  )}
-                </p>
+                <div className="flex items-center gap-4">
+                  <p className="text-sm font-medium text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <span className="text-lg font-bold text-primary">{data.totalRecords}</span>
+                    {' '}roman bulundu
+                    {debouncedSearch && (
+                      <span className="inline-block ml-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                        "{debouncedSearch}"
+                      </span>
+                    )}
+                  </p>
+
+
+                </div>
 
                 <div className="flex flex-wrap items-center gap-4">
 
@@ -205,6 +230,7 @@ function HomeContent() {
             <p className="text-sm text-muted-foreground mt-2">
               {(error as Error).message}
             </p>
+
           </div>
         )
         }

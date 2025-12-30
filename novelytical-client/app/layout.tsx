@@ -64,8 +64,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+    <html lang="tr" suppressHydrationWarning className="overflow-x-hidden">
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased overflow-x-hidden`}>
         <QueryProvider>
           <ThemeProvider
             attribute="class"
@@ -75,7 +75,7 @@ export default function RootLayout({
           >
             {/* Header with Theme Toggle */}
             <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="container flex h-16 items-center justify-between px-8 sm:px-12 lg:px-16 xl:px-24">
+              <div className="container flex h-16 items-center justify-between px-4 sm:px-12 lg:px-16 xl:px-24">
                 <a href="/" className="flex items-center gap-1 group">
                   <img
                     src="/logo.png"

@@ -94,13 +94,13 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
                                         key={tag}
                                         variant={isSelected ? "default" : "outline"}
                                         className={`
-                                            justify-start h-auto py-3 px-4 text-left transition-all hover:scale-105
+                                            justify-start h-auto min-h-[3.5rem] py-3 px-4 text-left transition-all hover:scale-105 whitespace-normal break-words
                                             ${isSelected ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary ring-offset-2' : 'hover:border-primary/50'}
                                         `}
                                         onClick={() => handleSelect(tag)}
                                     >
-                                        <span className="truncate">{tag}</span>
-                                        {isSelected && <Tag className="ml-auto h-3 w-3 opacity-50" />}
+                                        <span className="text-sm leading-tight line-clamp-2">{tag}</span>
+                                        {isSelected && <Tag className="ml-auto h-3 w-3 opacity-50 shrink-0" />}
                                     </Button>
                                 )
                             })}
@@ -108,26 +108,17 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
                     )}
                 </div>
 
-                <div className="px-6 py-4 border-t bg-muted/40 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {internalTags.length > 0 ? (
-                            <>
-                                <span className="font-medium text-foreground">{internalTags.length}</span> kategori seçildi
-                            </>
-                        ) : (
-                            "Kategori seçilmedi"
-                        )}
-                    </div>
-                    <div className="flex gap-2">
+                <div className="px-6 py-4 border-t bg-muted/40 flex justify-end">
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                             variant="ghost"
                             onClick={() => setInternalTags([])}
-                            className="text-muted-foreground hover:text-destructive gap-2"
+                            className="flex-1 sm:flex-none text-muted-foreground hover:text-destructive gap-2 h-10 px-4"
                         >
                             <X className="h-4 w-4" />
-                            Seçimi Temizle
+                            Temizle
                         </Button>
-                        <Button onClick={handleApply} className="gap-2 px-8">
+                        <Button onClick={handleApply} className="flex-1 sm:flex-none gap-2 px-8 h-10">
                             Uygula
                             {internalTags.length > 0 && <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30">{internalTags.length}</Badge>}
                         </Button>

@@ -21,7 +21,7 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
                     <SelectValue placeholder="Sıralama" />
                 </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" align="end" sideOffset={5}>
                 <SelectItem value="rating_asc">En Yüksek Puan</SelectItem>
                 <SelectItem value="rating_desc">En Düşük Puan</SelectItem>
                 <SelectItem value="date_desc">En Yeni</SelectItem>

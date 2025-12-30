@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -11,7 +12,7 @@ import { RatingStars } from '@/components/rating-stars';
 import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
 import { SocialShare } from '@/components/social-share';
 import { ScrollableSection } from '@/components/scrollable-section';
-import { ArrowLeft, BookOpen, Calendar, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NovelDetailDto } from '@/types/novel';
 
 interface NovelDetailClientProps {
@@ -20,11 +21,21 @@ interface NovelDetailClientProps {
 
 export default function NovelDetailClient({ initialNovelId }: NovelDetailClientProps) {
     const router = useRouter();
+    const [isExpanded, setIsExpanded] = useState(false);
+    const descriptionRef = useRef<HTMLDivElement>(null);
 
     const { data: novel, isLoading, error } = useQuery({
         queryKey: ['novel', initialNovelId],
         queryFn: () => novelService.getNovelById(initialNovelId),
     });
+
+    const toggleExpanded = () => {
+        if (isExpanded) {
+            // Collapsing: Scroll back to title/top of description
+            descriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setIsExpanded(!isExpanded);
+    };
 
     // Fetch author's other novels
     const { data: authorNovels } = useQuery({
@@ -36,13 +47,13 @@ export default function NovelDetailClient({ initialNovelId }: NovelDetailClientP
     // Fetch AI-powered similar novels
     const { data: similarNovels } = useQuery({
         queryKey: ['similar-novels', initialNovelId],
-        queryFn: () => novelService.getSimilarNovels(initialNovelId, 6),
+        queryFn: () => novelService.getSimilarNovels(initialNovelId, 12),
         enabled: !!novel,
     });
 
     if (isLoading) {
         return (
-            <div className="container max-w-7xl mx-auto px-8 sm:px-12 lg:px-16 xl:px-24 py-8">
+            <div className="container max-w-7xl mx-auto px-4 sm:px-12 lg:px-16 xl:px-24 py-8">
                 <Button variant="ghost" disabled className="gap-2 mb-8 -ml-2">
                     <ArrowLeft className="h-4 w-4" />
                     Listeye Dön
@@ -64,19 +75,23 @@ export default function NovelDetailClient({ initialNovelId }: NovelDetailClientP
         );
     }
 
+    const description = novel.description || 'Bu roman için henüz bir özet bulunmuyor.';
+    const shouldTruncate = description.length > 300;
+    const displayedDescription = isExpanded || !shouldTruncate ? description : description.slice(0, 300) + '...';
+
     return (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-500">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-500 overflow-x-hidden">
             {/* Navigation */}
             <Button
                 variant="ghost"
                 onClick={() => router.back()}
-                className="gap-2 hover:bg-accent/50 hover:text-primary -ml-2 transition-colors"
+                className="gap-2 hover:bg-accent/50 hover:text-primary transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Listeye Dön
             </Button>
 
-            <div className="grid md:grid-cols-[300px_1fr] gap-8 lg:gap-12">
+            <div className="grid md:grid-cols-[240px_1fr] lg:grid-cols-[300px_1fr] gap-8 lg:gap-12">
                 {/* Left Column: Cover & Quick Actions */}
                 <div className="space-y-6">
                     <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-border/10">
@@ -138,7 +153,7 @@ export default function NovelDetailClient({ initialNovelId }: NovelDetailClientP
                             )}
                         </div>
 
-                        <h1 className="text-4xl font-bold tracking-tight mb-2 text-foreground">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2 text-foreground break-words">
                             {novel.title}
                         </h1>
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -152,11 +167,26 @@ export default function NovelDetailClient({ initialNovelId }: NovelDetailClientP
                         </div>
                     </div>
 
-                    <div className="prose prose-lg dark:prose-invert max-w-none">
-                        <h3 className="text-xl font-semibold mb-3">Özet</h3>
-                        <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                            {novel.description || 'Bu roman için henüz bir özet bulunmuyor.'}
-                        </p>
+                    <div className="prose prose-slate dark:prose-invert md:prose-lg max-w-none">
+                        <h3 ref={descriptionRef} className="text-xl font-semibold mb-3">Özet</h3>
+                        <div className="relative">
+                            <p className="text-muted-foreground leading-relaxed whitespace-pre-line break-words">
+                                {displayedDescription}
+                            </p>
+                            {shouldTruncate && (
+                                <Button
+                                    variant="link"
+                                    onClick={toggleExpanded}
+                                    className="px-0 h-auto font-semibold text-primary mt-1"
+                                >
+                                    {isExpanded ? (
+                                        <span className="flex items-center gap-1">Daha Az Göster <ChevronUp className="h-3 w-3" /></span>
+                                    ) : (
+                                        <span className="flex items-center gap-1">Devamını Oku <ChevronDown className="h-3 w-3" /></span>
+                                    )}
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     {novel.aiSummary && (
@@ -197,79 +227,77 @@ export default function NovelDetailClient({ initialNovelId }: NovelDetailClientP
 
             {/* Author's Other Novels */}
             {authorNovels && authorNovels.length > 0 && (
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold">{novel.author}'ın Diğer Romanları</h2>
-                    <div className="flex overflow-x-auto py-8 -mx-4 px-4 gap-4 snap-x scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/30">
-                        {authorNovels.map((authorNovel) => (
-                            <Link
-                                key={authorNovel.id}
-                                href={`/novel/${authorNovel.id}`}
-                                className="group flex-shrink-0 w-44 snap-start"
-                            >
-                                <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-slate-100/50 dark:bg-card border border-border/50 shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:scale-105 group-hover:-translate-y-1">
-                                    {authorNovel.coverUrl ? (
-                                        <img
-                                            src={authorNovel.coverUrl}
-                                            alt={authorNovel.title}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center bg-muted">
-                                            <BookOpen className="h-12 w-12 text-muted-foreground/30" />
-                                        </div>
-                                    )}
-                                </div>
-                                <h3 className="mt-3 text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
-                                    {authorNovel.title}
-                                </h3>
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                    <RatingStars rating={authorNovel.rating} size="sm" showCount={false} />
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
+                <ScrollableSection title={`${novel.author}'ın Diğer Romanları`}>
+                    {authorNovels.map((authorNovel) => (
+                        <Link
+                            key={authorNovel.id}
+                            href={`/novel/${authorNovel.id}`}
+                            className="group flex-shrink-0 w-[40vw] md:w-40 lg:w-[calc((100%-6.25rem)/6)] snap-center lg:snap-start transition-all duration-300 data-[centered=true]:scale-105 data-[centered=true]:-translate-y-1 lg:data-[centered=true]:scale-100 lg:data-[centered=true]:translate-y-0"
+                        >
+                            <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-slate-100/50 dark:bg-card border border-border/50 shadow-sm transition-all duration-300 lg:group-hover:shadow-xl lg:group-hover:scale-105 lg:group-hover:-translate-y-1 data-[centered=true]:shadow-xl lg:data-[centered=true]:shadow-sm">
+                                {authorNovel.coverUrl ? (
+                                    <img
+                                        src={authorNovel.coverUrl}
+                                        alt={authorNovel.title}
+                                        className="object-cover w-full h-full"
+                                    />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                                        <BookOpen className="h-12 w-12 text-muted-foreground/30" />
+                                    </div>
+                                )}
+                            </div>
+                            <h3 className="mt-3 text-sm font-medium line-clamp-2 h-10 leading-tight lg:group-hover:text-primary transition-colors">
+                                {authorNovel.title}
+                            </h3>
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                <RatingStars rating={authorNovel.rating} size="sm" showCount={false} />
+                            </div>
+                        </Link>
+                    ))}
+                </ScrollableSection>
             )}
 
             {/* AI-Powered Similar Novels */}
             {similarNovels && similarNovels.length > 0 && (
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-3">
-                        Benzer Romanlar
-                        <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
-                            🤖 AI Powered
+                <ScrollableSection
+                    title={
+                        <span className="flex items-center gap-3">
+                            Benzer Romanlar
+                            <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
+                                🤖 AI Powered
+                            </span>
                         </span>
-                    </h2>
-                    <div className="flex overflow-x-auto py-8 -mx-4 px-4 gap-4 snap-x scrollbar-thin scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/30">
-                        {similarNovels.map((similarNovel) => (
-                            <Link
-                                key={similarNovel.id}
-                                href={`/novel/${similarNovel.id}`}
-                                className="group flex-shrink-0 w-44 snap-start"
-                            >
-                                <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-slate-100/50 dark:bg-card border border-border/50 shadow-sm transition-all duration-300 group-hover:shadow-xl group-hover:scale-105 group-hover:-translate-y-1">
-                                    {similarNovel.coverUrl ? (
-                                        <img
-                                            src={similarNovel.coverUrl}
-                                            alt={similarNovel.title}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center bg-muted">
-                                            <BookOpen className="h-12 w-12 text-muted-foreground/30" />
-                                        </div>
-                                    )}
-                                </div>
-                                <h3 className="mt-3 text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
-                                    {similarNovel.title}
-                                </h3>
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                    <RatingStars rating={similarNovel.rating} size="sm" showCount={false} />
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
+                    }
+                >
+                    {similarNovels.map((similarNovel) => (
+                        <Link
+                            key={similarNovel.id}
+                            href={`/novel/${similarNovel.id}`}
+                            className="group flex-shrink-0 w-[40vw] md:w-40 lg:w-[calc((100%-6.25rem)/6)] snap-center lg:snap-start transition-all duration-300 data-[centered=true]:scale-105 data-[centered=true]:-translate-y-1 lg:data-[centered=true]:scale-100 lg:data-[centered=true]:translate-y-0"
+                        >
+                            <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-slate-100/50 dark:bg-card border border-border/50 shadow-sm transition-all duration-300 lg:group-hover:shadow-xl lg:group-hover:scale-105 lg:group-hover:-translate-y-1 data-[centered=true]:shadow-xl lg:data-[centered=true]:shadow-sm">
+                                {similarNovel.coverUrl ? (
+                                    <img
+                                        src={similarNovel.coverUrl}
+                                        alt={similarNovel.title}
+                                        className="object-cover w-full h-full"
+                                    />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                                        <BookOpen className="h-12 w-12 text-muted-foreground/30" />
+                                    </div>
+                                )}
+                            </div>
+                            <h3 className="mt-3 text-sm font-medium line-clamp-2 h-10 leading-tight lg:group-hover:text-primary transition-colors">
+                                {similarNovel.title}
+                            </h3>
+                            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                                <RatingStars rating={similarNovel.rating} size="sm" showCount={false} />
+                            </div>
+                        </Link>
+                    ))}
+                </ScrollableSection>
             )}
         </main >
     );

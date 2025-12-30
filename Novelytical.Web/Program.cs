@@ -43,11 +43,7 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(
-                    "http://localhost:3000",  // Next.js dev
-                    "http://localhost:5173",  // Vite dev
-                    "https://yourdomain.com"  // Production
-                )
+            policy.SetIsOriginAllowed(origin => true) // Allow any origin for dev
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
@@ -99,7 +95,7 @@ try
         });
     }
 
-    app.UseHttpsRedirection();
+    // app.UseHttpsRedirection();
     
     // 🌐 CORS - Must be after UseHttpsRedirection and before UseRouting
     app.UseCors("AllowFrontend");
