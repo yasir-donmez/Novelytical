@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "sonner";
+import { ScrollManager } from "@/components/scroll-manager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning className="overflow-x-hidden">
+    <html lang="tr" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased overflow-x-hidden`}>
         <QueryProvider>
           <ThemeProvider
@@ -92,6 +93,7 @@ export default function RootLayout({
               </div>
             </header>
             <Toaster position="top-right" richColors />
+            <ScrollManager />
             {children}
             <Footer />
           </ThemeProvider>
