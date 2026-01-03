@@ -22,7 +22,6 @@ public class NovelRepository : INovelRepository
     {
         return _context.Novels
             .AsNoTracking()           // 🚀 Read-only, no change tracking
-            .AsSplitQuery()            // 🚀 Separate queries for includes (avoid cartesian explosion)
             .Include(n => n.NovelTags)
             .ThenInclude(nt => nt.Tag);
     }

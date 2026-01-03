@@ -62,14 +62,20 @@ public class NovelService : INovelService
         List<string>? tags = null,
         string? sortOrder = null,
         int pageNumber = 1,
-        int pageSize = 9)
+        int pageSize = 9,
+        int? minChapters = null,
+        int? maxChapters = null,
+        decimal? minRating = null,
+        decimal? maxRating = null)
     {
-        // Cache key (Bump version to v4 for multi-tag support)
+        // Cache key (Bump version to v5 for filters)
         string tagsKey = tags != null && tags.Any() ? string.Join("_", tags.OrderBy(t => t)) : "none";
-        string cacheKey = $"novels_v4_page{pageNumber}_sort{sortOrder}_search{searchString}_tags{tagsKey}";
+        string cacheKey = $"novels_v5_p{pageNumber}_s{sortOrder}_q{searchString}_t{tagsKey}_c{minChapters}-{maxChapters}_r{minRating}-{maxRating}";
 
-        // Try cache first (but skip if tag filtering is active - needs fresh count)
-        if ((tags == null || !tags.Any()) && 
+        // Try cache first (but skip if any filtering is active)
+        bool hasFilters = (tags != null && tags.Any()) || minChapters.HasValue || maxChapters.HasValue || minRating.HasValue || maxRating.HasValue;
+
+        if (!hasFilters && 
             _cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) && 
             cachedNovels != null)
         {
@@ -78,12 +84,15 @@ public class NovelService : INovelService
         }
 
         List<NovelListDto> novels;
-
         int totalRecords;
 
         if (!string.IsNullOrEmpty(searchString))
         {
-            var searchResult = await HybridSearchWithRRF(searchString, tags, sortOrder, pageNumber, pageSize);
+            // Hybrid search doesn't support complex filters deep inside yet, 
+            // but we can filter results in memory or pass params if needed.
+            // For now, let's keep search simple or update HybridSearch signature too.
+            // Updating HybridSearch signature is better.
+            var searchResult = await HybridSearchWithRRF(searchString, tags, sortOrder, pageNumber, pageSize, minChapters, maxChapters, minRating, maxRating);
             novels = searchResult.Novels;
             totalRecords = searchResult.TotalCount;
         }
@@ -92,43 +101,60 @@ public class NovelService : INovelService
             // Standard sorting (no search)
             var query = _repository.GetOptimizedQuery();
             
-            // Tag filtering (case-insensitive, AND logic)
+            // 1. Tag filtering
             if (tags != null && tags.Any())
             {
                 foreach (var tag in tags)
                 {
-                    var lowerTag = tag.ToLower();
-                    query = query.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                    if (tag.StartsWith("-"))
+                    {
+                        var cleanTag = tag.Substring(1).Trim().ToLower();
+                        query = query.Where(n => !n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == cleanTag));
+                    }
+                    else
+                    {
+                        var lowerTag = tag.Trim().ToLower();
+                        query = query.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                    }
                 }
             }
+
+            // 2. Chapter Count filtering
+            if (minChapters.HasValue) query = query.Where(n => n.ChapterCount >= minChapters.Value);
+            if (maxChapters.HasValue) query = query.Where(n => n.ChapterCount <= maxChapters.Value);
+
+            // 3. Rating filtering
+            if (minRating.HasValue) query = query.Where(n => n.Rating >= minRating.Value);
+            if (maxRating.HasValue) query = query.Where(n => n.Rating <= maxRating.Value);
             
             // Count AFTER filtering
             totalRecords = await query.CountAsync();
             
             query = sortOrder switch
             {
-                "rating_asc" => query.OrderByDescending(n => n.Rating), // Kullanıcı İsteği: 5->1
-                "rating_desc" => query.OrderBy(n => n.Rating),          // Kullanıcı İsteği: 1->5
-                "chapters_desc" => query.OrderByDescending(n => n.ChapterCount),
-                "date_desc" => query.OrderByDescending(n => n.LastUpdated),
-                _ => query.OrderByDescending(n => n.Rating) // Varsayılan: En Yüksek Puanlılar
+                "rating_asc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id),
+                "rating_desc" => query.OrderBy(n => n.Rating).ThenBy(n => n.Id),
+                "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
+                "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
+                _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
             };
 
-            novels = await query
+            var pagedEntities = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Select(n => new NovelListDto
-                {
-                    Id = n.Id,
-                    Title = n.Title,
-                    Author = n.Author,
-                    Rating = n.Rating,
-                    ChapterCount = n.ChapterCount,
-                    LastUpdated = n.LastUpdated,
-                    CoverUrl = n.CoverUrl,
-                    Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
-                })
                 .ToListAsync();
+
+            novels = pagedEntities.Select(n => new NovelListDto
+            {
+                Id = n.Id,
+                Title = n.Title,
+                Author = n.Author,
+                Rating = n.Rating,
+                ChapterCount = n.ChapterCount,
+                LastUpdated = n.LastUpdated,
+                CoverUrl = n.CoverUrl,
+                Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+            }).ToList();
         }
 
         // Cache for 5 minutes
@@ -146,7 +172,11 @@ public class NovelService : INovelService
         List<string>? tags,
         string? sortOrder,
         int pageNumber, 
-        int pageSize)
+        int pageSize,
+        int? minChapters = null,
+        int? maxChapters = null,
+        decimal? minRating = null,
+        decimal? maxRating = null)
     {
         // 1️⃣ & 2️⃣ PARALLEL EXECUTION: Full-Text & Vector Search
         var tsQuery = string.Join(" & ", searchString.Split(' ', StringSplitOptions.RemoveEmptyEntries));
@@ -154,12 +184,25 @@ public class NovelService : INovelService
         // Task A: Full-Text Search -> Returns List<Novel>
         var fullTextQuery = _repository.GetOptimizedQuery();
         
+        // Apply Filters to Full Text Query
+        if (minChapters.HasValue) fullTextQuery = fullTextQuery.Where(n => n.ChapterCount >= minChapters.Value);
+        if (maxChapters.HasValue) fullTextQuery = fullTextQuery.Where(n => n.ChapterCount <= maxChapters.Value);
+        if (minRating.HasValue) fullTextQuery = fullTextQuery.Where(n => n.Rating >= minRating.Value);
+        if (maxRating.HasValue) fullTextQuery = fullTextQuery.Where(n => n.Rating <= maxRating.Value);
+
         if (tags != null && tags.Any())
         {
             foreach (var tag in tags)
             {
-                var lowerTag = tag.ToLower();
-                fullTextQuery = fullTextQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                if (tag.StartsWith("-"))
+                {
+                    var cleanTag = tag.Substring(1);
+                    fullTextQuery = fullTextQuery.Where(n => !n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == cleanTag.ToLower()));
+                }
+                else
+                {
+                    fullTextQuery = fullTextQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == tag.ToLower()));
+                }
             }
         }
 
@@ -194,10 +237,23 @@ public class NovelService : INovelService
                  {
                      foreach (var tag in tags)
                      {
-                         var lowerTag = tag.ToLower();
-                         vectorQuery = vectorQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
+                        if (tag.StartsWith("-"))
+                        {
+                            var cleanTag = tag.Substring(1);
+                            vectorQuery = vectorQuery.Where(n => !n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == cleanTag.ToLower()));
+                        }
+                        else
+                        {
+                            vectorQuery = vectorQuery.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == tag.ToLower()));
+                        }
                      }
                  }
+
+                 // Apply Filters to Vector Query
+                 if (minChapters.HasValue) vectorQuery = vectorQuery.Where(n => n.ChapterCount >= minChapters.Value);
+                 if (maxChapters.HasValue) vectorQuery = vectorQuery.Where(n => n.ChapterCount <= maxChapters.Value);
+                 if (minRating.HasValue) vectorQuery = vectorQuery.Where(n => n.Rating >= minRating.Value);
+                 if (maxRating.HasValue) vectorQuery = vectorQuery.Where(n => n.Rating <= maxRating.Value);
 
                 return await vectorQuery
                     .Select(n => new { 

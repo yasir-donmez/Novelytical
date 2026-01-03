@@ -32,12 +32,18 @@ public class NovelsController : ControllerBase
         [FromQuery(Name = "tag")] List<string>? tags,
         [FromQuery] string? sortOrder,
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 9)
+        [FromQuery] int pageSize = 9,
+        [FromQuery] int? minChapters = null,
+        [FromQuery] int? maxChapters = null,
+        [FromQuery] decimal? minRating = null,
+        [FromQuery] decimal? maxRating = null)
     {
         if (pageNumber < 1 || pageSize < 1)
             return BadRequest("Page number and page size must be greater than 0");
 
-        var result = await _novelService.GetNovelsAsync(searchString, tags, sortOrder, pageNumber, pageSize);
+        Console.WriteLine($"[DEBUG] GetNovels: Search='{searchString}', Tags='{string.Join(",", tags ?? new List<string>())}'");
+
+        var result = await _novelService.GetNovelsAsync(searchString, tags, sortOrder, pageNumber, pageSize, minChapters, maxChapters, minRating, maxRating);
 
         if (!result.Succeeded)
             return BadRequest(result.Message);

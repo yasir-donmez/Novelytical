@@ -64,10 +64,10 @@
   - Alfabetik
   - Puana göre (artan/azalan)
   - URL parametrelering (en yüksek puan)
-- [ ] **Filtre State'i:**
-  - URL query params ile kalıcılık
-  - Clear all filters butonu
-  - Active filters badge gösterimi
+- [x] **Filtre State'i:**
+  - [x] URL query params ile kalıcılık
+  - [x] Clear all filters butonu
+  - [x] Active filters badge gösterimi
 
 ### 3.5.3: UI/UX İyileştirmeleri
 - [x] **Loading States:**
@@ -84,17 +84,61 @@
   - 500 error fallback
   - Network error handling
 - [x] **Animations:**
-  - Scroll-triggered fade-in (framer-motion veya CSS)
+  - [x] Scroll-triggered fade-in (framer-motion veya CSS)
   - [x] Hover card lift effect (mevcut shine'a ek)
   - Page transition animations
   - Filter collapse/expand animations
 
-### 3.5.4: Responsive & Accessibility
+### 3.5.4: Error Handling & Monitoring ✅
+- [x] **Sentry Integration:**
+  - [x] Install @sentry/nextjs
+  - [x] Sentry config files (client, server, edge)
+  - [x] Environment variables (DSN)
+  - [x] next.config.ts integration
+- [x] **Custom Error Types:**
+  - [x] AppError base class
+  - [x] NetworkError, NotFoundError, ValidationError, ServerError
+  - [x] Error handler utility (lib/errors/handler.ts)
+- [x] **Toast Notifications:**
+  - [x] Sonner integration
+  - [x] Axios interceptor for network errors
+  - [x] Error handler with toast display
+- [x] **Enhanced Error Boundaries:**
+  - [x] Global error.tsx with Sentry integration
+  - [x] "Report Problem" button (Sentry feedback widget)
+  - [x] Error type detection and user-friendly messages
+- [x] **Specific Error Handling:**
+  - [x] Novel detail 404 handling (notFound() function)
+  - [x] Network error handling with retry logic
+  - [x] TanStack Query global error handling
+  - [x] Retry utility function (lib/utils/retry.ts)
+
+**Note:** Toast notifications work in client components. Server-side errors show console logs + Sentry tracking + error messages on page.
+
+### 3.5.5: Accessibility (a11y)& Accessibility
 - [ ] **Mobil Optimizasyon:**
   - Touch-friendly button sizes (44x44px minimum)
-  - Swipeable card carousel (mobilde)
-  - Bottom sheet filters (mobil)
-  - Hamburger menu (ileride navbar için)
+  - [x] **Responsive Grid & Card Layouts:**
+    - [x] Tablet/Foldable (640px-768px): 2-Column Horizontal Grid.
+    - [x] Mobile (<640px): Single Column Horizontal.
+    - [x] Desktop (>768px): Multi-column Vertical.
+  - [x] **Card Refinements:**
+    - [x] Mobile/Tablet kartlarına etiket (tag) eklendi.
+    - [x] "Super Minion" gibi devasa kart sorunu çözüldü (Horizontal layout scaling).
+    - [x] **Detail Page Carousel:** Vertical Center-Snap on Mobile, Double Grid on Tablet.
+    - [x] **Polish:** Desktop Card Heights fixed & Skeletons synced.
+  - [x] **Top Section Layout:**
+    - [x] Refine breakpoints: adjusted to `min-[550px]` to fix intermediate range.
+  - [x] **Main Page Layout:**
+    - [ ] Mobile: Horizontal Carousel (Netflix style) for the main list.
+    - [ ] Desktop: Keep existing Grid.
+  - [ ] Swipeable card carousel (mobilde)
+  - [x] Bottom sheet filters (mobil)
+    - [x] Install `vaul`
+    - [x] Create `components/ui/drawer.tsx`
+    - [x] Create `hooks/use-media-query.ts`
+    - [x] Refactor `CategoryModal` to use Drawer on Mobile
+  - [ ] Hamburger menu (ileride navbar için)
 - [ ] **Keyboard Navigation:**
   - Tab order optimization
   - Escape key handlers (modal/filter close)

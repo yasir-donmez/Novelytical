@@ -13,7 +13,11 @@ public interface INovelService
         List<string>? tags = null,
         string? sortOrder = null,
         int pageNumber = 1,
-        int pageSize = 9);
+        int pageSize = 9,
+        int? minChapters = null,
+        int? maxChapters = null,
+        decimal? minRating = null,
+        decimal? maxRating = null);
     
     Task<Response<NovelDetailDto>> GetNovelByIdAsync(int id);
     
