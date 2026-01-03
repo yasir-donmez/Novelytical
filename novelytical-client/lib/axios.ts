@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { handleError } from '@/lib/errors/handler';
+import { NetworkError, ServerError } from '@/lib/errors/types';
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || (typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api'),
@@ -18,16 +20,20 @@ api.interceptors.request.use(
     }
 );
 
-// Response interceptor
+// Response interceptor with error handling
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Global error handling
-        if (error.response) {
-            console.error('API Error:', error.response.data);
-        } else if (error.request) {
-            console.error('Network Error:', error.message);
+        // Network error (no response from server)
+        if (!error.response) {
+            handleError(new NetworkError());
         }
+        // Server error (5xx)
+        else if (error.response.status >= 500) {
+            handleError(new ServerError());
+        }
+        // Let component handle other errors (404, 400, etc.)
+
         return Promise.reject(error);
     }
 );

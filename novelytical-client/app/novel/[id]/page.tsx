@@ -1,6 +1,13 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import NovelDetailClient from './novel-detail-client';
-import { novelService } from '@/services/novelService';
+import { getNovelById } from '@/lib/data/novels';
+import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
+import { AuthorNovelsServer } from '@/components/author-novels-server';
+import { SimilarNovelsServer } from '@/components/similar-novels-server';
+import { Skeleton } from '@/components/ui/skeleton';
+
+export const experimental_ppr = true;
 
 interface PageProps {
     params: Promise<{
@@ -13,13 +20,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { id } = await params;
     const novelId = parseInt(id);
 
-    // Fetch data directly for metadata
-    // Note: Next.js deduplicates requests, so if we use fetch() this would be efficient.
-    // Since we use axios in library, we might double-fetch unless we cache.
-    // Ideally, novelService should be server-side compatible.
-
     try {
-        const novel = await novelService.getNovelById(novelId);
+        const novel = await getNovelById(novelId);
 
         return {
             title: `${novel.title} - Oku & İncele | Novelytical`,
@@ -42,7 +44,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             },
         };
     } catch (error) {
-        // Fallback metadata in case of error (e.g. 404 or backend down)
         console.error('Metadata fetch error:', error);
         return {
             title: 'Roman Detayı - Novelytical',
@@ -51,10 +52,78 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 }
 
+
+function AuthorNovelsFallback() {
+    return (
+        <div className="mt-12 border-t pt-8">
+            <Skeleton className="h-8 w-64 mb-6" />
+            <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="w-40 flex-shrink-0">
+                        <Skeleton className="w-full aspect-[2/3] rounded-xl mb-3" />
+                        <Skeleton className="h-4 w-3/4 mb-1" />
+                        <Skeleton className="h-3 w-1/2" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function SimilarNovelsFallback() {
+    return (
+        <div className="mt-12 border-t pt-8 pb-8">
+            <div className="flex items-center gap-3 mb-6">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="w-40 flex-shrink-0">
+                        <Skeleton className="w-full aspect-[2/3] rounded-xl mb-3" />
+                        <Skeleton className="h-4 w-3/4 mb-1" />
+                        <Skeleton className="h-3 w-1/2" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default async function NovelDetailPage({ params }: PageProps) {
     // Await params for Next.js 15 compatibility
     const { id } = await params;
     const novelId = parseInt(id);
 
-    return <NovelDetailClient initialNovelId={novelId} />;
+    // Fetch main content on server (blocking for main detail)
+    // We could invoke this inside a Suspense component too if we wanted the shell to be even faster,
+    // but typically main content is part of the shell or critical path.
+    // Let's keep it blocking for now (Streaming happens for other parts OR if we wrap this in Suspense)
+    // Actually, to make "shell" load instantly (Navbar, etc), this component needs to suspend?
+    // page.tsx is a Server Component.
+
+    // We can fetch data here:
+    let novel;
+    try {
+        novel = await getNovelById(novelId);
+    } catch (e) {
+        // If error (e.g. 404), Next.js error boundary handles it or we can return notFound() if we catch 404
+        throw e; // Let error.tsx handle it
+    }
+
+    return (
+        <div className="min-h-screen bg-background pb-12">
+            <NovelDetailClient novel={novel} />
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Suspense fallback={<AuthorNovelsFallback />}>
+                    <AuthorNovelsServer author={novel.author} currentNovelId={novelId} />
+                </Suspense>
+
+                <Suspense fallback={<SimilarNovelsFallback />}>
+                    <SimilarNovelsServer id={novelId} />
+                </Suspense>
+            </div>
+        </div>
+    );
 }

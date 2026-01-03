@@ -1,9 +1,46 @@
+"use client"
+
 import Link from "next/link"
 import { Github, Twitter, Linkedin } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 
 export function Footer() {
+    const footerRef = useRef<HTMLElement>(null)
+    const [isVisible, setIsVisible] = useState(false)
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                // Set state based on whether footer is intersecting
+                setIsVisible(entry.isIntersecting)
+            },
+            {
+                threshold: 0.1, // Trigger when 10% of footer is visible
+            }
+        )
+
+        if (footerRef.current) {
+            observer.observe(footerRef.current)
+        }
+
+        return () => {
+            if (footerRef.current) {
+                observer.unobserve(footerRef.current)
+            }
+        }
+    }, [])
+
     return (
-        <footer className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <footer
+            ref={footerRef}
+            className={cn(
+                "border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-700 ease-out",
+                isVisible
+                    ? "opacity-100 blur-0" // Visible state (Clear)
+                    : "opacity-0 blur-sm"  // Hidden state (Faded & Blurred)
+            )}
+        >
             <div className="container px-4 sm:px-12 lg:px-16 xl:px-24 py-12 md:py-16">
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-8">
                     <div className="col-span-3 md:col-span-1 space-y-4">

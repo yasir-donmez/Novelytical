@@ -8,6 +8,7 @@ interface EmptyStateProps {
     icon?: "search" | "data" | "default"
     actionLabel?: string
     onAction?: () => void
+    href?: string
     className?: string
 }
 
@@ -17,6 +18,7 @@ export function EmptyState({
     icon = "default",
     actionLabel,
     onAction,
+    href,
     className
 }: EmptyStateProps) {
 
@@ -40,14 +42,24 @@ export function EmptyState({
                 {description}
             </p>
 
-            {actionLabel && onAction && (
+            {actionLabel && (
                 <Button
                     variant="outline"
                     onClick={onAction}
                     className="gap-2 group"
+                    asChild={!!href}
                 >
-                    {icon === 'search' ? <RefreshCw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" /> : null}
-                    {actionLabel}
+                    {href ? (
+                        <a href={href}>
+                            {icon === 'search' ? <RefreshCw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" /> : null}
+                            {actionLabel}
+                        </a>
+                    ) : (
+                        <>
+                            {icon === 'search' ? <RefreshCw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" /> : null}
+                            {actionLabel}
+                        </>
+                    )}
                 </Button>
             )}
         </div>
