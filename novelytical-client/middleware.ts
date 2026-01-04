@@ -14,11 +14,12 @@ export function middleware(request: NextRequest) {
     response.headers.set(
         'Content-Security-Policy',
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.googleapis.com https://www.gstatic.com; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "img-src 'self' data: https:; " +
-        "font-src 'self' data:; " +
-        "connect-src 'self' http://localhost:5050 http://localhost:3000;"
+        "font-src 'self' data: https://fonts.gstatic.com; " +
+        "frame-src 'self' https://accounts.google.com https://novelytical.firebaseapp.com; " +
+        "connect-src 'self' http://localhost:5050 http://localhost:3000 https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com;"
     );
 
     // CORS headers (allow backend API)

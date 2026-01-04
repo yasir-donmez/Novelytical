@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Novelytical.Data;
 using Novelytical.Data.Interfaces;
 
 namespace Novelytical.Data.Repositories;
@@ -48,4 +49,5 @@ public class NovelRepository : INovelRepository
             .OrderBy(t => t.Name)
             .ToListAsync();
     }
+
 }

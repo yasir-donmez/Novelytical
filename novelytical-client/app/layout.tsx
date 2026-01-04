@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Footer } from "@/components/footer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserNav } from "@/components/user-nav";
+import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import { ScrollManager } from "@/components/scroll-manager";
 
@@ -67,37 +69,42 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased overflow-x-hidden`}>
-        <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            storageKey="novelytical-theme"
-          >
-            {/* Header with Theme Toggle */}
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="container flex h-16 items-center justify-between px-4 sm:px-12 lg:px-16 xl:px-24">
-                <a href="/" className="flex items-center gap-1 group">
-                  <img
-                    src="/logo.png"
-                    alt="N"
-                    width={40}
-                    height={40}
-                    className="transition-transform group-hover:scale-110 duration-300"
-                  />
-                  <span className="font-bold text-xl group-hover:text-primary transition-colors">
-                    ovelytical
-                  </span>
-                </a>
-                <ThemeToggle />
-              </div>
-            </header>
-            <Toaster position="top-right" richColors />
-            <ScrollManager />
-            {children}
-            <Footer />
-          </ThemeProvider>
-        </QueryProvider>
+        <AuthProvider>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              storageKey="novelytical-theme"
+            >
+              {/* Header with Theme Toggle */}
+              <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="container flex h-16 items-center justify-between px-4 sm:px-12 lg:px-16 xl:px-24">
+                  <a href="/" className="flex items-center gap-1 group">
+                    <img
+                      src="/logo.png"
+                      alt="N"
+                      width={40}
+                      height={40}
+                      className="transition-transform group-hover:scale-110 duration-300"
+                    />
+                    <span className="font-bold text-xl group-hover:text-primary transition-colors">
+                      ovelytical
+                    </span>
+                  </a>
+                  <div className="flex items-center gap-4">
+                    <UserNav />
+                    <ThemeToggle />
+                  </div>
+                </div>
+              </header>
+              <Toaster position="top-right" richColors />
+              <ScrollManager />
+              {children}
+              <Footer />
+            </ThemeProvider>
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

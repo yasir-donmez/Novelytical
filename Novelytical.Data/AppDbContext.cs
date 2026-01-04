@@ -13,6 +13,7 @@ namespace Novelytical.Data
         public DbSet<Novel> Novels { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<NovelTag> NovelTags { get; set; }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

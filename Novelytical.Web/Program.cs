@@ -4,6 +4,10 @@ using Novelytical.Data;          // 🚀 Data layer
 using Novelytical.Web.Middleware; // Global Exception Handler
 using Microsoft.AspNetCore.RateLimiting; // Rate Limiting
 using System.Threading.RateLimiting; // Rate Limiting
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 
 using Serilog;
@@ -64,6 +68,36 @@ try
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     });
 
+    // 🔥 Firebase & Authentication Setup
+    var serviceAccountPath = Path.Combine(builder.Environment.ContentRootPath, "serviceAccountKey.json");
+    
+    if (File.Exists(serviceAccountPath))
+    {
+        FirebaseApp.Create(new AppOptions()
+        {
+            Credential = GoogleCredential.FromFile(serviceAccountPath)
+        });
+    }
+    else
+    {
+        Log.Warning("⚠️ serviceAccountKey.json not found! Firebase Admin SDK not initialized.");
+    }
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            var projectId = "novelytical"; // TODO: Move to appsettings
+            options.Authority = $"https://securetoken.google.com/{projectId}";
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = $"https://securetoken.google.com/{projectId}",
+                ValidateAudience = true,
+                ValidAudience = projectId,
+                ValidateLifetime = true
+            };
+        });
+
     // 📚 Swagger - API Documentation
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -105,6 +139,7 @@ try
     
     app.UseRouting();
 
+    app.UseAuthentication(); // 🔐 Kimlik Doğrulama
     app.UseAuthorization();
 
     app.MapControllers();

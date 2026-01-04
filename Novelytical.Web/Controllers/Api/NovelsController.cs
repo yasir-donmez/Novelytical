@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Novelytical.Application.DTOs;
 using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Web.Controllers.Api;
@@ -123,4 +125,5 @@ public class NovelsController : ControllerBase
         var result = await _novelService.GetAllTagsAsync();
         return Ok(result);
     }
+
 }

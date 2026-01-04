@@ -678,3 +678,6 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 *.onnx
+
+# Firebase Admin SDK Key
+serviceAccountKey.json

@@ -14,6 +14,7 @@
 - [x] **Mimari**: Clean Architecture (Web, Application, Data, Worker).
 - [x] **API**: .NET 9 REST API, Swagger, Global Hata Yönetimi.
 - [x] **Performans**: Projection, AsNoTracking, Memory Cache, Rate Limiting.
+- [/] **Geri Yükleme Kontrolü**: Kullanıcı tarafından sağlanacak görev listesinin kontrolü ve uygulanması.
 - [x] **Güvenlik**: CORS, User Secrets (Yapılandırma Yönetimi).
 - [x] **[YENİ] Çok Dilli Destek (Multilingual Support)**:
     - `SmartComponents` yerine `Microsoft.ML.OnnxRuntime` entegrasyonu.
@@ -170,11 +171,12 @@
 - [ ] NovelService → CQRS'e migrate et
 - [ ] Controllers'ı MediatR kullanacak şekilde güncelle
 
-### 4.2: Firebase Authentication
-- [ ] Firebase projesi oluştur (Console)
-- [ ] Frontend: firebase SDK + auth service
-- [ ] Backend: Firebase Admin SDK + JWT validation
-- [ ] Login/Register sayfaları
+### 4.2: Firebase Authentication (✅ TAMAMLANDI)
+- [x] Firebase projesi oluştur (Console)
+- [x] Frontend: firebase SDK + auth service
+- [x] Backend: Firebase Admin SDK + JWT validation (CSP Fixed, Build Fixed)
+- [x] Login/Register sayfaları (Google Sign-In Enabled)
+- [x] **[YENİ] User Sync:** Firebase kullanıcılarını PostgreSQL 'Users' tablosuna eşitleme altyapısı (Migration hazır).
 
 ### 4.3: Firestore Comments (Hybrid DB)
 - [ ] Firestore setup + security rules

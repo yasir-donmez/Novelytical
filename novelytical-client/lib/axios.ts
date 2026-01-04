@@ -9,10 +9,20 @@ const api = axios.create({
     },
 });
 
-// Request interceptor
+// Request interceptor - Add Firebase auth token
 api.interceptors.request.use(
-    (config) => {
-        // Add any auth tokens here if needed in Phase 4
+    async (config) => {
+        // Add auth token if user is logged in
+        try {
+            const { auth } = await import('./firebase');
+            const user = auth.currentUser;
+            if (user) {
+                const token = await user.getIdToken();
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (error) {
+            console.error("Error attaching auth token:", error);
+        }
         return config;
     },
     (error) => {
