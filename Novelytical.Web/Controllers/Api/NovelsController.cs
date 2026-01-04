@@ -3,6 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Novelytical.Application.DTOs;
 using Novelytical.Application.Interfaces;
 
+using MediatR;
+using Novelytical.Application.Features.Novels.Queries.GetNovelById;
+using Novelytical.Application.Features.Novels.Queries.GetNovels;
+using Novelytical.Application.Features.Novels.Queries.GetNovelsByAuthor;
+using Novelytical.Application.Features.Novels.Queries.GetSimilarNovels;
+using Novelytical.Application.Features.Novels.Queries.GetAllTags;
+
 namespace Novelytical.Web.Controllers.Api;
 
 [ApiController]
@@ -10,11 +17,11 @@ namespace Novelytical.Web.Controllers.Api;
 [Produces("application/json")]
 public class NovelsController : ControllerBase
 {
-    private readonly INovelService _novelService;
+    private readonly IMediator _mediator;
 
-    public NovelsController(INovelService novelService)
+    public NovelsController(IMediator mediator)
     {
-        _novelService = novelService;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -45,7 +52,20 @@ public class NovelsController : ControllerBase
 
         Console.WriteLine($"[DEBUG] GetNovels: Search='{searchString}', Tags='{string.Join(",", tags ?? new List<string>())}'");
 
-        var result = await _novelService.GetNovelsAsync(searchString, tags, sortOrder, pageNumber, pageSize, minChapters, maxChapters, minRating, maxRating);
+        var query = new GetNovelsQuery
+        {
+            SearchString = searchString,
+            Tags = tags,
+            SortOrder = sortOrder,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            MinChapters = minChapters,
+            MaxChapters = maxChapters,
+            MinRating = minRating,
+            MaxRating = maxRating
+        };
+
+        var result = await _mediator.Send(query);
 
         if (!result.Succeeded)
             return BadRequest(result.Message);
@@ -63,7 +83,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetNovel(int id)
     {
-        var result = await _novelService.GetNovelByIdAsync(id);
+        var result = await _mediator.Send(new GetNovelByIdQuery(id));
 
         if (!result.Succeeded)
             return NotFound(result.Message);
@@ -88,7 +108,7 @@ public class NovelsController : ControllerBase
         if (string.IsNullOrWhiteSpace(author))
             return BadRequest("Author name is required");
 
-        var result = await _novelService.GetNovelsByAuthorAsync(author, excludeId, pageSize);
+        var result = await _mediator.Send(new GetNovelsByAuthorQuery { Author = author, ExcludeId = excludeId, PageSize = pageSize });
 
         if (!result.Succeeded)
             return BadRequest(result.Message);
@@ -106,7 +126,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSimilarNovels(int id, [FromQuery] int limit = 12)
     {
-        var result = await _novelService.GetSimilarNovelsAsync(id, limit);
+        var result = await _mediator.Send(new GetSimilarNovelsQuery(id, limit));
 
         if (!result.Succeeded)
             return BadRequest(result.Message);
@@ -122,8 +142,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTags()
     {
-        var result = await _novelService.GetAllTagsAsync();
+        var result = await _mediator.Send(new GetAllTagsQuery());
         return Ok(result);
     }
-
 }
