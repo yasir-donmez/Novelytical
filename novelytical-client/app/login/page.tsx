@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, ArrowRight, Github } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 
 
 
@@ -20,17 +21,30 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            router.push("/");
+        }
+    }, [user, authLoading, router]);
+
+    // useEffect for redirect result removed - handled in AuthProvider
 
     const handleGoogleLogin = async () => {
         setLoading(true);
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            toast.success("Google ile giriş başarılı!");
-            router.push("/");
+            const result = await signInWithPopup(auth, provider);
+            if (result.user) {
+                toast.success("Google ile giriş başarılı!");
+                router.push("/");
+            }
         } catch (error: any) {
             console.error("Google login error:", error);
-            toast.error("Google ile giriş yapılamadı.");
+            let message = "Google servisine bağlanılamadı.";
+            if (error.code === 'auth/popup-closed-by-user') message = "İşlem iptal edildi.";
+            toast.error(message);
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, User, Mail, Lock, ArrowRight } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -18,17 +19,30 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            router.push("/");
+        }
+    }, [user, authLoading, router]);
+
+    // useEffect for redirect result removed - handled in AuthProvider
 
     const handleGoogleLogin = async () => {
         setLoading(true);
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            toast.success("Google ile kayıt başarılı!");
-            router.push("/");
+            const result = await signInWithPopup(auth, provider);
+            if (result.user) {
+                toast.success("Google ile kayıt başarılı!");
+                router.push("/");
+            }
         } catch (error: any) {
             console.error("Google login error:", error);
-            toast.error("Google işlemi başarısız.");
+            let message = "Google servisine bağlanılamadı.";
+            if (error.code === 'auth/popup-closed-by-user') message = "İşlem iptal edildi.";
+            toast.error(message);
         } finally {
             setLoading(false);
         }

@@ -6,6 +6,7 @@ import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
 import { AuthorNovelsServer } from '@/components/author-novels-server';
 import { SimilarNovelsServer } from '@/components/similar-novels-server';
 import { Skeleton } from '@/components/ui/skeleton';
+import InteractionTabs from '@/components/interaction-tabs';
 
 export const experimental_ppr = true;
 
@@ -111,8 +112,34 @@ export default async function NovelDetailPage({ params }: PageProps) {
         throw e; // Let error.tsx handle it
     }
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Book',
+        name: novel.title,
+        author: {
+            '@type': 'Person',
+            name: novel.author,
+        },
+        description: novel.description,
+        aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: novel.averageRating || novel.rating || 0,
+            ratingCount: novel.ratingCount || 0,
+            bestRating: "5",
+            worstRating: "1"
+        },
+        datePublished: novel.year?.toString(),
+        image: novel.coverUrl,
+        genre: novel.category,
+        url: `https://novelytical.com/novel/${novelId}` // Assuming domain, optional but good
+    };
+
     return (
         <div className="min-h-screen bg-background pb-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <NovelDetailClient novel={novel} />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -123,6 +150,10 @@ export default async function NovelDetailPage({ params }: PageProps) {
                 <Suspense fallback={<SimilarNovelsFallback />}>
                     <SimilarNovelsServer id={novelId} />
                 </Suspense>
+
+                <div className="border-t border-gray-100 pb-12">
+                    <InteractionTabs novelId={novelId} />
+                </div>
             </div>
         </div>
     );

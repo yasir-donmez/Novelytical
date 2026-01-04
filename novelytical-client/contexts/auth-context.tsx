@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged } from "firebase/auth";
+import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 interface AuthContextType {
@@ -19,6 +19,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Enforce persistence
+        setPersistence(auth, browserLocalPersistence).catch((err) =>
+            console.error("Auth persistence error:", err)
+        );
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setUser(user);
             setLoading(false);

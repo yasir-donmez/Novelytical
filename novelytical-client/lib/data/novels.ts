@@ -30,12 +30,23 @@ export async function fetchNovels(params: {
     if (params.maxRating !== null && params.maxRating !== undefined) queryParams.append('maxRating', params.maxRating.toString());
 
     try {
-        // Reverting to axios as the issue wasn't the library
-        const response = await api.get(`http://localhost:5050/api/novels?${queryParams.toString()}`);
-        return response.data;
+        const url = `http://localhost:5050/api/novels?${queryParams.toString()}`;
+
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store' // Dynamic search, do not cache by default or use revalidate if preferred
+        });
+
+        if (!res.ok) {
+            console.error('[fetchNovels] Failed:', res.status, res.statusText);
+            throw new Error(`Failed to fetch novels: ${res.status}`);
+        }
+
+        const json = await res.json();
+        return json; // Assuming API returns PagedResponse directly
     } catch (error) {
-        // Error already handled by axios interceptor
-        // Return empty data to prevent UI crash
+        console.error('[fetchNovels] Error:', error);
         return {
             data: [],
             totalRecords: 0,
