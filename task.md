@@ -37,9 +37,11 @@
 - [x] **Ana Sayfa**: Novel Listesi ve Arama Fonksiyonalitesi (Türkçe/İngilizce destek).
 - [x] **Detay Sayfası**: Novel Detay Sayfası (Next.js 15 uyumlu).
 - [x] **Pagination**: Sayfalama kontrolleri (URL tabanlı sayfa yönetimi).
+- [x] **Performans**: Novel detay sayfasında ISR (60sn cache) kullanımı.
 
 - [x] **Güvenlik**: Next.js Middleware (HttpOnly Cookie okuma ve rota koruma).
-- [x] **SEO**: Dinamik Metadata ve Open Graph ayarları.
+- [x] **SEO**: Dinamik Metadata, Open Graph ve JSON-LD (Structured Data) ayarları.
+- [~] **PPR (Partial Prerendering)**: ~*(Build sorunu nedeniyle geri alındı)*~.
 
 
 ---
@@ -166,25 +168,32 @@
 
 
 ### 4.1: CQRS Pattern Migration
-- [ ] MediatR NuGet paketlerini ekle
-- [ ] Commands/Queries/Handlers klasör yapısı oluştur
-- [ ] NovelService → CQRS'e migrate et
-- [ ] Controllers'ı MediatR kullanacak şekilde güncelle
+- [x] Altyapı: MediatR kütüphanesinin kurulması.
+- [x] Refactoring: `NovelService`'in Command/Query'lere parçalanması.
+- [x] Implement: `GetNovelByIdQuery`
+- [x] Implement: `GetNovelsQuery` (RRF + Hybrid Search)
+- [x] Implement: `GetNovelsByAuthorQuery`
+- [x] Implement: `GetSimilarNovelsQuery`
+- [x] Implement: `GetAllTagsQuery`
+- [x] Controllers'ı MediatR kullanacak şekilde güncelle
 
 ### 4.2: Firebase Authentication (✅ TAMAMLANDI)
 - [x] Firebase projesi oluştur (Console)
-- [x] Frontend: firebase SDK + auth service
-- [x] Backend: Firebase Admin SDK + JWT validation (CSP Fixed, Build Fixed)
-- [x] Login/Register sayfaları (Google Sign-In Enabled)
+- [x] Frontend: Firebase SDK entegrasyonu (lib/firebase.ts)
+- [x] Frontend: Auth Context ve Login/Register sayfaları
+- [x] Frontend: Google Sign-In entegrasyonu
+- [x] Backend: Firebase Admin SDK kurulumu
+- [x] Backend: JWT Bearer Token doğrulama middleware
+- [x] Entegrasyon: Token'ın request header'a eklenmesi (Axios interceptor)
+- [x] **BUG FIX**: Google Login Redirect Loop ve Deprecation Warning Çözümü (Popup'a geçildi + fetch kullanıldı)
 - [x] **[YENİ] User Sync:** Firebase kullanıcılarını PostgreSQL 'Users' tablosuna eşitleme altyapısı (Migration hazır).
 
 ### 4.3: Firestore Comments (Hybrid DB)
-- [ ] Firestore setup + security rules
-- [ ] Backend: AddCommentCommand (validate + write)
-- [ ] Frontend: Direct read (Firestore SDK)
-- [ ] Real-time listener + UI components
-
-### 4.4: User Features (CQRS)
+- [x] Firestore veritabanı kurulumu (Console)
+- [x] Frontend: `CommentService` (add, get, delete)
+- [x] UI: `CommentSection`, `CommentList`, `CommentItem`
+- [x] Entegrasyon: Roman detay sayfasına ekleme
+- [ ] Security Rules: Sadece giriş yapanlar yazabilir, sahibi silebilir(CQRS)
 - [ ] Favoriler (AddFavoriteCommand, GetFavoritesQuery)
 - [ ] Rating (RateNovelCommand, GetUserRatingQuery)
 - [ ] User profile

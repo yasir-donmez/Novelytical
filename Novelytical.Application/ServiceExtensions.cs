@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
-using Novelytical.Application.Interfaces;
-using Novelytical.Application.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Novelytical.Application;
@@ -11,13 +9,17 @@ public static class ServiceExtensions
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
         // Services
-        services.AddScoped<INovelService, NovelService>();
+        // Services
+        // INovelService removed - using CQRS
         
         // Memory Cache
         services.AddMemoryCache();
 
         // FluentValidation
-        services.AddValidatorsFromAssemblyContaining<INovelService>();
+        services.AddValidatorsFromAssemblyContaining<Novelytical.Application.Features.Novels.Queries.GetNovels.GetNovelsQuery>();
+
+        // MediatR
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(System.Reflection.Assembly.GetExecutingAssembly()));
 
         // Resolve model paths relative to the executing assembly (bin directory)
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
