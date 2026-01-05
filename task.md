@@ -198,6 +198,16 @@
 - [ ] Rating (RateNovelCommand, GetUserRatingQuery)
 - [ ] User profile
 
+### 4.4: AI Moderasyon ve İçerik Güvenliği [YENİ]
+- [ ] **AI Tabanlı Argo ve Küfür Tespiti**:
+  - [ ] Backend: ML.NET veya ONNX tabanlı küfür filtreleme servisi.
+  - [ ] Model: Türkçe için optimize edilmiş NLP modeli entegrasyonu.
+  - [ ] Entegrasyon: Yorum ve inceleme gönderimi sırasında otomatik denetim.
+- [ ] **AI tabanlı Spoiler Tespiti**:
+  - [ ] Backend: İçerik analizi yaparak potansiyel spoiler tespiti.
+  - [ ] Frontend: Spoiler olarak işaretlenen içeriğin otomatik olarak bulanıklaştırılması.
+  - [ ] UI: Kullanıcıya "Spoiler tespit edildi" uyarısı veya otomatik gizleme seçeneği.
+
 - [ ] **Topluluk Özellikleri [YENİ]**:
     - Roman detay sayfalarına Yorum/Sohbet bölümü.
     - Puanlama ve Değerlendirme sistemi.
