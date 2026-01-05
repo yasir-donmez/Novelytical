@@ -14,7 +14,7 @@ public class OnnxEmbedder : IEmbedder, IDisposable
 {
     private readonly InferenceSession _session;
     private readonly ILogger<OnnxEmbedder> _logger;
-    private Dictionary<string, int> _vocab;
+    private Dictionary<string, int> _vocab = new();
     private const int MaxSequenceLength = 128;
     private const int EmbeddingDimension = 384;
     private int _clsTokenId;
@@ -243,7 +243,7 @@ public class OnnxEmbedder : IEmbedder, IDisposable
             while (start < word.Length)
             {
                 int end = word.Length;
-                string subword = null;
+                string? subword = null;
                 bool found = false;
 
                 while (end > start)

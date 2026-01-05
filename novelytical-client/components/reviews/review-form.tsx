@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { addReview, Ratings } from "@/services/review-service";
+import { addReview, Ratings, getUserReviewForNovel, updateReview } from "@/services/review-service";
 import { StarRating } from "./star-rating";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -27,10 +27,47 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
         grammar: 0
     });
 
+    const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
     const [content, setContent] = useState("");
+    const [isSpoiler, setIsSpoiler] = useState(false);
+
+    const [initialRatings, setInitialRatings] = useState<Ratings | null>(null);
+    const [initialContent, setInitialContent] = useState("");
+    const [initialIsSpoiler, setInitialIsSpoiler] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            checkExistingReview();
+        }
+    }, [user, novelId]);
+
+    const checkExistingReview = async () => {
+        if (!user) return;
+        const review = await getUserReviewForNovel(novelId, user.uid);
+        if (review) {
+            setExistingReviewId(review.id);
+            setRatings(review.ratings);
+            setContent(review.content);
+            setIsSpoiler(review.isSpoiler || false);
+            setInitialRatings(review.ratings);
+            setInitialContent(review.content);
+            setInitialIsSpoiler(review.isSpoiler || false);
+        }
+    };
 
     const updateRating = (field: keyof Ratings, value: number) => {
         setRatings(prev => ({ ...prev, [field]: value }));
+    };
+
+    const hasChanges = () => {
+        if (!existingReviewId) return true;
+        if (!initialRatings) return true;
+
+        const ratingsChanged = JSON.stringify(ratings) !== JSON.stringify(initialRatings);
+        const contentChanged = content !== initialContent;
+        const spoilerChanged = isSpoiler !== initialIsSpoiler;
+
+        return ratingsChanged || contentChanged || spoilerChanged;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -38,6 +75,11 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
 
         if (!user) {
             toast.error("Değerlendirme yapmak için giriş yapmalısınız.");
+            return;
+        }
+
+        if (!hasChanges() && existingReviewId) {
+            toast.info("Herhangi bir değişiklik yapmadınız.");
             return;
         }
 
@@ -53,11 +95,24 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
 
         setLoading(true);
         try {
-            await addReview(novelId, user.uid, user.displayName || user.email || "Okur", ratings, content);
-            toast.success("Değerlendirmeniz başarıyla eklendi!");
+            if (existingReviewId) {
+                await updateReview(existingReviewId, {
+                    ratings,
+                    content,
+                    isSpoiler,
+                    // recalculate average if backend doesn't handle it, client side recalc:
+                    averageRating: parseFloat((Object.values(ratings).reduce((a, b) => a + b, 0) / 5).toFixed(1))
+                });
+                toast.success("Değerlendirmeniz güncellendi!");
+                // Update initial state after successful save
+                setInitialRatings(ratings);
+                setInitialContent(content);
+                setInitialIsSpoiler(isSpoiler);
+            } else {
+                await addReview(novelId, user.uid, user.displayName || user.email || "Okur", user.photoURL || null, ratings, content, isSpoiler);
+                toast.success("Değerlendirmeniz başarıyla eklendi!");
+            }
 
-            setRatings({ story: 0, characters: 0, world: 0, flow: 0, grammar: 0 });
-            setContent("");
             setIsOpen(false);
             onReviewAdded();
         } catch (error) {
@@ -85,14 +140,14 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
                     onClick={() => setIsOpen(!isOpen)}
                     className="w-full flex items-center justify-between p-3.5 hover:bg-white/5 transition-colors text-sm font-medium text-foreground/90"
                 >
-                    <span>Bir Değerlendirme Yaz</span>
+                    <span>{existingReviewId ? "Değerlendirmeni Düzenle" : "Bir Değerlendirme Yaz"}</span>
                     {isOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
 
                 {isOpen && (
-                    <div className="p-6 pt-2 border-t border-white/10 dark:border-white/5 animate-in slide-in-from-top-2 fade-in duration-200">
+                    <div className="p-6 pt-2 border-white/10 dark:border-white/5 animate-in slide-in-from-top-2 fade-in duration-200">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                            <div className="space-y-4 max-w-sm mx-auto w-full py-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium text-muted-foreground/80">Kurgu</span>
                                     <StarRating value={ratings.story} onChange={(v) => updateRating('story', v)} />
@@ -109,7 +164,7 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
                                     <span className="text-sm font-medium text-muted-foreground/80">Akıcılık</span>
                                     <StarRating value={ratings.flow} onChange={(v) => updateRating('flow', v)} />
                                 </div>
-                                <div className="flex justify-between items-center md:col-span-2 md:w-1/2 md:pr-4">
+                                <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium text-muted-foreground/80">Dilbilgisi & Yazım</span>
                                     <StarRating value={ratings.grammar} onChange={(v) => updateRating('grammar', v)} />
                                 </div>
@@ -126,13 +181,26 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
                                 />
                             </div>
 
+                            <div className="flex items-center gap-2 py-2">
+                                <input
+                                    type="checkbox"
+                                    id="spoiler-checkbox"
+                                    checked={isSpoiler}
+                                    onChange={(e) => setIsSpoiler(e.target.checked)}
+                                    className="w-4 h-4 rounded border-white/20 text-purple-600 focus:ring-purple-500/30"
+                                />
+                                <label htmlFor="spoiler-checkbox" className="text-sm text-muted-foreground cursor-pointer">
+                                    Bu değerlendirme spoiler içeriyor
+                                </label>
+                            </div>
+
                             <div className="flex justify-end">
                                 <Button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || (existingReviewId ? !hasChanges() : false)}
                                     className="w-full sm:w-auto bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
                                 >
-                                    {loading ? "Gönderiliyor..." : "Değerlendirmeyi Yayınla"}
+                                    {loading ? "İşleniyor..." : (existingReviewId ? "Değerlendirmeyi Güncelle" : "Değerlendirmeyi Yayınla")}
                                 </Button>
                             </div>
                         </form>

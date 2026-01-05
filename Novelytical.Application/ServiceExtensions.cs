@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
+using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Application;
 
