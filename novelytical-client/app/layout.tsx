@@ -9,6 +9,7 @@ import { UserNav } from "@/components/user-nav";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import { ScrollManager } from "@/components/scroll-manager";
+import NotificationBell from "@/components/notifications/notification-bell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -93,6 +94,7 @@ export default function RootLayout({
                     </span>
                   </a>
                   <div className="flex items-center gap-4">
+                    <NotificationBell />
                     <UserNav />
                     <ThemeToggle />
                   </div>

@@ -17,6 +17,7 @@ interface CommentFormProps {
 export default function CommentForm({ novelId, onCommentAdded }: CommentFormProps) {
     const { user } = useAuth();
     const [content, setContent] = useState("");
+    const [isSpoiler, setIsSpoiler] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -39,8 +40,9 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
         setIsOpen(false);
 
         try {
-            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", content);
+            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", content, null, isSpoiler);
             setContent("");
+            setIsSpoiler(false);
             toast.success("Yorumunuz eklendi!");
             onCommentAdded();
         } catch (error) {
@@ -89,6 +91,19 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
                                 disabled={loading}
                                 className="resize-y bg-black/5 dark:bg-black/20 border-white/10 focus-visible:ring-purple-500/30 min-h-[80px] w-full break-words whitespace-pre-wrap"
                             />
+
+                            <div className="flex items-center gap-2 py-1">
+                                <input
+                                    type="checkbox"
+                                    id="comment-spoiler"
+                                    checked={isSpoiler}
+                                    onChange={(e) => setIsSpoiler(e.target.checked)}
+                                    className="w-4 h-4 rounded border-white/20 text-purple-600 focus:ring-purple-500/30"
+                                />
+                                <label htmlFor="comment-spoiler" className="text-xs text-muted-foreground cursor-pointer">
+                                    Spoiler içeriyor
+                                </label>
+                            </div>
 
                             <div className="flex justify-end">
                                 <Button

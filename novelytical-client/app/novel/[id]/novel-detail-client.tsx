@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { RatingStars } from '@/components/rating-stars';
 import { SocialShare } from '@/components/social-share';
 import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import LibraryAction from '@/components/novel/library-action';
 import type { NovelDetailDto } from '@/types/novel';
 
 interface NovelDetailClientProps {
@@ -121,10 +122,13 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                             <div className="text-lg text-muted-foreground">
                                 Yazar: <span className="text-foreground font-medium">{novel.author}</span>
                             </div>
-                            <SocialShare
-                                title={`${novel.title} - Novelytical'da keşfet!`}
-                                url={locationHref}
-                            />
+                            <div className="flex items-center gap-4">
+                                <LibraryAction novelId={novel.id} />
+                                <SocialShare
+                                    title={`${novel.title} - Novelytical'da keşfet!`}
+                                    url={locationHref}
+                                />
+                            </div>
                         </div>
                     </div>
 

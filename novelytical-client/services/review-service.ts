@@ -14,7 +14,8 @@ import {
     updateDoc,
     increment,
     getDoc,
-    setDoc
+    setDoc,
+    limit
 } from "firebase/firestore";
 
 export interface Ratings {
@@ -30,11 +31,13 @@ export interface Review {
     novelId: number;
     userId: string;
     userName: string;
+    userImage?: string;
     ratings: Ratings;
     averageRating: number;
     content: string;
     likes: number;
     unlikes: number;
+    isSpoiler?: boolean;
     createdAt: Timestamp;
 }
 
@@ -45,8 +48,10 @@ export const addReview = async (
     novelId: number,
     userId: string,
     userName: string,
+    userImage: string | null,
     ratings: Ratings,
-    content: string
+    content: string,
+    isSpoiler: boolean = false
 ) => {
     try {
         // Calculate simple average
@@ -57,9 +62,11 @@ export const addReview = async (
             novelId,
             userId,
             userName,
+            userImage,
             ratings,
             averageRating: parseFloat(averageRating.toFixed(1)), // 4.2 format
             content,
+            isSpoiler,
             likes: 0,
             unlikes: 0,
             createdAt: serverTimestamp()
@@ -71,13 +78,24 @@ export const addReview = async (
     }
 };
 
-export const getReviewsByNovelId = async (novelId: number): Promise<Review[]> => {
+export const getReviewsByNovelId = async (novelId: number, sortBy: string = 'newest'): Promise<Review[]> => {
     try {
-        const q = query(
+        let q = query(
             collection(db, COLLECTION_NAME),
-            where("novelId", "==", novelId),
-            orderBy("createdAt", "desc")
+            where("novelId", "==", novelId)
         );
+
+        if (sortBy === 'newest') {
+            q = query(q, orderBy("createdAt", "desc"));
+        } else if (sortBy === 'oldest') {
+            q = query(q, orderBy("createdAt", "asc"));
+        } else if (sortBy === 'highest-rating') {
+            q = query(q, orderBy("averageRating", "desc"));
+        } else if (sortBy === 'lowest-rating') {
+            q = query(q, orderBy("averageRating", "asc"));
+        } else {
+            q = query(q, orderBy("createdAt", "desc"));
+        }
 
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({
@@ -90,13 +108,25 @@ export const getReviewsByNovelId = async (novelId: number): Promise<Review[]> =>
     }
 };
 
-export const interactWithReview = async (reviewId: string, userId: string, action: 'like' | 'unlike') => {
+import { createNotification } from "./notification-service";
+
+export const interactWithReview = async (
+    reviewId: string,
+    userId: string,
+    action: 'like' | 'unlike',
+    senderName: string,
+    senderImage: string | undefined, // Allow undefined to match User type
+    recipientId: string,
+    novelId: number
+) => {
     try {
         const interactionId = `${reviewId}_${userId}`;
         const interactionRef = doc(db, INTERACTIONS_COLLECTION, interactionId);
         const reviewRef = doc(db, COLLECTION_NAME, reviewId);
 
         const interactionDoc = await getDoc(interactionRef);
+
+        let result = '';
 
         if (interactionDoc.exists()) {
             const currentAction = interactionDoc.data().action;
@@ -106,16 +136,16 @@ export const interactWithReview = async (reviewId: string, userId: string, actio
                 await updateDoc(reviewRef, {
                     [action + 's']: increment(-1)
                 });
-                return 'removed';
+                result = 'removed';
             } else {
                 // Change interaction (e.g., like -> unlike)
-                await setDoc(interactionRef, { action });
+                await setDoc(interactionRef, { action, userId, reviewId });
                 // Decrease old action, increase new action
                 await updateDoc(reviewRef, {
                     [currentAction + 's']: increment(-1),
                     [action + 's']: increment(1)
                 });
-                return 'changed';
+                result = 'changed';
             }
         } else {
             // New interaction
@@ -123,10 +153,122 @@ export const interactWithReview = async (reviewId: string, userId: string, actio
             await updateDoc(reviewRef, {
                 [action + 's']: increment(1)
             });
-            return 'added';
+            result = 'added';
         }
+
+        // Send Notification if strictly added or changed (and not self)
+        // Check if we should notify:
+        // 1. Not self
+        // 2. Action is 'added' OR 'changed' (changing from like to unlike or vice versa triggers new notification?)
+        // Let's notify on 'added' and 'changed'. If changed like->unlike, maybe notify "User disliked"? Or just notify on "like".
+        // User asked: "begenmediğindede gitsin" (send when disliked too).
+
+        if (userId !== recipientId && (result === 'added' || result === 'changed')) {
+            const message = action === 'like'
+                ? `${senderName} değerlendirmenizi beğendi.`
+                : `${senderName} değerlendirmenizi beğenmedi.`;
+
+            // For unlike, maybe we shouldn't notify if it was just a toggle off? 
+            // Logic above: 'removed' = toggle off. We only notify on 'added' or 'changed'.
+
+            await createNotification(
+                recipientId,
+                action === 'like' ? 'like' : 'dislike',
+                message,
+                reviewId,
+                `/novel/${novelId}`,
+                userId,
+                senderName,
+                senderImage
+            );
+        }
+
+        return result;
+
     } catch (error) {
         console.error("Error interacting with review:", error);
+        throw error;
+    }
+};
+
+export const getReviewsByUserId = async (userId: string): Promise<Review[]> => {
+    try {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            where("userId", "==", userId),
+            orderBy("createdAt", "desc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Review));
+    } catch (error) {
+        console.error("Error fetching user reviews:", error);
+        return [];
+    }
+};
+
+export const deleteReview = async (reviewId: string) => {
+    try {
+        await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting review:", error);
+        throw error;
+    }
+};
+
+export const updateReview = async (reviewId: string, data: Partial<Review>) => {
+    try {
+        const reviewRef = doc(db, COLLECTION_NAME, reviewId);
+        await updateDoc(reviewRef, {
+            ...data,
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating review:", error);
+        throw error;
+    }
+};
+
+export const getUserReviewForNovel = async (novelId: number, userId: string): Promise<Review | null> => {
+    try {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            where("novelId", "==", novelId),
+            where("userId", "==", userId),
+            limit(1)
+        );
+
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) return null;
+
+        const docSnapshot = querySnapshot.docs[0];
+        return {
+            id: docSnapshot.id,
+            ...docSnapshot.data()
+        } as Review;
+    } catch (error) {
+        console.error("Error checking user review:", error);
+        return null;
+    }
+};
+
+export const updateUserIdentityInReviews = async (userId: string, userName: string, userImage: string | null) => {
+    try {
+        const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
+        const snapshot = await getDocs(q);
+
+        const updatePromises = snapshot.docs.map(doc =>
+            updateDoc(doc.ref, { userName, userImage })
+        );
+
+        await Promise.all(updatePromises);
+        return { success: true, count: snapshot.size };
+    } catch (error) {
+        console.error("Error syncing user identity in reviews:", error);
         throw error;
     }
 };

@@ -13,7 +13,7 @@ export default function InteractionTabs({ novelId }: InteractionTabsProps) {
     return (
         <div className="mt-8">
             <Tabs defaultValue="reviews" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-8">
+                <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-8 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 p-1 h-auto">
                     <TabsTrigger value="reviews" className="flex items-center gap-2">
                         <Star size={16} />
                         Değerlendirmeler

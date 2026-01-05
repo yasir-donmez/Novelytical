@@ -68,9 +68,9 @@ export function UserNav() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profil (Yakında)</span>
+                    <span>Profilim</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled>
                     <Settings className="mr-2 h-4 w-4" />

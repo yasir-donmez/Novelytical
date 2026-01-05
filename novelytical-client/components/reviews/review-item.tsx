@@ -1,10 +1,10 @@
 "use client";
 
-import { Review, interactWithReview } from "@/services/review-service";
+import { Review, interactWithReview, deleteReview } from "@/services/review-service";
 import { StarRating } from "./star-rating";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ThumbsUp, ThumbsDown, Info } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Info, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
@@ -20,13 +20,15 @@ import { cn } from "@/lib/utils";
 
 interface ReviewItemProps {
     review: Review;
+    onDelete: (id: string) => void;
 }
 
-export default function ReviewItem({ review }: ReviewItemProps) {
+export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
     const { user } = useAuth();
     const [likes, setLikes] = useState(review.likes || 0);
     const [unlikes, setUnlikes] = useState(review.unlikes || 0);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showSpoiler, setShowSpoiler] = useState(false);
 
     const MAX_REVIEW_LENGTH = 400;
     const isLongReview = review.content.length > MAX_REVIEW_LENGTH;
@@ -40,7 +42,16 @@ export default function ReviewItem({ review }: ReviewItemProps) {
             return;
         }
         try {
-            const result = await interactWithReview(review.id, user.uid, action);
+            const result = await interactWithReview(
+                review.id,
+                user.uid,
+                action,
+                user.displayName || 'İsimsiz Kullanıcı',
+                user.photoURL || undefined,
+                review.userId,
+                review.novelId
+            );
+
             if (result === 'added') {
                 action === 'like' ? setLikes(l => l + 1) : setUnlikes(u => u + 1);
             } else if (result === 'removed') {
@@ -59,12 +70,24 @@ export default function ReviewItem({ review }: ReviewItemProps) {
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirm("Bu değerlendirmeyi silmek istediğinize emin misiniz?")) return;
+
+        try {
+            await deleteReview(review.id);
+            toast.success("Değerlendirme silindi.");
+            onDelete(review.id);
+        } catch (error) {
+            toast.error("Silinirken hata oluştu.");
+        }
+    };
+
     return (
         <div className="bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-5 shadow-sm transition-colors">
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 ring-1 ring-white/20 dark:ring-white/10 shadow-sm">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`} />
+                        <AvatarImage src={review.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`} />
                         <AvatarFallback className="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white font-bold text-xs">
                             {review.userName.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -85,17 +108,17 @@ export default function ReviewItem({ review }: ReviewItemProps) {
                                     <TooltipTrigger>
                                         <Info size={13} className="text-muted-foreground/70 hover:text-purple-400 cursor-help transition-colors" />
                                     </TooltipTrigger>
-                                    <TooltipContent className="bg-black/90 border-white/10">
+                                    <TooltipContent className="bg-zinc-950 border-white/10 text-zinc-100">
                                         <div className="space-y-1 text-xs min-w-[140px]">
                                             <div className="flex justify-between border-b border-white/10 pb-1 mb-1">
-                                                <span className="text-muted-foreground">Kriterler</span>
-                                                <span className="font-semibold">Puan</span>
+                                                <span className="text-zinc-400">Kriterler</span>
+                                                <span className="font-semibold text-zinc-100">Puan</span>
                                             </div>
-                                            <div className="flex justify-between"><span>Kurgu:</span> <b className="text-purple-400">{review.ratings.story}</b></div>
-                                            <div className="flex justify-between"><span>Karakter:</span> <b className="text-purple-400">{review.ratings.characters}</b></div>
-                                            <div className="flex justify-between"><span>Dünya:</span> <b className="text-purple-400">{review.ratings.world}</b></div>
-                                            <div className="flex justify-between"><span>Akıcılık:</span> <b className="text-purple-400">{review.ratings.flow}</b></div>
-                                            <div className="flex justify-between"><span>Dilbilgisi:</span> <b className="text-purple-400">{review.ratings.grammar}</b></div>
+                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Kurgu:</span> <b className="text-purple-400 ml-2">{review.ratings.story}</b></div>
+                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Karakterler:</span> <b className="text-purple-400 ml-2">{review.ratings.characters}</b></div>
+                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Dünya:</span> <b className="text-purple-400 ml-2">{review.ratings.world}</b></div>
+                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Akıcılık:</span> <b className="text-purple-400 ml-2">{review.ratings.flow}</b></div>
+                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Dilbilgisi:</span> <b className="text-purple-400 ml-2">{review.ratings.grammar}</b></div>
                                         </div>
                                     </TooltipContent>
                                 </Tooltip>
@@ -103,13 +126,39 @@ export default function ReviewItem({ review }: ReviewItemProps) {
                         </div>
                     </div>
                 </div>
+                {user?.uid === review.userId && (
+                    <button
+                        onClick={handleDelete}
+                        className="text-muted-foreground hover:text-red-400 p-1 flex items-center gap-1.5 transition-colors group"
+                        title="Değerlendirmeyi Sil"
+                    >
+                        <Trash2 size={13} className="text-muted-foreground/70 group-hover:text-red-400" />
+                        <span className="text-xs font-medium text-muted-foreground/70 group-hover:text-red-400">Sil</span>
+                    </button>
+                )}
             </div>
 
-            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-4 pl-1 text-foreground/90">
+            {review.isSpoiler && (
+                <div className="mb-3 flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded border border-yellow-500/20 font-medium">⚠️ Spoiler İçeriyor</span>
+                    {!showSpoiler && (
+                        <button
+                            onClick={() => setShowSpoiler(true)}
+                            className="text-purple-400/80 hover:text-purple-400 font-medium transition-colors"
+                        >
+                            Göster
+                        </button>
+                    )}
+                </div>
+            )}
+
+            <p className={cn(
+                "text-sm leading-relaxed whitespace-pre-wrap break-words mb-4 pl-1 text-foreground/90",
+                review.isSpoiler && !showSpoiler && "blur-sm select-none"
+            )}>
                 {displayContent}
             </p>
 
-            {/* Read More/Less Button */}
             {isLongReview && (
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
@@ -119,25 +168,22 @@ export default function ReviewItem({ review }: ReviewItemProps) {
                 </button>
             )}
 
-            <div className="flex items-center gap-3 pt-3 border-t border-white/10 dark:border-white/5">
-                <Button
-                    variant="ghost"
-                    size="sm"
+            <div className="flex items-center gap-4 mt-1">
+                <button
                     onClick={() => handleInteraction('like')}
-                    className="h-7 px-3 gap-1.5 text-muted-foreground hover:bg-green-500/10 hover:text-green-500 transition-colors rounded-full"
+                    className="text-xs font-medium text-muted-foreground hover:text-green-400 transition-colors flex items-center gap-1.5"
                 >
-                    <ThumbsUp size={14} />
-                    <span className="text-xs font-medium">Faydalı ({likes})</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
+                    <ThumbsUp size={14} className={cn(likes > 0 && "fill-green-400/20 text-green-400")} />
+                    <span className="tabular-nums min-w-[14px] text-center">{likes}</span>
+                </button>
+
+                <button
                     onClick={() => handleInteraction('unlike')}
-                    className="h-7 px-3 gap-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors rounded-full"
+                    className="text-xs font-medium text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1.5"
                 >
-                    <ThumbsDown size={14} />
-                    <span className="text-xs font-medium">Katılmıyorum ({unlikes})</span>
-                </Button>
+                    <ThumbsDown size={14} className={cn(unlikes > 0 && "fill-red-400/20 text-red-400")} />
+                    <span className="tabular-nums min-w-[14px] text-center">{unlikes}</span>
+                </button>
             </div>
         </div>
     );

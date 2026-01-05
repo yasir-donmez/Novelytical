@@ -40,6 +40,7 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
     const [loading, setLoading] = useState(false);
     const [showAllReplies, setShowAllReplies] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showSpoiler, setShowSpoiler] = useState(false);
 
     const MAX_COMMENT_LENGTH = 300;
     const isLongComment = comment.content.length > MAX_COMMENT_LENGTH;
@@ -124,7 +125,25 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                             )}
                         </div>
 
-                        <p className={cn("text-sm leading-relaxed whitespace-pre-wrap break-words mb-2", isDeleted ? "text-muted-foreground/50 italic" : "text-foreground/90")}>
+                        {comment.isSpoiler && (
+                            <div className="mb-2 flex items-center gap-2 text-xs">
+                                <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded border border-yellow-500/20 font-medium text-[10px]">⚠️ Spoiler</span>
+                                {!showSpoiler && (
+                                    <button
+                                        onClick={() => setShowSpoiler(true)}
+                                        className="text-purple-400/80 hover:text-purple-400 font-medium transition-colors text-[10px]"
+                                    >
+                                        Göster
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        <p className={cn(
+                            "text-sm leading-relaxed whitespace-pre-wrap break-words mb-2",
+                            isDeleted ? "text-muted-foreground/50 italic" : "text-foreground/90",
+                            comment.isSpoiler && !showSpoiler && "blur-sm select-none"
+                        )}>
                             {displayContent}
                         </p>
 

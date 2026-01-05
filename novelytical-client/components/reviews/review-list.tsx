@@ -4,9 +4,10 @@ import ReviewItem from "./review-item";
 
 interface ReviewListProps {
     reviews: Review[];
+    onDelete: (id: string) => void;
 }
 
-export default function ReviewList({ reviews }: ReviewListProps) {
+export default function ReviewList({ reviews, onDelete }: ReviewListProps) {
     if (reviews.length === 0) {
         return (
             <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed border-border">
@@ -19,7 +20,7 @@ export default function ReviewList({ reviews }: ReviewListProps) {
     return (
         <div className="space-y-4">
             {reviews.map((review) => (
-                <ReviewItem key={review.id} review={review} />
+                <ReviewItem key={review.id} review={review} onDelete={onDelete} />
             ))}
         </div>
     );
