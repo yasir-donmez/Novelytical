@@ -9,9 +9,11 @@ interface ScrollableSectionProps {
     title: React.ReactNode;
     icon?: React.ReactNode;
     children: React.ReactNode;
+    scrollStep?: 'half' | 'full';
+    className?: string;
 }
 
-export function ScrollableSection({ title, icon, children }: ScrollableSectionProps) {
+export function ScrollableSection({ title, icon, children, scrollStep = 'half', className }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [hasOverflow, setHasOverflow] = useState(false);
     const [isAtStart, setIsAtStart] = useState(true);
@@ -67,7 +69,8 @@ export function ScrollableSection({ title, icon, children }: ScrollableSectionPr
         e.stopPropagation();
         if (scrollContainerRef.current) {
             const { clientWidth } = scrollContainerRef.current;
-            const scrollAmount = direction === 'left' ? -clientWidth / 2 : clientWidth / 2;
+            const step = scrollStep === 'full' ? clientWidth : clientWidth / 2;
+            const scrollAmount = direction === 'left' ? -step : step;
             scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
             // setTimeout to check arrow state after scroll animation
             setTimeout(checkScroll, 300);
@@ -124,7 +127,10 @@ export function ScrollableSection({ title, icon, children }: ScrollableSectionPr
                 <div
                     ref={scrollContainerRef}
                     onScroll={checkScroll}
-                    className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-row md:items-stretch overflow-y-auto md:overflow-y-visible md:overflow-x-auto h-[350px] md:h-auto py-24 md:py-8 gap-6 md:gap-4 pl-4 md:pl-4 pr-0 md:pr-0 snap-y snap-mandatory md:snap-x md:scroll-pl-4 scrollbar-none [&::-webkit-scrollbar]:hidden w-full relative"
+                    className={cn(
+                        "flex flex-row items-stretch overflow-x-auto h-auto py-12 md:py-8 gap-4 md:gap-4 pl-4 md:pl-4 pr-4 md:pr-0 snap-x snap-mandatory scroll-pl-4 scrollbar-none [&::-webkit-scrollbar]:hidden w-full relative",
+                        className
+                    )}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {children}

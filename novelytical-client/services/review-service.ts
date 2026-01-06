@@ -108,6 +108,25 @@ export const getReviewsByNovelId = async (novelId: number, sortBy: string = 'new
     }
 };
 
+export const getLatestReviews = async (count: number = 5): Promise<Review[]> => {
+    try {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            orderBy("createdAt", "desc"),
+            limit(count)
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Review));
+    } catch (error) {
+        console.error("Error fetching latest reviews:", error);
+        return [];
+    }
+};
+
 import { createNotification } from "./notification-service";
 
 export const interactWithReview = async (

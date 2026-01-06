@@ -26,8 +26,8 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
         {
             Id = novel.Id,
             Title = novel.Title,
-            Author = novel.Author,
-            Description = novel.Description,
+            Author = novel.Author ?? string.Empty,
+            Description = novel.Description ?? string.Empty,
             Rating = novel.Rating,
             ChapterCount = novel.ChapterCount,
             LastUpdated = novel.LastUpdated,

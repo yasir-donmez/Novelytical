@@ -35,7 +35,7 @@ try
     
     // Health Check servisi
     builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString);
+        .AddNpgSql(connectionString!);
 
     // Add services to the container.
     builder.Services.AddControllers();

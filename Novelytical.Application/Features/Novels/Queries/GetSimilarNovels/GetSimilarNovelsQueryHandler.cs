@@ -61,7 +61,7 @@ public class GetSimilarNovelsQueryHandler : IRequestHandler<GetSimilarNovelsQuer
                     {
                         Id = x.Novel.Id,
                         Title = x.Novel.Title,
-                        Author = x.Novel.Author,
+                        Author = x.Novel.Author ?? string.Empty,
                         Rating = x.Novel.Rating,
                         ChapterCount = x.Novel.ChapterCount,
                         LastUpdated = x.Novel.LastUpdated,
@@ -93,7 +93,7 @@ public class GetSimilarNovelsQueryHandler : IRequestHandler<GetSimilarNovelsQuer
                     {
                         Id = x.Novel.Id,
                         Title = x.Novel.Title,
-                        Author = x.Novel.Author,
+                        Author = x.Novel.Author ?? string.Empty,
                         Rating = x.Novel.Rating,
                         ChapterCount = x.Novel.ChapterCount,
                         LastUpdated = x.Novel.LastUpdated,

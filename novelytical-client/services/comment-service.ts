@@ -12,7 +12,8 @@ import {
     serverTimestamp,
     Timestamp,
     updateDoc,
-    getDoc
+    getDoc,
+    limit
 } from "firebase/firestore";
 import { createNotification } from "./notification-service";
 
@@ -156,5 +157,24 @@ export const updateUserIdentityInComments = async (userId: string, userName: str
     } catch (error) {
         console.error("Error syncing user identity in comments:", error);
         throw error;
+    }
+};
+
+export const getLatestComments = async (count: number = 5): Promise<Comment[]> => {
+    try {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            orderBy("createdAt", "desc"),
+            limit(count)
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Comment));
+    } catch (error) {
+        console.error("Error fetching latest comments:", error);
+        return [];
     }
 };

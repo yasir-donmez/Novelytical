@@ -58,7 +58,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
     {
         // Cache key
         string tagsKey = request.Tags != null && request.Tags.Any() ? string.Join("_", request.Tags.OrderBy(t => t)) : "none";
-        string cacheKey = $"novels_v5_p{request.PageNumber}_s{request.SortOrder}_q{request.SearchString}_t{tagsKey}_c{request.MinChapters}-{request.MaxChapters}_r{request.MinRating}-{request.MaxRating}";
+        string cacheKey = $"novels_v6_p{request.PageNumber}_s{request.SortOrder}_q{request.SearchString}_t{tagsKey}_c{request.MinChapters}-{request.MaxChapters}_r{request.MinRating}-{request.MaxRating}";
 
         // Try cache first (skip if filters active)
         bool hasFilters = (request.Tags != null && request.Tags.Any()) || request.MinChapters.HasValue || request.MaxChapters.HasValue || request.MinRating.HasValue || request.MaxRating.HasValue;
@@ -118,6 +118,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             {
                 "rating_asc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id),
                 "rating_desc" => query.OrderBy(n => n.Rating).ThenBy(n => n.Id),
+                "views_desc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id), // Temporary: Map views to rating
                 "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
                 "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
                 _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
@@ -132,7 +133,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             {
                 Id = n.Id,
                 Title = n.Title,
-                Author = n.Author,
+                Author = n.Author ?? string.Empty,
                 Rating = n.Rating,
                 ChapterCount = n.ChapterCount,
                 LastUpdated = n.LastUpdated,
@@ -248,10 +249,9 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             }
         });
 
-        await Task.WhenAll(fullTextTask, vectorTask);
-
-        var fullTextResults = fullTextTask.Result;
-        var vectorResults = vectorTask.Result;
+        var results = await Task.WhenAll(fullTextTask, vectorTask);
+        var fullTextResults = results[0] ?? new List<Novel>();
+        var vectorResults = results[1] ?? new List<Novel>();
 
         if ((vectorResults == null || vectorResults.Count == 0) && fullTextResults.Count > 0)
         {
@@ -260,7 +260,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                {
                    Id = n.Id,
                    Title = n.Title,
-                   Author = n.Author,
+                   Author = n.Author ?? string.Empty,
                    Rating = n.Rating,
                    ChapterCount = n.ChapterCount,
                    LastUpdated = n.LastUpdated,
@@ -299,7 +299,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             {
                 Id = n.Id,
                 Title = n.Title,
-                Author = n.Author,
+                Author = n.Author ?? string.Empty,
                 Rating = n.Rating,
                 ChapterCount = n.ChapterCount,
                 LastUpdated = n.LastUpdated,

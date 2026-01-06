@@ -30,7 +30,7 @@ public class GetNovelsByAuthorQueryHandler : IRequestHandler<GetNovelsByAuthorQu
                 {
                     Id = n.Id,
                     Title = n.Title,
-                    Author = n.Author,
+                    Author = n.Author ?? string.Empty,
                     Rating = n.Rating,
                     ChapterCount = n.ChapterCount,
                     LastUpdated = n.LastUpdated,

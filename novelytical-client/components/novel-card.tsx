@@ -7,20 +7,25 @@ import Link from 'next/link';
 interface NovelCardProps {
     novel: NovelListDto;
     variant?: 'default' | 'vertical' | 'horizontal';
+    aspect?: 'portrait' | 'square' | 'landscape'; // Added for compatibility with Discovery Page
     className?: string;
 }
 
-export function NovelCard({ novel, variant = 'default', className }: NovelCardProps) {
+export function NovelCard({ novel, variant = 'default', aspect, className }: NovelCardProps) {
+    // If aspect is provided, it overrides variant logic for simple aspect control
+    // taking 'portrait' as default vertical look
+    const computedVariant = aspect === 'portrait' ? 'vertical' : variant;
+
     // Logic to determine visibility classes
-    const mobileLayoutClass = variant === 'vertical'
+    const mobileLayoutClass = computedVariant === 'vertical'
         ? 'hidden' // Never show mobile layout if forced vertical
-        : variant === 'horizontal'
+        : computedVariant === 'horizontal'
             ? 'flex' // Always show if forced horizontal
             : 'flex md:hidden'; // Default: Show on mobile, hide on desktop
 
-    const verticalLayoutClass = variant === 'horizontal'
+    const verticalLayoutClass = computedVariant === 'horizontal'
         ? 'hidden' // Never show vertical if forced horizontal
-        : variant === 'vertical'
+        : computedVariant === 'vertical'
             ? 'block' // Always show if forced vertical
             : 'hidden md:block'; // Default: Hide on mobile, show on desktop
 

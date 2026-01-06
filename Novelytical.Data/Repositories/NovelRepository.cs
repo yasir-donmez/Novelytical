@@ -24,7 +24,8 @@ public class NovelRepository : INovelRepository
         return _context.Novels
             .AsNoTracking()           // 🚀 Read-only, no change tracking
             .Include(n => n.NovelTags)
-            .ThenInclude(nt => nt.Tag);
+            .ThenInclude(nt => nt.Tag)
+            .Where(n => n.Id != 1); // 🚫 GECICI: Sahte veriyi (ID: 1) gizle
     }
 
     public async Task<int> GetCountAsync()
