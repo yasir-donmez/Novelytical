@@ -173,7 +173,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 {novel.tags.map((tag) => (
                                     <Link
                                         key={tag}
-                                        href={`/?tag=${encodeURIComponent(tag)}`}
+                                        href={`/romanlar?tag=${encodeURIComponent(tag)}`}
                                         className="hover:scale-105 transition-transform inline-block"
                                     >
                                         <Badge

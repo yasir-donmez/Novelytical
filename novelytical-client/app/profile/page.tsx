@@ -8,8 +8,9 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import UserInteractionList from "@/components/profile/user-interaction-list";
 import UserLibraryList from "@/components/profile/user-library-list";
+import SavedPollsList from "@/components/profile/saved-polls-list";
 import ProfileEditDialog from "@/components/profile/profile-edit-dialog";
-import { BookOpen, Mail, CalendarDays, MessageSquare } from "lucide-react";
+import { BookOpen, Mail, CalendarDays, MessageSquare, BarChart2 } from "lucide-react";
 
 export default function ProfilePage() {
     const { user, loading } = useAuth();
@@ -89,6 +90,16 @@ export default function ProfilePage() {
                         Son Etkileşimlerim & Yorumlarım
                     </h2>
                     <UserInteractionList />
+                </div>
+
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span className="bg-green-500/20 p-2 rounded-lg text-green-400">
+                            <BarChart2 size={20} />
+                        </span>
+                        Kaydettiğim Anketler
+                    </h2>
+                    <SavedPollsList />
                 </div>
             </div>
         </div>

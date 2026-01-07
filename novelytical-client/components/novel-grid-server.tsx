@@ -75,7 +75,7 @@ export async function NovelGridServer({
                         // Let's assume user finds "Clear Filters" button in FilterControls or SearchBar sufficient.
                         // Or we can simple put a "Reset" link.
                         actionLabel="Filtreleri Temizle"
-                        href="/" // Reset to root
+                        href="/romanlar" // Reset to novels page
                     />
                 </div>
             </>

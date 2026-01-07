@@ -74,73 +74,70 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         List<NovelListDto> novels;
         int totalRecords;
 
+        // Standard sorting and filtering
+        var query = _repository.GetOptimizedQuery();
+
+        // 0. Search Filtering (Simple Title Search) requested by user
         if (!string.IsNullOrEmpty(request.SearchString))
         {
-            var searchResult = await HybridSearchWithRRF(request);
-            novels = searchResult.Novels;
-            totalRecords = searchResult.TotalCount;
+            query = query.Where(n => EF.Functions.ILike(n.Title, $"%{request.SearchString}%"));
         }
-        else
-        {
-            // Standard sorting (no search)
-            var query = _repository.GetOptimizedQuery();
 
-            // 1. Tag filtering
-            if (request.Tags != null && request.Tags.Any())
+        // 1. Tag filtering
+        if (request.Tags != null && request.Tags.Any())
+        {
+            foreach (var tag in request.Tags)
             {
-                foreach (var tag in request.Tags)
+                if (tag.StartsWith("-"))
                 {
-                    if (tag.StartsWith("-"))
-                    {
-                        var cleanTag = tag.Substring(1).Trim().ToLower();
-                        query = query.Where(n => !n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == cleanTag));
-                    }
-                    else
-                    {
-                        var lowerTag = tag.Trim().ToLower();
-                        query = query.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
-                    }
+                    var cleanTag = tag.Substring(1).Trim().ToLower();
+                    query = query.Where(n => !n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == cleanTag));
+                }
+                else
+                {
+                    var lowerTag = tag.Trim().ToLower();
+                    query = query.Where(n => n.NovelTags.Any(nt => nt.Tag.Name.ToLower() == lowerTag));
                 }
             }
-
-            // 2. Chapter Count filtering
-            if (request.MinChapters.HasValue) query = query.Where(n => n.ChapterCount >= request.MinChapters.Value);
-            if (request.MaxChapters.HasValue) query = query.Where(n => n.ChapterCount <= request.MaxChapters.Value);
-
-            // 3. Rating filtering
-            if (request.MinRating.HasValue) query = query.Where(n => n.Rating >= request.MinRating.Value);
-            if (request.MaxRating.HasValue) query = query.Where(n => n.Rating <= request.MaxRating.Value);
-
-            // Count AFTER filtering
-            totalRecords = await query.CountAsync(cancellationToken);
-
-            query = request.SortOrder switch
-            {
-                "rating_asc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id),
-                "rating_desc" => query.OrderBy(n => n.Rating).ThenBy(n => n.Id),
-                "views_desc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id), // Temporary: Map views to rating
-                "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
-                "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
-                _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
-            };
-
-            var pagedEntities = await query
-                .Skip((request.PageNumber - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .ToListAsync(cancellationToken);
-
-            novels = pagedEntities.Select(n => new NovelListDto
-            {
-                Id = n.Id,
-                Title = n.Title,
-                Author = n.Author ?? string.Empty,
-                Rating = n.Rating,
-                ChapterCount = n.ChapterCount,
-                LastUpdated = n.LastUpdated,
-                CoverUrl = n.CoverUrl,
-                Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
-            }).ToList();
         }
+
+        // 2. Chapter Count filtering
+        if (request.MinChapters.HasValue) query = query.Where(n => n.ChapterCount >= request.MinChapters.Value);
+        if (request.MaxChapters.HasValue) query = query.Where(n => n.ChapterCount <= request.MaxChapters.Value);
+
+        // 3. Rating filtering
+        if (request.MinRating.HasValue) query = query.Where(n => n.Rating >= request.MinRating.Value);
+        if (request.MaxRating.HasValue) query = query.Where(n => n.Rating <= request.MaxRating.Value);
+
+        // Count AFTER filtering
+        totalRecords = await query.CountAsync(cancellationToken);
+
+        query = request.SortOrder switch
+        {
+            "rating_asc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id),
+            "rating_desc" => query.OrderBy(n => n.Rating).ThenBy(n => n.Id),
+            "views_desc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id), // Temporary: Map views to rating
+            "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
+            "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
+            _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
+        };
+
+        var pagedEntities = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(cancellationToken);
+
+        novels = pagedEntities.Select(n => new NovelListDto
+        {
+            Id = n.Id,
+            Title = n.Title,
+            Author = n.Author ?? string.Empty,
+            Rating = n.Rating,
+            ChapterCount = n.ChapterCount,
+            LastUpdated = n.LastUpdated,
+            CoverUrl = n.CoverUrl,
+            Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+        }).ToList();
 
         // Cache for 5 minutes if successful and not empty (optional, but good)
         // Original logic cached it.
@@ -186,6 +183,14 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             .Select(x => x.Novel)
             .Take(24)
             .ToListAsync();
+
+        // Task C: Simple Substring Search (ILike) -> Returns List<Novel>
+        // Catches exact substring matches that FTS might miss due to stemming/dictionary issues
+        var simpleSearchTask = fullTextQuery
+             .Where(n => EF.Functions.ILike(n.Title, $"%{request.SearchString}%"))
+             .OrderBy(n => n.Title.Length) // Prefer exact/shorter matches
+             .Take(10)
+             .ToListAsync();
 
         // Task B: Vector Search -> Returns List<Novel>
         var vectorTask = Task.Run(async () =>
@@ -249,9 +254,17 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             }
         });
 
-        var results = await Task.WhenAll(fullTextTask, vectorTask);
+        var results = await Task.WhenAll(fullTextTask, vectorTask, simpleSearchTask);
         var fullTextResults = results[0] ?? new List<Novel>();
         var vectorResults = results[1] ?? new List<Novel>();
+        var simpleResults = results[2] ?? new List<Novel>();
+
+        // Merge Simple Search results into Full Text results (High Priority)
+        // We prepend them so they get better Rank in RRF (lower index = better score)
+        var mergedTextResults = simpleResults
+            .Concat(fullTextResults)
+            .DistinctBy(n => n.Id)
+            .ToList();
 
         if ((vectorResults == null || vectorResults.Count == 0) && fullTextResults.Count > 0)
         {
@@ -273,7 +286,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         }
 
         var fusedNovels = ApplyRRF(
-            fullTextResults.Select((x, i) => (x, i + 1)).ToList(),
+            mergedTextResults.Select((x, i) => (x, i + 1)).ToList(),
             vectorResults.Select((x, i) => (x, i + 1)).ToList(),
             k: 60
         );
@@ -292,7 +305,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             };
         }
 
-        var pagedNovels = processedList
+        var pagedNovels = (processedList ?? Enumerable.Empty<Novel>())
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(n => new NovelListDto

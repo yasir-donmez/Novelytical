@@ -1,12 +1,13 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CategoryModal } from '@/components/category-modal';
 import { AdvancedFiltersModal } from '@/components/advanced-filters-modal';
 import { SortSelect } from '@/components/sort-select';
 
 export function FilterControls({ totalRecords, searchString }: { totalRecords?: number, searchString?: string }) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const tagFilters = searchParams.getAll('tag');
     const sortOrder = searchParams.get('sort') || 'rating_asc';
@@ -20,7 +21,7 @@ export function FilterControls({ totalRecords, searchString }: { totalRecords?: 
     const updateParams = (newParams: URLSearchParams) => {
         // Reset page on filter change
         newParams.set('page', '1');
-        router.push(`/?${newParams.toString()}`);
+        router.push(`${pathname}?${newParams.toString()}`);
     };
 
     return (

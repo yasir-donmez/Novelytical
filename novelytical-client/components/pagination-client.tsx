@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
     Pagination,
     PaginationContent,
@@ -21,6 +21,7 @@ interface PaginationProps {
 
 export function PaginationClient({ totalPages, currentPage, pageSize, totalRecords }: PaginationProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
 
     // Scroll to top on page change
@@ -35,7 +36,7 @@ export function PaginationClient({ totalPages, currentPage, pageSize, totalRecor
         } else {
             params.set('page', page.toString());
         }
-        router.push(`/?${params.toString()}`);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     if (totalPages <= 1) return null;

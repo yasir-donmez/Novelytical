@@ -59,14 +59,14 @@ export function SearchBar() {
             }
 
             params.delete('page');
-            router.push(`/?${params.toString()}`, { scroll: false });
+            router.push(`/romanlar?${params.toString()}`, { scroll: false });
         }
     }, [debouncedSearch, router]); // Remove searchParams from dep to avoid loop, we read current params inside.
 
     const handleClear = () => {
         setSearchInput('');
-        // Clear all filters by navigating to home page
-        router.push('/');
+        // Clear all filters by navigating to novels page
+        router.push('/romanlar');
     };
 
     return (
