@@ -1,11 +1,13 @@
 import { Suspense } from 'react';
 import { HeroSection } from '@/components/hero-section';
+import HeroSkeleton from '@/components/hero-skeleton';
 import { fetchNovels } from '@/lib/data/novels';
 import { Flame, Sparkles, Trophy, BookOpen } from 'lucide-react';
 import { GenericLane } from '@/components/lanes/generic-lane';
 import { TrendingLane } from '@/components/lanes/trending-lane';
 import { LaneSkeleton } from '@/components/lanes/lane-skeleton';
 import { CommunityPulse } from '@/components/community-section/community-pulse';
+import { BentoGridLane } from '@/components/lanes/bento-grid-lane';
 
 export const experimental_ppr = true;
 
@@ -25,12 +27,11 @@ export default async function DiscoveryPage() {
       {featuredNovel ? (
         <HeroSection novel={featuredNovel} />
       ) : (
-        <div className="h-[50vh] flex items-center justify-center bg-muted animate-pulse">
-          {/* Hero Fallback if completely failed */}
-        </div>
+        <HeroSkeleton />
       )}
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-4 -mt-20 relative z-20">
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 -mt-64 relative z-20">
         {/* 1. Trending Lane (With Numbers) */}
         <Suspense fallback={<LaneSkeleton title="Haftanın Trendleri" icon={<Flame className="h-6 w-6 text-orange-500 fill-orange-500/20" />} />}>
           <TrendingLane
@@ -41,10 +42,9 @@ export default async function DiscoveryPage() {
 
         {/* 2. New Arrivals Lane */}
         <Suspense fallback={<LaneSkeleton title="Yeni Eklenenler" icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />} />}>
-          <GenericLane
+          <BentoGridLane
             title="Yeni Eklenenler"
             icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />}
-            params={{ pageSize: 12, sortOrder: 'created_desc' }}
           />
         </Suspense>
 

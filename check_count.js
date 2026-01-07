@@ -1,7 +1,7 @@
 
 async function check() {
     try {
-        const res = await fetch('http://localhost:5050/api/novels?pageSize=10&sortOrder=views_desc');
+        const res = await fetch('http://localhost:5050/api/novels?pageSize=10&sortOrder=rating_desc');
         const json = await res.json();
         const count = json.data ? json.data.length : 0;
         console.log(`COUNT: ${count}`);

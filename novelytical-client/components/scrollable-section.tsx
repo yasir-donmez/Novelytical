@@ -11,9 +11,10 @@ interface ScrollableSectionProps {
     children: React.ReactNode;
     scrollStep?: 'half' | 'full';
     className?: string;
+    hideBorder?: boolean;
 }
 
-export function ScrollableSection({ title, icon, children, scrollStep = 'half', className }: ScrollableSectionProps) {
+export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, hideBorder = false }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [hasOverflow, setHasOverflow] = useState(false);
     const [isAtStart, setIsAtStart] = useState(true);
@@ -78,7 +79,10 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
     };
 
     return (
-        <section className="mt-12 border-t pt-8 relative group/section select-none">
+        <section className={cn(
+            "mt-12 pt-8 relative group/section select-none",
+            !hideBorder && "border-t"
+        )}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold flex items-center gap-2">{title}</h2>

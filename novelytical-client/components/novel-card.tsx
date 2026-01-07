@@ -3,11 +3,12 @@ import { Badge } from '@/components/ui/badge';
 import { NovelListDto } from '@/types/novel';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { Bookmark, Star, MessageCircle } from 'lucide-react';
 
 interface NovelCardProps {
     novel: NovelListDto;
     variant?: 'default' | 'vertical' | 'horizontal';
-    aspect?: 'portrait' | 'square' | 'landscape'; // Added for compatibility with Discovery Page
+    aspect?: 'portrait' | 'square' | 'landscape' | 'auto'; // Added for compatibility with Discovery Page
     className?: string;
 }
 
@@ -35,7 +36,7 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
             <Link
                 href={`/novel/${novel.id}`}
                 className={cn(
-                    "group overflow-hidden bg-slate-100/50 dark:bg-card border border-border/50 hover:shadow-lg transition-shadow cursor-pointer flex-row rounded-xl p-1.5 flex", // Ensure flex is applied for Link anchor
+                    "group overflow-hidden bg-card/60 backdrop-blur-md border border-border/50 hover:shadow-lg transition-shadow cursor-pointer flex-row rounded-xl p-1.5 flex", // Ensure flex is applied for Link anchor
                     mobileLayoutClass,
                     className
                 )}
@@ -103,8 +104,8 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
 
             {/* Tablet/Desktop: Vertical Layout */}
             <div className={cn("relative group flex-grow w-full flex flex-col h-full", verticalLayoutClass, className)}>
-                {/* Ambient Glow Effect */}
-                {novel.coverUrl && (
+                {/* Ambient Glow Effect - specific for vertical layout but conflicting with transparent cards in Bento */}
+                {novel.coverUrl && aspect !== 'auto' && (
                     <div
                         className="absolute -inset-3 rounded-[2rem] bg-cover bg-center blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
                         style={{ backgroundImage: `url(${novel.coverUrl})` }}
@@ -113,10 +114,14 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
 
                 <Link
                     href={`/novel/${novel.id}`}
-                    className="relative z-10 overflow-hidden bg-slate-100/50 dark:bg-card border border-border/50 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:border-primary/20 flex-grow w-full flex flex-col h-full rounded-xl"
+                    className="relative z-10 overflow-hidden bg-card/60 backdrop-blur-md border border-border/50 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:border-primary/20 flex-grow w-full flex flex-col h-full rounded-xl"
                 >
-                    <CardHeader className="p-3">
-                        <div className="aspect-[2/3] overflow-hidden rounded-xl flex items-center justify-center relative shadow-sm">
+                    <CardHeader className="p-3 h-full">
+                        <div className={cn(
+                            "overflow-hidden rounded-xl flex items-center justify-center relative shadow-sm",
+                            aspect === 'square' ? "aspect-square" :
+                                aspect === 'auto' ? "h-full w-full" : "aspect-[2/3]"
+                        )}>
                             {novel.coverUrl ? (
                                 <>
                                     <img
@@ -124,6 +129,24 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                         alt={novel.title}
                                         className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110"
                                     />
+                                    {/* Hover Stats Overlay */}
+                                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-30">
+                                        {/* Bookmark */}
+                                        <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                            <span>245</span>
+                                            <Bookmark className="h-3.5 w-3.5 fill-white" />
+                                        </div>
+                                        {/* Rating */}
+                                        <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                            <span>{novel.rating.toFixed(1)}</span>
+                                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                        </div>
+                                        {/* Review/Comment */}
+                                        <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                            <span>{Math.floor(Math.random() * 50) + 5}</span>
+                                            <MessageCircle className="h-3.5 w-3.5 fill-white" />
+                                        </div>
+                                    </div>
                                     {/* Shine Effect */}
                                     <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent pointer-events-none z-20" />
 
@@ -137,8 +160,12 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                             )}
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-2 space-y-2 flex-grow">
-                        <h3 className="font-semibold text-base md:text-lg line-clamp-2 leading-7">{novel.title}</h3>
+                    <CardContent className={cn("p-4 pt-2 space-y-2 flex-grow", aspect === 'auto' && "hidden")}>
+                        <div className={cn("absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white", aspect !== 'auto' && "hidden")}>
+                            <h3 className="font-semibold text-sm line-clamp-1">{novel.title}</h3>
+                            <p className="text-xs text-white/80 line-clamp-1">{novel.author}</p>
+                        </div>
+                        <h3 className={cn("font-semibold text-base md:text-lg line-clamp-2 leading-7", aspect === 'auto' && "hidden")}>{novel.title}</h3>
                         <p className="text-sm text-muted-foreground truncate h-5 flex items-center">{novel.author}</p>
                         <div className="flex items-center gap-2 text-sm h-5">
                             <span className="text-yellow-500">★</span>
