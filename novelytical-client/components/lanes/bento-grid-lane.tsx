@@ -17,13 +17,15 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
     if (novels.length === 0) return null;
 
     return (
-        <section className="space-y-4 py-4">
-            <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-                        {icon}
-                    </div>
-                    <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+        <section className="space-y-4 mt-12 pt-8 border-t border-white/5">
+            <div className="flex items-center justify-between px-1 mb-6">
+                <div className="flex items-center gap-4 select-none">
+                    {icon && (
+                        <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
+                            {icon}
+                        </div>
+                    )}
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">{title}</h2>
                 </div>
                 <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 hover:text-primary" asChild>
                     <Link href="/kesfet?sort=newest">

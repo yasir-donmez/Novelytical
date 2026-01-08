@@ -108,7 +108,7 @@ export function MentionInput({ value, onChange, users, placeholder, className, m
             />
 
             {showSuggestions && filteredUsers.length > 0 && (
-                <div className="absolute z-50 w-64 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute z-50 w-64 bottom-full mb-2 bg-popover border border-border rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-1">
                         {filteredUsers.map((user) => (
                             <button

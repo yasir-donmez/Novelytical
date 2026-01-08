@@ -12,6 +12,7 @@ interface Novel {
     id: string;
     title: string;
     coverImage?: string;
+    coverUrl?: string; // Add this
     author?: string;
 }
 
@@ -25,11 +26,13 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Novel[]>([]);
     const [loading, setLoading] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
 
         setLoading(true);
+        setHasSearched(true);
         try {
             // Use configured api client to ensure auth headers are attached
             const response = await api.get<{ data: Novel[] }>(`http://localhost:5050/api/novels?searchString=${encodeURIComponent(searchQuery)}`);
@@ -50,6 +53,7 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
         onClose();
         setSearchQuery('');
         setSearchResults([]);
+        setHasSearched(false);
     };
 
     return (
@@ -67,7 +71,10 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
                     <Input
                         placeholder="Kitap adı ara..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setHasSearched(false);
+                        }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         className="flex-1"
                     />
@@ -85,7 +92,7 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
                         </div>
                     )}
 
-                    {!loading && searchResults.length === 0 && searchQuery && (
+                    {!loading && hasSearched && searchResults.length === 0 && (
                         <div className="text-center py-8 text-muted-foreground">
                             Sonuç bulunamadı
                         </div>
@@ -101,9 +108,9 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
                         >
                             {/* Cover Image */}
                             <div className="w-12 h-16 bg-muted rounded overflow-hidden flex-shrink-0 relative">
-                                {novel.coverImage ? (
+                                {(novel.coverImage || novel.coverUrl) ? (
                                     <Image
-                                        src={novel.coverImage}
+                                        src={novel.coverImage || novel.coverUrl!}
                                         alt={novel.title}
                                         fill
                                         className="object-cover"

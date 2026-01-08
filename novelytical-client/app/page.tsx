@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { HeroSection } from '@/components/hero-section';
 import HeroSkeleton from '@/components/hero-skeleton';
 import { fetchNovels } from '@/lib/data/novels';
-import { Flame, Sparkles, Trophy, BookOpen } from 'lucide-react';
+import { Flame, Sparkles, Trophy, BookOpen, MessageSquare } from 'lucide-react';
 import { GenericLane } from '@/components/lanes/generic-lane';
 import { TrendingLane } from '@/components/lanes/trending-lane';
 import { LaneSkeleton } from '@/components/lanes/lane-skeleton';
@@ -49,6 +49,12 @@ export default async function DiscoveryPage() {
         </Suspense>
 
         {/* 2.5 Community Pulse - Real Social Activity */}
+        <div className="mt-12 pt-8 border-t border-white/5 flex items-center gap-4 select-none px-1 mb-6">
+          <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
+            <MessageSquare className="h-6 w-6 text-green-500 fill-green-500/20" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">Topluluk</h2>
+        </div>
         <CommunityPulse />
 
         {/* 3. Editor's Choice Lane */}

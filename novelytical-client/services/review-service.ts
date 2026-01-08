@@ -39,6 +39,8 @@ export interface Review {
     unlikes: number;
     isSpoiler?: boolean;
     createdAt: Timestamp;
+    novelTitle?: string;
+    novelCover?: string;
 }
 
 const COLLECTION_NAME = "reviews";

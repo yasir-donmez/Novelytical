@@ -84,9 +84,13 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
             !hideBorder && "border-t"
         )}>
             <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">{title}</h2>
-                    {icon}
+                <div className="flex items-center gap-4 select-none">
+                    {icon && (
+                        <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
+                            {icon}
+                        </div>
+                    )}
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">{title}</h2>
                 </div>
 
                 {/* Navigation Arrows - Only show if content overflows */}

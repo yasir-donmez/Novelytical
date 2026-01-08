@@ -21,6 +21,34 @@ import {
 const COLLECTION_NAME = "community_posts";
 const VOTES_COLLECTION = "post_votes"; // To track user votes on polls
 
+export const getUserPollVotes = async (userId: string): Promise<Record<string, number>> => {
+    try {
+        const q = query(
+            collection(db, VOTES_COLLECTION),
+            where("userId", "==", userId)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const votes: Record<string, number> = {};
+
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            // userId is already part of the query, so we just need postId and optionId
+            // The doc ID is `${postId}_${userId}`, so we can extract postId from there or assume data has it
+            // Let's rely on the doc ID format since we constructed it
+            const postId = doc.id.split('_')[0];
+            if (data.optionId !== null && data.optionId !== undefined) {
+                votes[postId] = data.optionId;
+            }
+        });
+
+        return votes;
+    } catch (error) {
+        console.error("Error fetching user votes:", error);
+        return {};
+    }
+};
+
 export interface PollOption {
     id: number;
     text: string;
@@ -68,7 +96,7 @@ export const createPost = async (
     userImage: string | undefined,
     content: string,
     type: 'text' | 'poll' = 'text',
-    pollOptions: string[] = []
+    pollOptions: Omit<PollOption, 'votes'>[] = []
 ) => {
     try {
         const postData: any = {
@@ -82,9 +110,12 @@ export const createPost = async (
 
         if (type === 'poll' && pollOptions.length > 0) {
             postData.pollOptions = pollOptions.map((opt, index) => ({
-                id: index,
-                text: opt,
-                votes: 0
+                id: opt.id ?? index,
+                text: opt.text,
+                votes: 0,
+                ...(opt.novelId && { novelId: opt.novelId }),
+                ...(opt.novelTitle && { novelTitle: opt.novelTitle }),
+                ...(opt.novelCover && { novelCover: opt.novelCover })
             }));
 
             // Polls expire after 24 hours
@@ -122,6 +153,12 @@ export const votePoll = async (postId: string, optionId: number, userId: string,
         if (voteDoc.exists()) {
             const existingVote = voteDoc.data();
 
+            // Always update user info to latest
+            await updateDoc(voteRef, {
+                userName: userName || 'Anonim',
+                userImage: userImage || null
+            });
+
             // If clicking the same option, remove the vote
             if (existingVote.optionId === optionId) {
                 return await removeVote(postId, userId);
@@ -136,8 +173,8 @@ export const votePoll = async (postId: string, optionId: number, userId: string,
             postId,
             userId,
             optionId,
-            userName,
-            userImage,
+            userName: userName || 'Anonim',
+            userImage: userImage || null,
             createdAt: serverTimestamp()
         });
 

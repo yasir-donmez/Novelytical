@@ -61,16 +61,16 @@ export function PollVotersModal({ isOpen, onClose, postId, pollOptions }: PollVo
                 ) : (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <div className="mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/10">
-                            <TabsList className="w-max h-auto bg-muted/50 p-1">
+                            <TabsList className="w-max h-auto bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10 p-1">
                                 {pollOptions.map((opt, idx) => {
                                     const count = getVotersForOption(opt.id).length;
                                     return (
                                         <TabsTrigger
                                             key={opt.id}
                                             value={opt.id.toString()}
-                                            className="px-3 py-1.5 text-xs data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                                            className="px-4 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                                         >
-                                            {idx + 1}. Seçenek ({count})
+                                            {idx + 1}. Seçenek {count}
                                         </TabsTrigger>
                                     );
                                 })}
