@@ -27,6 +27,8 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
 
+    const [isOpen, setIsOpen] = useState(false);
+
     useEffect(() => {
         if (!user) {
             setLoading(false);
@@ -111,6 +113,7 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.currentTarget.blur();
+            setIsOpen(false);
         }
     };
 
@@ -141,7 +144,7 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     };
 
     return (
-        <DropdownMenu>
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="outline"
@@ -201,7 +204,13 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
                     </div>
                 )}
 
-                <DropdownMenuItem onClick={() => handleUpdate('reading')} className="gap-2 cursor-pointer">
+                <DropdownMenuItem
+                    onSelect={(e) => {
+                        e.preventDefault();
+                        handleUpdate('reading');
+                    }}
+                    className="gap-2 cursor-pointer"
+                >
                     <BookOpen className="w-4 h-4 text-blue-500" /> Okuyorum
                     {status === 'reading' && <Check className="w-3 h-3 ml-auto opacity-50" />}
                 </DropdownMenuItem>

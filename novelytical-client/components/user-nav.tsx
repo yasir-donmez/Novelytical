@@ -52,7 +52,7 @@ export function UserNav() {
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full overflow-hidden border p-0">
                     {/* Fallback to Dicebear if no photo */}
                     <img
-                        src={user.photoURL || `https://api.dicebear.com/9.x/notionists/svg?seed=${user.displayName || user.email}`}
+                        src={user.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${user.displayName || user.email?.split('@')[0] || "User"}`}
                         alt={user.displayName || "User"}
                         className="h-full w-full object-cover"
                     />

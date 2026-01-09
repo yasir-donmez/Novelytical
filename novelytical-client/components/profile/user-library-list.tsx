@@ -49,10 +49,6 @@ export default function UserLibraryList() {
         fetchData();
     }, [user]);
 
-    if (loading) {
-        return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-purple-500" /></div>;
-    }
-
     const filterItems = (status: ReadingStatus | 'all') => {
         if (status === 'all') return allItems;
         return allItems.filter(item => item.status === status);
@@ -67,8 +63,6 @@ export default function UserLibraryList() {
         }
     };
 
-
-
     const LibraryGrid = ({ items }: { items: LibrarySummary[] }) => {
         const scrollContainerRef = useRef<HTMLDivElement>(null);
         const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -77,7 +71,6 @@ export default function UserLibraryList() {
         const checkScroll = () => {
             if (scrollContainerRef.current && !isExpanded) {
                 const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-                // Toleransı artırdım, küçük piksellerde overlay/arrow tetiklenmesin
                 setShowLeftArrow(scrollLeft > 24);
                 setShowRightArrow(Math.abs(scrollWidth - clientWidth - scrollLeft) > 24);
             }
@@ -96,13 +89,11 @@ export default function UserLibraryList() {
                 const container = scrollContainerRef.current;
                 const firstItem = container.querySelector('.group') as HTMLElement;
                 if (firstItem) {
-                    // Calculate: 3 items + 2 gaps between them
                     const itemWidth = firstItem.offsetWidth;
-                    const gap = 16; // gap-4 = 1rem = 16px
+                    const gap = 16;
                     const scrollDistance = itemWidth * 3 + gap * 2;
                     const scrollAmount = direction === 'left' ? -scrollDistance : scrollDistance;
                     container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                    // Scroll tamamlandığında check et (hafif gecikme)
                     setTimeout(checkScroll, 400);
                 }
             }
@@ -110,7 +101,7 @@ export default function UserLibraryList() {
 
         if (items.length === 0) {
             return (
-                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
                     <div className="flex items-center gap-2">
                         <Bookmark className="w-5 h-5 opacity-50" />
                         <p className="text-sm">Bu liste boş.</p>
@@ -122,8 +113,6 @@ export default function UserLibraryList() {
             );
         }
 
-        // mask style: kenarlarda görsel fade ama içerik DOM üzerinde üstten kapanmaz
-        // Only apply mask if NOT expanded
         const maskStyle: React.CSSProperties = !isExpanded ? {
             WebkitMaskImage: 'linear-gradient(to right, transparent 0px, black 28px, black calc(100% - 28px), transparent 100%)',
             maskImage: 'linear-gradient(to right, transparent 0px, black 28px, black calc(100% - 28px), transparent 100%)'
@@ -131,9 +120,6 @@ export default function UserLibraryList() {
 
         return (
             <div className="relative group/carousel mt-2">
-
-
-                {/* Left Arrow */}
                 <Button
                     variant="outline"
                     size="icon"
@@ -144,7 +130,6 @@ export default function UserLibraryList() {
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
 
-                {/* Right Arrow */}
                 <Button
                     variant="outline"
                     size="icon"
@@ -171,7 +156,6 @@ export default function UserLibraryList() {
                                 }`}
                         >
                             <div className="flex h-32 bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10 rounded-xl transition-all p-3 gap-3 hover:bg-black/10 dark:hover:bg-zinc-800/60">
-
                                 <div className="w-20 shrink-0 bg-muted rounded-lg overflow-hidden relative shadow-sm">
                                     {item.novel?.coverUrl && (
                                         <img src={item.novel.coverUrl} className="w-full h-full object-cover" alt="" />
@@ -203,53 +187,57 @@ export default function UserLibraryList() {
         );
     };
 
-    if (allItems.length === 0) {
-        return (
-            <div className="text-center py-16 bg-black/5 dark:bg-zinc-800/40 rounded-xl border border-black/5 dark:border-white/10">
-                <Bookmark className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">Kütüphaneniz boş</h3>
-                <p className="text-muted-foreground mt-2 mb-6">İlginizi çeken romanları kütüphanenize ekleyerek takip edebilirsiniz.</p>
-                <Link href="/" className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full text-sm font-medium transition-colors">
-                    Romanları Keşfet
-                </Link>
-            </div>
-        );
-    }
-
     return (
         <Tabs defaultValue="all" className="w-full">
-
             <div className="flex items-center gap-4 mb-4">
                 <div className="overflow-x-auto pb-2 scrollbar-hide">
                     <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {allItems.length}</TabsTrigger>
-                        <TabsTrigger value="reading" className="gap-2 flex-none px-4"><BookOpen className="w-4 h-4" /> Okuyorum {filterItems('reading').length}</TabsTrigger>
-                        <TabsTrigger value="completed" className="gap-2 flex-none px-4"><Check className="w-4 h-4" /> Okudum {filterItems('completed').length}</TabsTrigger>
-                        <TabsTrigger value="plan_to_read" className="gap-2 flex-none px-4"><Calendar className="w-4 h-4" /> Okuyacağım {filterItems('plan_to_read').length}</TabsTrigger>
+                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {loading ? '' : allItems.length}</TabsTrigger>
+                        <TabsTrigger value="reading" className="gap-2 flex-none px-4"><BookOpen className="w-4 h-4" /> Okuyorum {loading ? '' : filterItems('reading').length}</TabsTrigger>
+                        <TabsTrigger value="completed" className="gap-2 flex-none px-4"><Check className="w-4 h-4" /> Okudum {loading ? '' : filterItems('completed').length}</TabsTrigger>
+                        <TabsTrigger value="plan_to_read" className="gap-2 flex-none px-4"><Calendar className="w-4 h-4" /> Okuyacağım {loading ? '' : filterItems('plan_to_read').length}</TabsTrigger>
                     </TabsList>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
-                >
-                    {isExpanded ? "Daralt" : "Tümünü Gör"}
-                </Button>
+                {!loading && allItems.length > 3 && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
+                    >
+                        {isExpanded ? "Daralt" : "Tümünü Gör"}
+                    </Button>
+                )}
             </div>
 
-            <TabsContent value="all" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <LibraryGrid items={filterItems('all')} />
-            </TabsContent>
-            <TabsContent value="reading" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <LibraryGrid items={filterItems('reading')} />
-            </TabsContent>
-            <TabsContent value="completed" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <LibraryGrid items={filterItems('completed')} />
-            </TabsContent>
-            <TabsContent value="plan_to_read" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <LibraryGrid items={filterItems('plan_to_read')} />
-            </TabsContent>
+            {loading ? (
+                <div className="flex justify-center p-12 min-h-[160px] items-center"><Loader2 className="animate-spin text-purple-500" /></div>
+            ) : allItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
+                    <div className="flex items-center gap-2">
+                        <Bookmark className="w-5 h-5 opacity-50" />
+                        <p className="text-sm">Kütüphaneniz boş.</p>
+                        <Link href="/">
+                            <Button variant="link" className="text-purple-400 h-auto p-0 ml-1">Keşfet</Button>
+                        </Link>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <TabsContent value="all" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <LibraryGrid items={filterItems('all')} />
+                    </TabsContent>
+                    <TabsContent value="reading" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <LibraryGrid items={filterItems('reading')} />
+                    </TabsContent>
+                    <TabsContent value="completed" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <LibraryGrid items={filterItems('completed')} />
+                    </TabsContent>
+                    <TabsContent value="plan_to_read" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <LibraryGrid items={filterItems('plan_to_read')} />
+                    </TabsContent>
+                </>
+            )}
         </Tabs>
     );
 }

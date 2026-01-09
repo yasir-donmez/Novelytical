@@ -82,7 +82,7 @@ export default function ProfilePage() {
                     <UserLibraryList />
                 </div>
 
-                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-16 shadow-lg">
                     <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                         <span className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
                             <MessageSquare size={20} />

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 
 export function HomeTags() {
@@ -21,9 +21,14 @@ export function HomeTags() {
     const [wasDragging, setWasDragging] = useState(false); // To prevent click after drag
 
     // Derived State
-    const splitIndex = Math.ceil(selectedTags.length * 0.55);
-    const row1Tags = selectedTags.slice(0, splitIndex);
-    const row2Tags = selectedTags.slice(splitIndex);
+    const tagsKey = selectedTags.join(','); // Stable key for dependency
+    const { row1Tags, row2Tags } = useMemo(() => {
+        const splitIndex = Math.ceil(selectedTags.length * 0.55);
+        return {
+            row1Tags: selectedTags.slice(0, splitIndex),
+            row2Tags: selectedTags.slice(splitIndex)
+        };
+    }, [tagsKey, selectedTags]); // selectedTags in deps is fine if we trust nextjs, but tagsKey is safer string
 
     const handleTagClick = (tag: string) => {
         if (wasDragging) return; // Don't remove if we were just dragging
@@ -37,7 +42,7 @@ export function HomeTags() {
 
         // Reset page when filtering
         params.delete('page');
-        router.push(`/?${params.toString()}`, { scroll: false });
+        router.push(`/romanlar?${params.toString()}`, { scroll: false });
     };
 
     /**
@@ -71,24 +76,17 @@ export function HomeTags() {
                 }
             };
 
-            // Use ResizeObserver to keep checking as content animates in
-            const observer = new ResizeObserver(() => {
-                if (!isDragging) {
-                    centerScroll();
-                }
-            });
-            observer.observe(content);
-
-            // Also manual triggers for safety
-            setTimeout(centerScroll, 100);
-            setTimeout(centerScroll, 500);
+            // Only center on mount or when tags change significantly
+            if (!isDragging) {
+                setTimeout(centerScroll, 100);
+                setTimeout(centerScroll, 500);
+            }
 
             return () => {
-                observer.disconnect();
                 container.removeEventListener('wheel', handleWheel);
             };
         }
-    }, [isDragging, row1Tags, row2Tags]);
+    }, [isDragging, tagsKey]);
 
     /**
      * Drag Definitions

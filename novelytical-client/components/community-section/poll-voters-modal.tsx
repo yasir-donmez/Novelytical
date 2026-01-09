@@ -46,7 +46,7 @@ export function PollVotersModal({ isOpen, onClose, postId, pollOptions }: PollVo
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-xl border-white/10">
+            <DialogContent className="sm:max-w-lg bg-background/95 backdrop-blur-xl border-white/10">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-primary" />

@@ -145,7 +145,7 @@ export default function UserInteractionList() {
 
         if (items.length === 0) {
             return (
-                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
+                <div className="flex flex-col items-center justify-center min-h-[290px] text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
                     <div className="flex items-center gap-2">
                         <BookOpen className="w-5 h-5 opacity-50" />
                         <p className="text-sm">Henüz etkileşiminiz yok.</p>
@@ -245,23 +245,6 @@ export default function UserInteractionList() {
         );
     };
 
-    if (loading) {
-        return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-purple-500" /></div>;
-    }
-
-    if (interactions.length === 0) {
-        return (
-            <div className="text-center py-16 bg-black/5 dark:bg-zinc-800/40 rounded-xl border border-black/5 dark:border-white/10">
-                <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">Henüz etkileşiminiz yok</h3>
-                <p className="text-muted-foreground mt-2 mb-6">Romanlara yorum yaparak veya değerlendirerek burada görebilirsiniz.</p>
-                <Link href="/" className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full text-sm font-medium transition-colors">
-                    Kitapları Keşfet
-                </Link>
-            </div>
-        );
-    }
-
     const filterItems = (type: 'all' | 'reviews' | 'comments') => {
         if (type === 'all') return interactions;
         if (type === 'reviews') return interactions.filter(i => i.userReview);
@@ -274,30 +257,48 @@ export default function UserInteractionList() {
             <div className="flex items-center gap-4 mb-4">
                 <div className="overflow-x-auto pb-2 scrollbar-hide">
                     <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {interactions.length}</TabsTrigger>
-                        <TabsTrigger value="reviews" className="flex-none px-4 gap-2"><Star className="w-4 h-4" /> Değerlendirmelerim {filterItems('reviews').length}</TabsTrigger>
-                        <TabsTrigger value="comments" className="flex-none px-4 gap-2"><MessageCircle className="w-4 h-4" /> Yorumlarım {filterItems('comments').length}</TabsTrigger>
+                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {loading ? '' : interactions.length}</TabsTrigger>
+                        <TabsTrigger value="reviews" className="flex-none px-4 gap-2"><Star className="w-4 h-4" /> Değerlendirmelerim {loading ? '' : filterItems('reviews').length}</TabsTrigger>
+                        <TabsTrigger value="comments" className="flex-none px-4 gap-2"><MessageCircle className="w-4 h-4" /> Yorumlarım {loading ? '' : filterItems('comments').length}</TabsTrigger>
                     </TabsList>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
-                >
-                    {isExpanded ? "Daralt" : "Tümünü Gör"}
-                </Button>
+                {!loading && interactions.length > 3 && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
+                    >
+                        {isExpanded ? "Daralt" : "Tümünü Gör"}
+                    </Button>
+                )}
             </div>
 
-            <TabsContent value="all" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <InteractionGrid items={filterItems('all')} />
-            </TabsContent>
-            <TabsContent value="reviews" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <InteractionGrid items={filterItems('reviews')} />
-            </TabsContent>
-            <TabsContent value="comments" className="mt-0 animate-in fade-in-50 slide-in-from-left-1">
-                <InteractionGrid items={filterItems('comments')} />
-            </TabsContent>
+            {loading ? (
+                <div className="flex justify-center p-12 min-h-[160px] items-center"><Loader2 className="animate-spin text-purple-500" /></div>
+            ) : interactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
+                    <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 opacity-50" />
+                        <p className="text-sm">Henüz etkileşiminiz yok.</p>
+                        <Link href="/">
+                            <Button variant="link" className="text-purple-400 h-auto p-0 ml-1">Keşfet</Button>
+                        </Link>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <TabsContent value="all" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <InteractionGrid items={filterItems('all')} />
+                    </TabsContent>
+                    <TabsContent value="reviews" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <InteractionGrid items={filterItems('reviews')} />
+                    </TabsContent>
+                    <TabsContent value="comments" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[160px]">
+                        <InteractionGrid items={filterItems('comments')} />
+                    </TabsContent>
+                </>
+            )}
         </Tabs>
     );
 }

@@ -6,6 +6,7 @@ import {
     query,
     orderBy,
     getDocs,
+    onSnapshot,
     serverTimestamp,
     Timestamp,
     updateDoc,
@@ -15,7 +16,8 @@ import {
     setDoc,
     limit,
     deleteDoc,
-    where
+    where,
+    runTransaction
 } from "firebase/firestore";
 
 const COLLECTION_NAME = "community_posts";
@@ -90,6 +92,24 @@ export const getLatestPosts = async (count: number = 20): Promise<Post[]> => {
     }
 };
 
+export const subscribeToLatestPosts = (count: number = 20, callback: (posts: Post[]) => void) => {
+    const q = query(
+        collection(db, COLLECTION_NAME),
+        orderBy("createdAt", "desc"),
+        limit(count)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const posts = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Post));
+        callback(posts);
+    }, (error) => {
+        console.error("Error in post subscription:", error);
+    });
+};
+
 export const createPost = async (
     userId: string,
     userName: string,
@@ -148,53 +168,90 @@ export const votePoll = async (postId: string, optionId: number, userId: string,
         const voteRef = doc(db, VOTES_COLLECTION, voteId);
         const postRef = doc(db, COLLECTION_NAME, postId);
 
-        const voteDoc = await getDoc(voteRef);
+        const result = await runTransaction(db, async (transaction) => {
+            // 1. Check if user already voted
+            const voteDoc = await transaction.get(voteRef);
 
-        if (voteDoc.exists()) {
-            const existingVote = voteDoc.data();
+            // 2. Fetch post to verify expiry & options
+            const postSnap = await transaction.get(postRef);
+            if (!postSnap.exists()) throw new Error("Anket bulunamadı");
 
-            // Always update user info to latest
-            await updateDoc(voteRef, {
-                userName: userName || 'Anonim',
-                userImage: userImage || null
-            });
+            const post = postSnap.data() as Post;
+            if (post.expiresAt) {
+                const now = new Date();
+                const expiryDate = post.expiresAt.toDate();
+                if (expiryDate < now) {
+                    throw new Error("Bu anket kapanmıştır. Oy kullanılamaz.");
+                }
+            }
+            if (!post.pollOptions) throw new Error("Not a poll");
 
-            // If clicking the same option, remove the vote
-            if (existingVote.optionId === optionId) {
-                return await removeVote(postId, userId);
+            let action = '';
+
+            if (voteDoc.exists()) {
+                const currentOptionId = voteDoc.data().optionId;
+
+                if (currentOptionId === optionId) {
+                    // Case A: UNVOTE (Toggle off)
+                    // Decrement vote count
+                    const newOptions = post.pollOptions.map(opt => {
+                        if (opt.id === optionId) {
+                            return { ...opt, votes: Math.max(0, opt.votes - 1) };
+                        }
+                        return opt;
+                    });
+
+                    transaction.update(postRef, { pollOptions: newOptions });
+                    transaction.delete(voteRef);
+                    action = 'removed';
+
+                } else {
+                    // Case B: CHANGE VOTE
+                    // Decrement old, Increment new
+                    const newOptions = post.pollOptions.map(opt => {
+                        if (opt.id === currentOptionId) {
+                            return { ...opt, votes: Math.max(0, opt.votes - 1) };
+                        }
+                        if (opt.id === optionId) {
+                            return { ...opt, votes: opt.votes + 1 };
+                        }
+                        return opt;
+                    });
+
+                    transaction.update(postRef, { pollOptions: newOptions });
+                    transaction.update(voteRef, {
+                        optionId: optionId,
+                        createdAt: serverTimestamp() // Update timestamp on change
+                    });
+                    action = 'changed';
+                }
+            } else {
+                // Case C: NEW VOTE
+                const newOptions = post.pollOptions.map(opt => {
+                    if (opt.id === optionId) {
+                        return { ...opt, votes: opt.votes + 1 };
+                    }
+                    return opt;
+                });
+
+                transaction.update(postRef, { pollOptions: newOptions });
+                transaction.set(voteRef, {
+                    postId,
+                    userId,
+                    userName: userName || 'Anonim',
+                    userImage,
+                    optionId,
+                    createdAt: serverTimestamp()
+                });
+                action = 'voted';
             }
 
-            // If clicking a different option, change the vote
-            return await changeVote(postId, existingVote.optionId, optionId, userId);
-        }
-
-        // First time voting
-        await setDoc(voteRef, {
-            postId,
-            userId,
-            optionId,
-            userName: userName || 'Anonim',
-            userImage: userImage || null,
-            createdAt: serverTimestamp()
+            return { success: true, action };
         });
 
-        const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) throw new Error("Post not found");
+        return result;
 
-        const post = postSnap.data() as Post;
-        if (!post.pollOptions) throw new Error("Not a poll");
-
-        const newOptions = post.pollOptions.map(opt => {
-            if (opt.id === optionId) {
-                return { ...opt, votes: opt.votes + 1 };
-            }
-            return opt;
-        });
-
-        await updateDoc(postRef, { pollOptions: newOptions });
-
-        return { success: true, action: 'voted' };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error voting:", error);
         throw error;
     }

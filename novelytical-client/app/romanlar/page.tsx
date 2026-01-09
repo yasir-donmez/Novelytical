@@ -69,6 +69,11 @@ export default async function NovelsPage({
                         <div className="mt-8 max-w-2xl mx-auto">
                             <SearchBar />
                         </div>
+
+                        {/* Selected Tags */}
+                        <div className="max-w-6xl mx-auto -mt-4">
+                            <HomeTags />
+                        </div>
                     </div>
                 </div>
             </section>

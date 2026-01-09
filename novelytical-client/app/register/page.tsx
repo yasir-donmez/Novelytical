@@ -9,15 +9,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, User, Mail, Lock, ArrowRight } from "lucide-react";
+import { Loader2, User, Mail, Lock, ArrowRight, Check, X, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { UserService } from "@/services/user-service";
 
 export default function RegisterPage() {
-    const [name, setName] = useState("");
+    const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+    const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState<{ username?: string; email?: string; password?: string }>({});
+
+    // Username Check States
+    const [checkingUsername, setCheckingUsername] = useState(false);
+    const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
 
@@ -35,6 +43,19 @@ export default function RegisterPage() {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
             if (result.user) {
+                // For Google login, we might want to create a user profile too if it doesn't exist
+                // But for now, let's keep it simple or maybe check if we can get a username from email
+                const generatedUsername = result.user.email?.split('@')[0] || "user_" + Math.floor(Math.random() * 10000);
+
+                // Optimistically try to create profile if not exists (fire and forget or await)
+                try {
+                    // Check if profile exists first (optional but good practice)
+                    // For now, assuming standard flow
+                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "");
+                } catch (e) {
+                    // Ignore if already exists
+                }
+
                 toast.success("Google ile kayıt başarılı!");
                 router.push("/");
             }
@@ -49,14 +70,48 @@ export default function RegisterPage() {
     };
 
     const validateForm = () => {
-        const newErrors: { name?: string; email?: string; password?: string } = {};
-        if (!name) newErrors.name = "Ad Soyad gerekli";
+        const newErrors: { username?: string; email?: string; password?: string } = {};
+        if (!username) newErrors.username = "Kullanıcı Adı gerekli";
+        else if (username.length < 3) newErrors.username = "En az 3 karakter olmalı";
+        else if (usernameAvailable === false && !checkingUsername && username.length > 0) newErrors.username = "Bu kullanıcı adı alınmış";
+
         if (!email) newErrors.email = "E-posta gerekli";
         if (!password) newErrors.password = "Şifre gerekli";
         else if (password.length < 6) newErrors.password = "Şifre en az 6 karakter olmalı";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    const checkAvailability = async (val: string) => {
+        if (!val || val.length < 3) {
+            setUsernameAvailable(null);
+            setSuggestions([]);
+            return;
+        }
+
+        setCheckingUsername(true);
+        setUsernameAvailable(null);
+        setSuggestions([]);
+
+        try {
+            const isAvailable = await UserService.checkUsernameAvailability(val);
+            setUsernameAvailable(isAvailable);
+
+            if (!isAvailable) {
+                const suggs = await UserService.suggestUsernames(val);
+                setSuggestions(suggs);
+            }
+        } catch (error) {
+            console.error("Availability check failed", error);
+        } finally {
+            setCheckingUsername(false);
+        }
+    };
+
+    // Debounce check manually or just rely on blur. Blur is safer for reads.
+    const handleUsernameBlur = () => {
+        checkAvailability(username);
     };
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -67,11 +122,15 @@ export default function RegisterPage() {
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            if (name) {
-                await updateProfile(userCredential.user, {
-                    displayName: name
-                });
-            }
+
+            // 1. Update Firebase Auth Profile
+            await updateProfile(userCredential.user, {
+                displayName: username
+            });
+
+            // 2. Create User Document
+            await UserService.createUserProfile(userCredential.user.uid, username, email);
+
             toast.success("Hesap oluşturuldu! Hoş geldiniz.");
             router.push("/");
         } catch (error: any) {
@@ -79,6 +138,7 @@ export default function RegisterPage() {
             let message = "Kayıt olurken bir hata oluştu.";
             if (error.code === 'auth/email-already-in-use') message = "Bu e-posta kullanımda.";
             if (error.code === 'auth/weak-password') message = "Şifre en az 6 karakter olmalı.";
+            if (error.code === 'auth/operation-not-allowed') message = "Email/Şifre girişi Firebase Console'dan etkinleştirilmemiş.";
             toast.error(message);
         } finally {
             setLoading(false);
@@ -147,20 +207,57 @@ export default function RegisterPage() {
 
                     <form onSubmit={handleRegister} className="space-y-4" noValidate>
                         <div className="space-y-2">
-                            <Label className="text-xs font-normal text-muted-foreground ml-1">Ad Soyad</Label>
+                            <Label className="text-xs font-normal text-muted-foreground ml-1">Kullanıcı Adı</Label>
                             <div className="relative group">
-                                <User className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${errors.name ? 'text-red-500' : 'text-muted-foreground group-focus-within:text-purple-500'}`} />
+                                <User className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${errors.username ? 'text-red-500' : 'text-muted-foreground group-focus-within:text-purple-500'}`} />
                                 <Input
-                                    placeholder="Geralt of Rivia"
-                                    className={`pl-9 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.name ? 'border-red-500/50 focus:border-red-500' : ''}`}
-                                    value={name}
+                                    placeholder="geralt"
+                                    className={`pl-9 pr-10 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.username ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                                    value={username}
                                     onChange={(e) => {
-                                        setName(e.target.value);
-                                        if (errors.name) setErrors({ ...errors, name: undefined });
+                                        setUsername(e.target.value.replace(/\s/g, '')); // No spaces allowed
+                                        if (errors.username) setErrors({ ...errors, username: undefined });
+                                        // Reset available on type
+                                        setUsernameAvailable(null);
                                     }}
+                                    onBlur={handleUsernameBlur}
                                 />
+                                {/* Status Icon */}
+                                <div className="absolute right-3 top-2.5">
+                                    {checkingUsername ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                    ) : usernameAvailable === true ? (
+                                        <Check className="h-4 w-4 text-green-500" />
+                                    ) : usernameAvailable === false ? (
+                                        <X className="h-4 w-4 text-red-500" />
+                                    ) : null}
+                                </div>
                             </div>
-                            {errors.name && <p className="text-xs text-red-500 ml-1 mt-1">{errors.name}</p>}
+                            {errors.username && <p className="text-xs text-red-500 ml-1 mt-1">{errors.username}</p>}
+
+                            {/* Suggestions */}
+                            {suggestions.length > 0 && !usernameAvailable && (
+                                <div className="flex flex-wrap gap-2 mt-2 ml-1 animate-in fade-in slide-in-from-top-1">
+                                    <span className="text-xs text-muted-foreground w-full">Öneriler:</span>
+                                    {suggestions.map((sugg) => (
+                                        <Button
+                                            key={sugg}
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 text-xs bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20"
+                                            onClick={() => {
+                                                setUsername(sugg);
+                                                setSuggestions([]);
+                                                setUsernameAvailable(true);
+                                                setErrors({ ...errors, username: undefined });
+                                            }}
+                                        >
+                                            {sugg}
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -186,15 +283,27 @@ export default function RegisterPage() {
                             <div className="relative group">
                                 <Lock className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${errors.password ? 'text-red-500' : 'text-muted-foreground group-focus-within:text-purple-500'}`} />
                                 <Input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className={`pl-9 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.password ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                                    className={`pl-9 pr-10 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.password ? 'border-red-500/50 focus:border-red-500' : ''}`}
                                     value={password}
                                     onChange={(e) => {
                                         setPassword(e.target.value);
                                         if (errors.password) setErrors({ ...errors, password: undefined });
                                     }}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-white transition-colors cursor-pointer"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
                             {errors.password && <p className="text-xs text-red-500 ml-1 mt-1">{errors.password}</p>}
                         </div>

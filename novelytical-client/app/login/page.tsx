@@ -9,15 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, ArrowRight, Github } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowRight, Github, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import { UserService } from "@/services/user-service";
 
 
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
     const router = useRouter();
@@ -37,6 +39,15 @@ export default function LoginPage() {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
             if (result.user) {
+                // Sync/Create user profile in Firestore
+                const generatedUsername = result.user.email?.split('@')[0] || "user_" + Math.floor(Math.random() * 10000);
+                try {
+                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "", result.user.photoURL || undefined);
+                } catch (e) {
+                    // Ignore if already exists or fails (fail open)
+                    console.log("Profile sync skipped or failed", e);
+                }
+
                 toast.success("Google ile giriş başarılı!");
                 router.push("/");
             }
@@ -167,15 +178,27 @@ export default function LoginPage() {
                             <div className="relative group">
                                 <Lock className={`absolute left-3 top-2.5 h-4 w-4 transition-colors ${errors.password ? 'text-red-500' : 'text-muted-foreground group-focus-within:text-purple-500'}`} />
                                 <Input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className={`pl-9 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.password ? 'border-red-500/50 focus:border-red-500' : ''}`}
+                                    className={`pl-9 pr-10 bg-black/50 border-white/10 focus:border-purple-500/50 transition-all h-10 ${errors.password ? 'border-red-500/50 focus:border-red-500' : ''}`}
                                     value={password}
                                     onChange={(e) => {
                                         setPassword(e.target.value);
                                         if (errors.password) setErrors({ ...errors, password: undefined });
                                     }}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-white transition-colors"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
                             </div>
                             {errors.password && <p className="text-xs text-red-500 ml-1 mt-1">{errors.password}</p>}
                         </div>

@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { getLatestReviews, Review } from '@/services/review-service';
 import { novelService } from '@/services/novelService';
-import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes } from '@/services/feed-service';
+import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes, subscribeToLatestPosts } from '@/services/feed-service';
+import { createNotification } from '@/services/notification-service';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,7 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { MessageSquare, Star, ArrowRight, Flame, Send, BarChart2, BookOpen, Bookmark, Trash2 } from 'lucide-react';
+import { MessageSquare, Star, ArrowRight, Flame, Send, BarChart2, BookOpen, Bookmark, Trash2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +92,7 @@ export function CommunityPulse() {
     const [activeUsers, setActiveUsers] = useState(142); // Initial fake base
     const scrollRef = useRef<HTMLDivElement>(null);
     const [userVotes, setUserVotes] = useState<Record<string, number>>({}); // Optimistic UI için
+    const [isVoting, setIsVoting] = useState(false);
 
     // Simulate active users fluctuation
     useEffect(() => {
@@ -113,10 +115,8 @@ export function CommunityPulse() {
 
     const fetchData = async () => {
         try {
-            const [latestReviewsRaw, latestPosts] = await Promise.all([
-                getLatestReviews(5),
-                getLatestPosts(20)
-            ]);
+            // Fetch reviews
+            const latestReviewsRaw = await getLatestReviews(5);
 
             // Enrich reviews with novel data
             const enrichedReviews = await Promise.all(latestReviewsRaw.map(async (review) => {
@@ -129,35 +129,41 @@ export function CommunityPulse() {
             }));
 
             setReviews(enrichedReviews);
-            setPosts(latestPosts);
 
             if (user) {
                 getUserSavedPostIds(user.uid).then(setSavedPostIds);
                 getUserPollVotes(user.uid).then(setUserVotes);
             }
 
-            // Extract unique users for mentions
-            const usersMap = new Map<string, MentionUser>();
-            [...enrichedReviews, ...latestPosts].forEach((item: any) => {
-                if (item.userId && item.userName) {
-                    usersMap.set(item.userId, {
-                        id: item.userId,
-                        username: item.userName,
-                        image: item.userImage
-                    });
-                }
-            });
-            setKnownUsers(Array.from(usersMap.values()));
+            // Extract unique users for mentions (from initial data mostly, real-time might need updates but this is okay for now)
+            // ...
         } catch (error) {
-            console.error("Failed to fetch community data", error);
-        } finally {
-            setLoading(false);
+            console.error("Error fetching initial data", error);
         }
+        // Don't disable loading here, let subscription do it for posts
     };
 
     useEffect(() => {
         fetchData();
-    }, []);
+
+        // Realtime Subscription for Posts
+        const unsubscribe = subscribeToLatestPosts(20, (newPosts) => {
+            setPosts(newPosts);
+            setLoading(false);
+
+            // Allow mentioning users from these posts
+            const usersMap = new Map();
+            newPosts.forEach(post => {
+                if (post.userId && post.userName) {
+                    usersMap.set(post.userName, { id: post.userId, username: post.userName, image: post.userImage });
+                }
+            });
+            setKnownUsers(Array.from(usersMap.values()));
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
 
     // Auto-scroll to bottom when posts change (WhatsApp style)
     useEffect(() => {
@@ -192,9 +198,33 @@ export function CommunityPulse() {
                     ...(opt.novelCover && { novelCover: opt.novelCover })
                 })) : []
             );
+
+            // Send notifications for mentions
+            const mentionRegex = /@(\w+)/g;
+            const mentions = postContent.match(mentionRegex);
+            if (mentions) {
+                const uniqueMentions = [...new Set(mentions.map(m => m.slice(1)))];
+                uniqueMentions.forEach(mentionedUsername => {
+                    const mentionedUser = knownUsers.find(u => u.username === mentionedUsername);
+                    if (mentionedUser && mentionedUser.id !== user.uid) {
+                        createNotification(
+                            mentionedUser.id,
+                            'reply',
+                            `${user.displayName || 'Birisi'} sizi toplulukta etiketledi`,
+                            user.uid,
+                            '/community',
+                            user.uid,
+                            user.displayName || 'Anonim',
+                            user.photoURL || undefined
+                        ).catch(err => console.error('Notification error:', err));
+                    }
+                });
+            }
+
             toast.success("Gönderi paylaşıldı!");
             setPostContent('');
             setIsPoll(false);
+            setOptionCount(2); // Reset option count
             setPollOptions([{ text: '' }, { text: '' }]);
             fetchData();
         } catch (error) {
@@ -220,46 +250,60 @@ export function CommunityPulse() {
             return;
         }
 
+        if (isVoting) return;
+
+        // Check if poll is expired
+        const post = posts.find(p => p.id === postId);
+        if (post?.expiresAt && post.expiresAt.toDate() < new Date()) {
+            toast.error("Bu anket kapanmıştır. Oy kullanılamaz.");
+            return;
+        }
+
+        setIsVoting(true);
+
         // --- Optimistic Update Start ---
         const previousPosts = [...posts];
         const previousUserVotes = { ...userVotes };
         const currentVote = userVotes[postId];
 
-        // Update UI immediately
-        setPosts(prevPosts => {
-            return prevPosts.map(post => {
-                if (post.id !== postId) return post;
-                if (!post.pollOptions) return post;
+        let newUserVotes = { ...userVotes };
 
-                let newOptions = [...post.pollOptions];
-                let newUserVotes = { ...userVotes };
+        // Calculate new posts state
+        const newPosts = posts.map(post => {
+            if (post.id !== postId) return post;
+            if (!post.pollOptions) return post;
 
-                if (currentVote === undefined || currentVote === null) {
-                    // New Vote
-                    newOptions = newOptions.map(opt =>
-                        opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
-                    );
-                    newUserVotes[postId] = optionId;
-                } else if (currentVote !== optionId) {
-                    // Change Vote
-                    newOptions = newOptions.map(opt => {
-                        if (opt.id === currentVote) return { ...opt, votes: Math.max(0, opt.votes - 1) };
-                        if (opt.id === optionId) return { ...opt, votes: opt.votes + 1 };
-                        return opt;
-                    });
-                    newUserVotes[postId] = optionId;
-                } else {
-                    // Remove Vote (toggle off)
-                    newOptions = newOptions.map(opt =>
-                        opt.id === optionId ? { ...opt, votes: Math.max(0, opt.votes - 1) } : opt
-                    );
-                    delete newUserVotes[postId];
-                }
+            let newOptions = [...post.pollOptions];
 
-                setUserVotes(newUserVotes);
-                return { ...post, pollOptions: newOptions };
-            });
+            if (currentVote === undefined || currentVote === null) {
+                // New Vote
+                newOptions = newOptions.map(opt =>
+                    opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+                );
+                newUserVotes[postId] = optionId;
+            } else if (currentVote !== optionId) {
+                // Change Vote
+                newOptions = newOptions.map(opt => {
+                    if (opt.id === currentVote) return { ...opt, votes: Math.max(0, opt.votes - 1) };
+                    if (opt.id === optionId) return { ...opt, votes: opt.votes + 1 };
+                    return opt;
+                });
+                newUserVotes[postId] = optionId;
+            } else {
+                // Remove Vote (toggle off)
+                newOptions = newOptions.map(opt =>
+                    opt.id === optionId ? { ...opt, votes: Math.max(0, opt.votes - 1) } : opt
+                );
+                delete newUserVotes[postId];
+            }
+
+            return { ...post, pollOptions: newOptions };
         });
+
+        // Apply updates
+        setPosts(newPosts);
+        setUserVotes(newUserVotes);
+
         // --- Optimistic Update End ---
 
 
@@ -307,6 +351,8 @@ export function CommunityPulse() {
             // Revert changes on error
             setPosts(previousPosts);
             setUserVotes(previousUserVotes);
+        } finally {
+            setIsVoting(false);
         }
     };
 
@@ -347,12 +393,9 @@ export function CommunityPulse() {
 
             {/* Bottom Corner Hanging Spotlights (Ceiling Mounted) */}
             {/* Left Lamp Fixture */}
-            <div className="absolute top-[calc(140px)] left-[-2rem] sm:left-0 z-10 pointer-events-none scale-75 sm:scale-100 flex flex-col items-center h-[600px]">
-                {/* Ceiling Mount Bar */}
-                <div className="w-20 h-2 bg-neutral-900/80 rounded-full border-b border-white/10 shadow-lg" />
-
-                {/* Hanging Cord */}
-                <div className="w-[2px] h-[500px] bg-neutral-800/60" />
+            <div className="absolute top-0 left-[-2rem] sm:left-0 z-10 pointer-events-none origin-top scale-50 sm:scale-75 flex flex-col items-center">
+                {/* Hanging Cord - extends to top */}
+                <div className="w-[2px] h-[700px] bg-neutral-800/60 shrink-0" />
 
                 {/* Lamp Head Assembly (Rotated to point right/inward) */}
                 <div className="origin-top rotate-0 relative z-10">
@@ -374,12 +417,9 @@ export function CommunityPulse() {
             </div>
 
             {/* Right Lamp Fixture */}
-            <div className="absolute top-[calc(140px)] right-[-2rem] sm:right-0 z-10 pointer-events-none scale-75 sm:scale-100 flex flex-col items-center h-96">
-                {/* Ceiling Mount Bar */}
-                <div className="w-20 h-2 bg-neutral-900/80 rounded-full border-b border-white/10 shadow-lg" />
-
-                {/* Hanging Cord */}
-                <div className="w-[2px] h-32 bg-neutral-800/60" />
+            <div className="absolute top-0 right-[-2rem] sm:right-0 z-10 pointer-events-none origin-top scale-50 sm:scale-75 flex flex-col items-center">
+                {/* Hanging Cord - extends to top */}
+                <div className="w-[2px] h-[300px] bg-neutral-800/60 shrink-0" />
 
                 {/* Lamp Head Assembly (Rotated to point left/inward) */}
                 <div className="origin-top rotate-0 relative z-10">
@@ -406,7 +446,7 @@ export function CommunityPulse() {
 
                 <div className="w-full">
                     {/* 2. Main Feed Area (Fixed Screen Layout) */}
-                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto space-y-6">
+                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto space-y-0">
                         {/* New Header */}
 
                         <Tabs defaultValue="feed" className="flex-1 flex flex-col min-h-0 w-full" onValueChange={setActiveTab}>
@@ -443,7 +483,7 @@ export function CommunityPulse() {
                                 </div>
                             </div>
 
-                            <Card className="border-border/50 bg-background/50 backdrop-blur-sm h-[calc(100vh-180px)] min-h-[500px] flex flex-col relative overflow-visible ring-1 ring-border/50 shadow-xl rounded-xl">
+                            <Card className="border-border/50 bg-background/50 backdrop-blur-sm h-[calc(100vh-180px)] min-h-[500px] flex flex-col relative overflow-visible ring-1 ring-border/50 shadow-xl rounded-xl py-0">
 
                                 {/* FEED TAB */}
                                 <TabsContent value="feed" className="flex-1 flex flex-col h-full mt-0 data-[state=inactive]:hidden">
@@ -453,7 +493,7 @@ export function CommunityPulse() {
 
 
 
-                                        <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-3 space-y-4 custom-scrollbar overscroll-y-contain">
+                                        <div ref={scrollRef} className="absolute inset-x-0 top-3 bottom-3 px-3 overflow-y-auto space-y-4 custom-scrollbar overscroll-y-contain">
                                             {posts.length === 0 ? (
                                                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50">
                                                     <MessageSquare size={48} />
@@ -503,12 +543,7 @@ export function CommunityPulse() {
                                                                 {/* Poll Display */}
                                                                 {post.type === 'poll' && post.pollOptions && (
                                                                     <div className="mt-2 space-y-1.5 w-80">
-                                                                        {/* Expired Badge */}
-                                                                        {post.expiresAt && post.expiresAt.toDate() < new Date() && (
-                                                                            <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded-lg border border-border/50 mb-1">
-                                                                                <span className="text-[10px] font-semibold text-muted-foreground opacity-75">🔒 Anket Kapandı</span>
-                                                                            </div>
-                                                                        )}
+
                                                                         {post.pollOptions.map((opt, idx) => {
                                                                             const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
                                                                             const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes / totalVotes) * 100);
@@ -526,7 +561,11 @@ export function CommunityPulse() {
                                                                                 <button
                                                                                     key={opt.id}
                                                                                     onClick={() => handleVote(post.id, opt.id)}
-                                                                                    className="w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 hover:bg-black/10 dark:hover:bg-zinc-700/70 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 hover:border-primary/20"
+                                                                                    disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
+                                                                                    className={`w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                                        ? 'cursor-default opacity-60'
+                                                                                        : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
+                                                                                        }`}
                                                                                 >
                                                                                     {/* Progress Bar */}
                                                                                     <div
@@ -568,6 +607,7 @@ export function CommunityPulse() {
                                                                     <div className="flex items-center justify-between mt-2">
                                                                         {/* Left: Action Buttons */}
                                                                         <div className="flex items-center gap-1">
+
                                                                             <Button
                                                                                 variant="ghost"
                                                                                 size="icon"
@@ -587,6 +627,20 @@ export function CommunityPulse() {
                                                                                 >
                                                                                     <Trash2 size={14} />
                                                                                 </Button>
+                                                                            )}
+
+                                                                            {/* Lock Icon for Expired Polls */}
+                                                                            {post.expiresAt && post.expiresAt.toDate() < new Date() && (
+                                                                                <span title="Anket kapandı - oy kullanılamaz" className="inline-flex cursor-default">
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6 text-muted-foreground pointer-events-none opacity-100"
+                                                                                        disabled
+                                                                                    >
+                                                                                        <Lock size={14} />
+                                                                                    </Button>
+                                                                                </span>
                                                                             )}
                                                                         </div>
 
@@ -613,7 +667,7 @@ export function CommunityPulse() {
                                     </div>
 
                                     {/* Input Area (Fixed Bottom) */}
-                                    <div className="px-2 pb-1 pt-0 relative z-20">
+                                    <div className="px-2 pb-2 pt-0 relative z-20">
                                         <div className="flex flex-col gap-2 relative">
                                             {isPoll && (
                                                 <div className="absolute bottom-full left-0 w-full mb-2 bg-zinc-950/95 p-3 rounded-xl border border-white/10 shadow-2xl animate-in slide-in-from-bottom-2 backdrop-blur-3xl">
@@ -621,7 +675,11 @@ export function CommunityPulse() {
                                                         <span className="text-xs font-semibold flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
                                                             <BarChart2 size={12} className="text-primary" /> Anket Oluştur
                                                         </span>
-                                                        <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/10" onClick={() => setIsPoll(false)}>×</Button>
+                                                        <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-destructive/10" onClick={() => {
+                                                            setIsPoll(false);
+                                                            setOptionCount(2);
+                                                            setPollOptions([{ text: '' }, { text: '' }]);
+                                                        }}>×</Button>
                                                     </div>
 
                                                     {/* Option Count Selector */}
@@ -803,7 +861,11 @@ export function CommunityPulse() {
                                                                         <button
                                                                             key={opt.id}
                                                                             onClick={() => handleVote(post.id, opt.id)}
-                                                                            className="w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 hover:bg-black/10 dark:hover:bg-zinc-700/70 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 hover:border-primary/20"
+                                                                            disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
+                                                                            className={`w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                                ? 'cursor-not-allowed opacity-60'
+                                                                                : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
+                                                                                }`}
                                                                         >
                                                                             <div
                                                                                 className={`absolute top-0 left-0 h-full bg-gradient-to-r ${color.bg} transition-all duration-700 ease-out`}
@@ -840,6 +902,17 @@ export function CommunityPulse() {
                                                         {/* Footer */}
                                                         <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
                                                             <div className="flex gap-3">
+                                                                {post.expiresAt && post.expiresAt.toDate() < new Date() && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-6 w-6 text-muted-foreground"
+                                                                        title="Anket kapandı - oy kullanılamaz"
+                                                                        disabled
+                                                                    >
+                                                                        <Lock size={14} />
+                                                                    </Button>
+                                                                )}
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
