@@ -160,6 +160,29 @@
 - [ ] Bundle size analizi (next-bundle-analyzer)
 - [ ] Lighthouse performance score ≥90
 
+### 3.5.6: Kullanıcı Ayarları Sayfası [YENİ]
+- [x] **Ayarlar Sayfası (`/settings`)**:
+  - [x] Sekmeli yapı (Profil, Görünüm, Hesap).
+  - [x] Profil güncelleme formu.
+  - [x] Tema ayarları.
+  - [x] Hesap silme fonksiyonu.
+- [x] **Seviye Sistemi (Gamification) [YENİ]**:
+  - [x] `level-service.ts` (XP kazanım mantığı).
+  - [x] Firestore kullanıcı şeması güncellemesi (xp, level).
+  - [x] Profil sayfasında Level/XP Bar gösterimi.
+  - [x] Okuma ve etkileşimlere XP entegrasyonu.
+  - [/] **Çerçeve Sistemi (Frames)**:
+    - [x] Profil düzenleme ekranında çerçeve seçimi UI.
+    - [x] Seviye artırma (Debug/Test amacı ile) fonksiyonu.
+    - [x] Çerçeve önizleme ve kilit açma görselleştirmesi.
+    - [x] **Global Çerçeve Entegrasyonu**:
+      - [x] Feed/Post servisi ve UI entegrasyonu.
+      - [x] Yorumlar servisi ve UI entegrasyonu.
+      - [x] İncelemeler servisi ve UI entegrasyonu.
+      - [x] Bildirim sistemi entegrasyonu.
+      - [x] Profil güncelleme senkronizasyonu.
+
+
 ---
 
 
@@ -194,6 +217,12 @@
 - [x] UI: `CommentSection`, `CommentList`, `CommentItem`
 - [x] Entegrasyon: Roman detay sayfasına ekleme
 - [ ] Security Rules: Sadece giriş yapanlar yazabilir, sahibi silebilir(CQRS)
+- [ ] **Bildirim Sistemi (Notifications)**:
+  - [ ] Yorum beğeni/beğenmeme bildirimi (like/dislike notifications)
+  - [ ] Yorum yanıtlama bildirimi (reply notifications)
+  - [ ] Mention bildirimi (zaten var mı kontrol et)
+  - [ ] Firestore `notifications` koleksiyonu ve servis yapısı
+  - [ ] Frontend: Bildirim gösterimi ve okundu/okunmadı durumu
 - [ ] Favoriler (AddFavoriteCommand, GetFavoritesQuery)
 - [ ] Rating (RateNovelCommand, GetUserRatingQuery)
 - [ ] User profile
