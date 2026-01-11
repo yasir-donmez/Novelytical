@@ -1,5 +1,6 @@
 
 import { db } from "@/lib/firebase";
+import { UserService } from "./user-service";
 import {
     collection,
     addDoc,
@@ -15,8 +16,11 @@ import {
     increment,
     getDoc,
     setDoc,
-    limit
+    limit,
+    runTransaction
 } from "firebase/firestore";
+import { LevelService, XP_RULES } from "./level-service";
+import { createNotification } from "./notification-service";
 
 export interface Ratings {
     story: number;     // Kurgu
@@ -32,6 +36,7 @@ export interface Review {
     userId: string;
     userName: string;
     userImage?: string;
+    userFrame?: string; // Added userFrame
     ratings: Ratings;
     averageRating: number;
     content: string;
@@ -51,6 +56,7 @@ export const addReview = async (
     userId: string,
     userName: string,
     userImage: string | null,
+    userFrame: string | null, // Added userFrame
     ratings: Ratings,
     content: string,
     isSpoiler: boolean = false
@@ -60,11 +66,18 @@ export const addReview = async (
         const values = Object.values(ratings);
         const averageRating = values.reduce((a, b) => a + b, 0) / values.length;
 
+        // Fetch userFrame if not provided (fallback)
+        if (!userFrame) {
+            const levelData = await LevelService.getUserLevelData(userId);
+            userFrame = levelData?.selectedFrame || null;
+        }
+
         await addDoc(collection(db, COLLECTION_NAME), {
             novelId,
             userId,
             userName,
             userImage,
+            userFrame: userFrame || null, // Store userFrame
             ratings,
             averageRating: parseFloat(averageRating.toFixed(1)), // 4.2 format
             content,
@@ -73,6 +86,38 @@ export const addReview = async (
             unlikes: 0,
             createdAt: serverTimestamp()
         });
+
+        // Award XP
+        await LevelService.gainXp(userId, XP_RULES.REVIEW);
+
+        // Parse mentions and notify
+        const mentionRegex = /@(\w+)/g;
+        const mentions = content.match(mentionRegex);
+
+        if (mentions) {
+            const mentionedUsers = new Set<string>();
+            for (const mention of mentions) {
+                const username = mention.substring(1); // Remove @
+                // Avoid notifying self if they mention themselves
+                if (username.toLowerCase() === userName.toLowerCase()) continue;
+
+                const mentionedUserId = await UserService.getUserIdByUsername(username);
+                if (mentionedUserId && !mentionedUsers.has(mentionedUserId)) {
+                    mentionedUsers.add(mentionedUserId);
+                    await createNotification(
+                        mentionedUserId,
+                        'system', // or 'mention' if added to types
+                        `${userName} değerlendirmesinde sizden bahsetti.`,
+                        novelId.toString(), // Redirect to novel mainly
+                        `/novel/${novelId}`,
+                        userId,
+                        userName,
+                        userImage || undefined
+                    );
+                }
+            }
+        }
+
         return { success: true };
     } catch (error) {
         console.error("Error adding review:", error);
@@ -129,7 +174,7 @@ export const getLatestReviews = async (count: number = 5): Promise<Review[]> => 
     }
 };
 
-import { createNotification } from "./notification-service";
+
 
 export const interactWithReview = async (
     reviewId: string,
@@ -137,6 +182,7 @@ export const interactWithReview = async (
     action: 'like' | 'unlike',
     senderName: string,
     senderImage: string | undefined, // Allow undefined to match User type
+    senderFrame: string | undefined,
     recipientId: string,
     novelId: number
 ) => {
@@ -145,52 +191,66 @@ export const interactWithReview = async (
         const interactionRef = doc(db, INTERACTIONS_COLLECTION, interactionId);
         const reviewRef = doc(db, COLLECTION_NAME, reviewId);
 
-        const interactionDoc = await getDoc(interactionRef);
-
         let result = '';
 
-        if (interactionDoc.exists()) {
-            const currentAction = interactionDoc.data().action;
-            if (currentAction === action) {
-                // Remove interaction (toggle off)
-                await deleteDoc(interactionRef);
-                await updateDoc(reviewRef, {
-                    [action + 's']: increment(-1)
-                });
-                result = 'removed';
-            } else {
-                // Change interaction (e.g., like -> unlike)
-                await setDoc(interactionRef, { action, userId, reviewId });
-                // Decrease old action, increase new action
-                await updateDoc(reviewRef, {
-                    [currentAction + 's']: increment(-1),
-                    [action + 's']: increment(1)
-                });
-                result = 'changed';
-            }
-        } else {
-            // New interaction
-            await setDoc(interactionRef, { action, userId, reviewId });
-            await updateDoc(reviewRef, {
-                [action + 's']: increment(1)
-            });
-            result = 'added';
-        }
+        await runTransaction(db, async (transaction) => {
+            const reviewDoc = await transaction.get(reviewRef);
+            const interactionDoc = await transaction.get(interactionRef);
 
-        // Send Notification if strictly added or changed (and not self)
-        // Check if we should notify:
-        // 1. Not self
-        // 2. Action is 'added' OR 'changed' (changing from like to unlike or vice versa triggers new notification?)
-        // Let's notify on 'added' and 'changed'. If changed like->unlike, maybe notify "User disliked"? Or just notify on "like".
-        // User asked: "begenmediğindede gitsin" (send when disliked too).
+            if (!reviewDoc.exists()) {
+                throw "Review does not exist!";
+            }
+
+            const data = reviewDoc.data();
+            // Sanitize current counts (treat negative as 0)
+            let currentLikess = Math.max(0, data.likes || 0);
+            let currentUnlikes = Math.max(0, data.unlikes || 0);
+
+            if (interactionDoc.exists()) {
+                const currentAction = interactionDoc.data().action;
+                if (currentAction === action) {
+                    // Remove interaction (toggle off)
+                    transaction.delete(interactionRef);
+                    if (action === 'like') currentLikess--;
+                    else currentUnlikes--;
+                    result = 'removed';
+                } else {
+                    // Change interaction (e.g., like -> unlike)
+                    transaction.set(interactionRef, { action, userId, reviewId });
+                    if (currentAction === 'like') {
+                        currentLikess--;
+                        currentUnlikes++;
+                    } else {
+                        currentUnlikes--;
+                        currentLikess++;
+                    }
+                    result = 'changed';
+                }
+            } else {
+                // New interaction
+                transaction.set(interactionRef, { action, userId, reviewId });
+                if (action === 'like') currentLikess++;
+                else currentUnlikes++;
+                result = 'added';
+            }
+
+            // Ensure we never go below 0 on write
+            transaction.update(reviewRef, {
+                likes: Math.max(0, currentLikess),
+                unlikes: Math.max(0, currentUnlikes)
+            });
+        });
 
         if (userId !== recipientId && (result === 'added' || result === 'changed')) {
             const message = action === 'like'
                 ? `${senderName} değerlendirmenizi beğendi.`
                 : `${senderName} değerlendirmenizi beğenmedi.`;
 
-            // For unlike, maybe we shouldn't notify if it was just a toggle off? 
-            // Logic above: 'removed' = toggle off. We only notify on 'added' or 'changed'.
+            // Fetch senderFrame if not provided (fallback)
+            if (!senderFrame) {
+                const levelData = await LevelService.getUserLevelData(userId);
+                senderFrame = levelData?.selectedFrame;
+            }
 
             await createNotification(
                 recipientId,
@@ -200,7 +260,8 @@ export const interactWithReview = async (
                 `/novel/${novelId}`,
                 userId,
                 senderName,
-                senderImage
+                senderImage,
+                senderFrame
             );
         }
 
@@ -277,13 +338,13 @@ export const getUserReviewForNovel = async (novelId: number, userId: string): Pr
     }
 };
 
-export const updateUserIdentityInReviews = async (userId: string, userName: string, userImage: string | null) => {
+export const updateUserIdentityInReviews = async (userId: string, userName: string, userImage: string | null, userFrame: string | null) => {
     try {
         const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
         const snapshot = await getDocs(q);
 
         const updatePromises = snapshot.docs.map(doc =>
-            updateDoc(doc.ref, { userName, userImage })
+            updateDoc(doc.ref, { userName, userImage, userFrame })
         );
 
         await Promise.all(updatePromises);
@@ -291,5 +352,21 @@ export const updateUserIdentityInReviews = async (userId: string, userName: stri
     } catch (error) {
         console.error("Error syncing user identity in reviews:", error);
         throw error;
+    }
+};
+
+export const getUserInteractionForReview = async (reviewId: string, userId: string): Promise<'like' | 'unlike' | null> => {
+    try {
+        const interactionId = `${reviewId}_${userId}`;
+        const interactionRef = doc(db, INTERACTIONS_COLLECTION, interactionId);
+        const interactionDoc = await getDoc(interactionRef);
+
+        if (interactionDoc.exists()) {
+            return interactionDoc.data().action as 'like' | 'unlike';
+        }
+        return null;
+    } catch (error) {
+        console.error("Error checking user interaction:", error);
+        return null;
     }
 };

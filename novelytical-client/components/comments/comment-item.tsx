@@ -1,16 +1,17 @@
 "use client";
 
-import { Comment, addComment } from "@/services/comment-service";
+import { Comment, addComment, toggleCommentVote, getUserVoteForComment } from "@/services/comment-service";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useAuth } from "@/contexts/auth-context";
-import { Trash2, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Trash2, MessageCircle, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
 interface CommentItemProps {
@@ -34,6 +35,15 @@ const formatDisplayName = (name: string, email?: string) => {
 export default function CommentItem({ comment, onDelete, allComments, onReplyAdded, depth = 0 }: CommentItemProps) {
     const { user } = useAuth();
     const isOwner = user?.uid === comment.userId;
+    const canDelete = isOwner;
+
+    // Avatar Logic:
+    // 1. If it's the current user, prefer their live photoURL (so they see their new pic instantly).
+    // 2. If not, try the stored userImage from the comment doc.
+    // 3. Fallback to DiceBear initials.
+    const avatarSrc = (isOwner && user?.photoURL)
+        ? user.photoURL
+        : (comment.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.userName}`);
     const isDeleted = comment.userId === "deleted"; // Check if it's a ghost comment
     const [isReplying, setIsReplying] = useState(false);
     const [replyContent, setReplyContent] = useState("");
@@ -41,6 +51,73 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
     const [showAllReplies, setShowAllReplies] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [showSpoiler, setShowSpoiler] = useState(false);
+    const [userVote, setUserVote] = useState<'like' | 'dislike' | null>(null);
+
+    // Local state for optimistic updates
+    const [likes, setLikes] = useState(Math.max(0, comment.likeCount || 0));
+    const [dislikes, setDislikes] = useState(Math.max(0, comment.dislikeCount || 0));
+
+    // Sync with server changes
+    useEffect(() => {
+        setLikes(Math.max(0, comment.likeCount || 0));
+    }, [comment.likeCount]);
+
+    useEffect(() => {
+        setDislikes(Math.max(0, comment.dislikeCount || 0));
+    }, [comment.dislikeCount]);
+
+    useEffect(() => {
+        if (user && comment.id) {
+            getUserVoteForComment(comment.id, user.uid).then(setUserVote);
+        }
+    }, [user, comment.id]);
+
+    const handleVote = async (action: 'like' | 'dislike') => {
+        if (!user) {
+            toast.error("Oy vermek için giriş yapmalısınız.");
+            return;
+        }
+
+        const previousVote = userVote;
+        const previousLikes = likes;
+        const previousDislikes = dislikes;
+
+        // Optimistic Update
+        if (userVote === action) {
+            // Toggle off
+            setUserVote(null);
+            if (action === 'like') setLikes(prev => Math.max(0, prev - 1));
+            else setDislikes(prev => Math.max(0, prev - 1));
+        } else {
+            // Change vote or New vote
+            setUserVote(action);
+            if (action === 'like') {
+                setLikes(prev => prev + 1);
+                if (userVote === 'dislike') setDislikes(prev => Math.max(0, prev - 1));
+            } else {
+                setDislikes(prev => prev + 1);
+                if (userVote === 'like') setLikes(prev => Math.max(0, prev - 1));
+            }
+        }
+
+        try {
+            await toggleCommentVote(
+                comment.id,
+                user.uid,
+                action,
+                comment.novelId,
+                user.displayName || formatDisplayName(user.email || "Okur"),
+                user.photoURL || undefined,
+                undefined // senderFrame (will be fetched by service)
+            );
+        } catch (error) {
+            // Revert on error
+            setUserVote(previousVote);
+            setLikes(previousLikes);
+            setDislikes(previousDislikes);
+            toast.error("İşlem başarısız oldu.");
+        }
+    };
 
     const MAX_COMMENT_LENGTH = 300;
     const isLongComment = comment.content.length > MAX_COMMENT_LENGTH;
@@ -69,7 +146,15 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
         setIsReplying(false);
 
         try {
-            await addComment(comment.novelId, user.uid, user.displayName || formatDisplayName(user.email || "Okur"), replyContent, comment.id);
+            await addComment(
+                comment.novelId,
+                user.uid,
+                user.displayName || formatDisplayName(user.email || "Okur"),
+                user.photoURL, // Add user image
+                undefined, // userFrame (will be fetched by service)
+                replyContent,
+                comment.id
+            );
             toast.success("Yanıtınız eklendi!");
             setReplyContent("");
             onReplyAdded();
@@ -101,12 +186,13 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                             <Trash2 size={14} className="text-muted-foreground/50" />
                         </div>
                     ) : (
-                        <Avatar className="h-8 w-8 flex-shrink-0 ring-1 ring-white/20 dark:ring-white/10 shadow-sm">
-                            <AvatarImage src={user?.uid === comment.userId ? user?.photoURL || undefined : `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`} />
-                            <AvatarFallback className="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold">
-                                {displayName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                            src={avatarSrc}
+                            alt={displayName}
+                            frameId={comment.userFrame}
+                            className="h-8 w-8 flex-shrink-0 shadow-sm"
+                            fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold"
+                        />
                     )}
 
                     {/* Content */}
@@ -160,6 +246,29 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                         {/* Actions */}
                         {!isDeleted && (
                             <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 mr-2">
+                                    <button
+                                        onClick={() => handleVote('like')}
+                                        className={cn(
+                                            "text-[10px] font-medium flex items-center gap-1 transition-colors",
+                                            userVote === 'like' ? "text-green-500" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <ThumbsUp size={12} className={cn(userVote === 'like' && "fill-current")} />
+                                        <span className="tabular-nums min-w-[14px] text-center">{likes}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleVote('dislike')}
+                                        className={cn(
+                                            "text-[10px] font-medium flex items-center gap-1 transition-colors",
+                                            userVote === 'dislike' ? "text-red-500" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <ThumbsDown size={12} className={cn(userVote === 'dislike' && "fill-current")} />
+                                        <span className="tabular-nums min-w-[14px] text-center">{dislikes}</span>
+                                    </button>
+                                </div>
+
                                 {user && (
                                     <button
                                         onClick={() => setIsReplying(!isReplying)}

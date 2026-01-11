@@ -23,6 +23,10 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { db } from "@/lib/firebase"; // For realtime updates if needed, but polling is simpler for now
 import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 export default function NotificationBell() {
     const { user } = useAuth();
@@ -110,16 +114,24 @@ export default function NotificationBell() {
                                     onClick={() => handleRead(notification.id, notification.sourceLink)}
                                 >
                                     <DropdownMenuItem className="p-3 cursor-pointer items-start gap-3 mx-1">
-                                        <div className="mt-1 h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                                            <MessageCircle className="h-4 w-4 text-purple-400" />
-                                        </div>
+                                        {notification.senderImage ? (
+                                            <UserAvatar
+                                                src={notification.senderImage}
+                                                alt={notification.senderName}
+                                                frameId={notification.senderFrame}
+                                                className="h-8 w-8 shrink-0"
+                                            />
+                                        ) : (
+                                            <div className="mt-1 h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                                                <MessageCircle className="h-4 w-4 text-purple-400" />
+                                            </div>
+                                        )}
                                         <div className="space-y-1 flex-1">
                                             <p className="text-sm leading-snug">
                                                 {notification.content}
                                             </p>
                                             <p className="text-[10px] text-muted-foreground">
-                                                {/* Calculate time ago roughly */}
-                                                Just now
+                                                {notification.createdAt?.toDate ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true, locale: tr }) : "Az önce"}
                                             </p>
                                         </div>
                                         <div className="h-2 w-2 rounded-full bg-purple-500 mt-2 shrink-0" />

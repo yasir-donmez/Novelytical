@@ -6,6 +6,8 @@ import { novelService } from '@/services/novelService';
 import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes, subscribeToLatestPosts } from '@/services/feed-service';
 import { createNotification } from '@/services/notification-service';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { LevelService, UserLevelData } from '@/services/level-service';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 // ... other imports
@@ -78,6 +80,7 @@ export function CommunityPulse() {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [levelData, setLevelData] = useState<UserLevelData | null>(null);
 
     // New Post State
     const [postContent, setPostContent] = useState('');
@@ -133,6 +136,7 @@ export function CommunityPulse() {
             if (user) {
                 getUserSavedPostIds(user.uid).then(setSavedPostIds);
                 getUserPollVotes(user.uid).then(setUserVotes);
+                LevelService.getUserLevelData(user.uid).then(setLevelData);
             }
 
             // Extract unique users for mentions (from initial data mostly, real-time might need updates but this is okay for now)
@@ -188,6 +192,7 @@ export function CommunityPulse() {
                 user.uid,
                 user.displayName || 'Anonim',
                 user.photoURL || undefined,
+                levelData?.selectedFrame || undefined,
                 postContent,
                 isPoll ? 'poll' : 'text',
                 isPoll ? pollOptions.map((opt, idx) => ({
@@ -331,7 +336,8 @@ export function CommunityPulse() {
                 optionId,
                 user.uid,
                 currentUserName || 'Anonim',
-                user.photoURL || undefined
+                user.photoURL || undefined,
+                levelData?.selectedFrame || undefined
             );
 
             // Success feedback (optional, since UI already updated)
@@ -504,10 +510,13 @@ export function CommunityPulse() {
                                                 return (
                                                     <div key={post.id} className={`w-full flex mb-3 ${isOwner ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex gap-4 max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            <Avatar className="h-8 w-8 ring-1 ring-background shrink-0 self-start">
-                                                                <AvatarImage src={post.userImage} />
-                                                                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{post.userName?.[0]?.toUpperCase()}</AvatarFallback>
-                                                            </Avatar>
+                                                            <UserAvatar
+                                                                src={post.userImage}
+                                                                alt={post.userName}
+                                                                frameId={post.userFrame}
+                                                                className="h-8 w-8 shrink-0 self-start"
+                                                                fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                            />
                                                             <div className={`relative min-w-0 flex-1 p-3 shadow-sm transition-all overflow-hidden
                                                             ${isOwner
                                                                     ? 'bg-primary/10 rounded-2xl rounded-tr-none border border-primary/20'
@@ -823,10 +832,13 @@ export function CommunityPulse() {
                                             </div>
                                         ) : posts.filter(p => p.type === 'poll').map((post) => (
                                             <div key={post.id} className="flex gap-4 w-full max-w-2xl mx-auto">
-                                                <Avatar className="h-8 w-8 ring-1 ring-background shrink-0 self-start">
-                                                    <AvatarImage src={post.userImage} />
-                                                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{post.userName?.[0]?.toUpperCase()}</AvatarFallback>
-                                                </Avatar>
+                                                <UserAvatar
+                                                    src={post.userImage}
+                                                    alt={post.userName}
+                                                    frameId={post.userFrame}
+                                                    className="h-8 w-8 shrink-0 self-start"
+                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                />
 
                                                 <div className="flex flex-col min-w-0 items-start w-full">
                                                     <div className="flex items-center gap-2 mb-1 px-1">
@@ -960,10 +972,13 @@ export function CommunityPulse() {
                                     ) : (
                                         reviews.map((review) => (
                                             <div key={review.id} className="flex gap-4 w-full max-w-2xl mx-auto">
-                                                <Avatar className="h-8 w-8 ring-1 ring-background shrink-0 self-start">
-                                                    <AvatarImage src={review.userImage} />
-                                                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{review.userName?.[0]?.toUpperCase()}</AvatarFallback>
-                                                </Avatar>
+                                                <UserAvatar
+                                                    src={review.userImage}
+                                                    alt={review.userName}
+                                                    frameId={review.userFrame}
+                                                    className="h-8 w-8 shrink-0 self-start"
+                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                />
 
                                                 <div className="flex flex-col min-w-0 items-start w-full">
                                                     <div className="flex items-center gap-2 mb-1 px-1">

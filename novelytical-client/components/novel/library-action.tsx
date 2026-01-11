@@ -17,9 +17,10 @@ import { Input } from "@/components/ui/input";
 
 interface LibraryActionProps {
     novelId: number;
+    chapterCount?: number;
 }
 
-export default function LibraryAction({ novelId }: LibraryActionProps) {
+export default function LibraryAction({ novelId, chapterCount }: LibraryActionProps) {
     const { user } = useAuth();
     const [status, setStatus] = useState<ReadingStatus | null>(null);
     const [currentChapter, setCurrentChapter] = useState<number>(0);
@@ -86,6 +87,9 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     const handleProgressUpdate = async (newChapter: number) => {
         if (!user || newChapter < 0) return;
 
+        const max = chapterCount || Infinity;
+        if (newChapter > max) newChapter = max;
+
         setCurrentChapter(newChapter);
         setInputValue(newChapter.toString());
 
@@ -103,6 +107,10 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     const handleInputBlur = () => {
         let val = parseInt(inputValue);
         if (isNaN(val) || val < 0) val = 0;
+
+        const max = chapterCount || Infinity;
+        if (val > max) val = max;
+
         if (val !== currentChapter) {
             handleProgressUpdate(val);
         } else {
@@ -113,7 +121,6 @@ export default function LibraryAction({ novelId }: LibraryActionProps) {
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.currentTarget.blur();
-            setIsOpen(false);
         }
     };
 

@@ -11,10 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface ReviewFormProps {
     novelId: number;
+    coverImage?: string;
     onReviewAdded: () => void;
 }
 
-export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) {
+export default function ReviewForm({ novelId, coverImage, onReviewAdded }: ReviewFormProps) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -147,26 +148,45 @@ export default function ReviewForm({ novelId, onReviewAdded }: ReviewFormProps) 
                 {isOpen && (
                     <div className="p-6 pt-2 border-white/10 dark:border-white/5 animate-in slide-in-from-top-2 fade-in duration-200">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-4 max-w-sm mx-auto w-full py-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-muted-foreground/80">Kurgu</span>
-                                    <StarRating value={ratings.story} onChange={(v) => updateRating('story', v)} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-muted-foreground/80">Karakterler</span>
-                                    <StarRating value={ratings.characters} onChange={(v) => updateRating('characters', v)} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-muted-foreground/80">Dünya Tasarımı</span>
-                                    <StarRating value={ratings.world} onChange={(v) => updateRating('world', v)} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-muted-foreground/80">Akıcılık</span>
-                                    <StarRating value={ratings.flow} onChange={(v) => updateRating('flow', v)} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-muted-foreground/80">Dilbilgisi & Yazım</span>
-                                    <StarRating value={ratings.grammar} onChange={(v) => updateRating('grammar', v)} />
+                            <div className="flex flex-col md:flex-row gap-6 md:gap-8 max-w-2xl mx-auto w-full py-4">
+                                {/* Cover Image */}
+                                {coverImage && (
+                                    <div className="flex-shrink-0 mx-auto md:mx-0">
+                                        <div className="w-[120px] aspect-[2/3] rounded-lg overflow-hidden shadow-md border border-white/10 relative group">
+                                            <img
+                                                src={coverImage}
+                                                alt="Novel Cover"
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                                                <span className="text-[10px] font-medium text-white/90">Değerlendir</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Ratings Column */}
+                                <div className="flex-1 space-y-4 w-full">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground/80">Kurgu</span>
+                                        <StarRating value={ratings.story} onChange={(v) => updateRating('story', v)} />
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground/80">Karakterler</span>
+                                        <StarRating value={ratings.characters} onChange={(v) => updateRating('characters', v)} />
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground/80">Dünya Tasarımı</span>
+                                        <StarRating value={ratings.world} onChange={(v) => updateRating('world', v)} />
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground/80">Akıcılık</span>
+                                        <StarRating value={ratings.flow} onChange={(v) => updateRating('flow', v)} />
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-muted-foreground/80">Dilbilgisi & Yazım</span>
+                                        <StarRating value={ratings.grammar} onChange={(v) => updateRating('grammar', v)} />
+                                    </div>
                                 </div>
                             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCommentsByNovelId, deleteComment, Comment } from "@/services/comment-service";
+import { deleteComment, Comment } from "@/services/comment-service";
 import CommentForm from "./comment-form";
 import CommentList from "./comment-list";
 import { useAuth } from "@/contexts/auth-context";
@@ -15,6 +15,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ArrowUpDown } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 
 interface CommentSectionProps {
     novelId: number;
@@ -26,15 +28,33 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
     const [sortOption, setSortOption] = useState("newest");
     const { user } = useAuth();
 
-    const fetchComments = async () => {
-        setLoading(true);
-        const data = await getCommentsByNovelId(novelId, sortOption);
-        setComments(data);
-        setLoading(false);
-    };
-
     useEffect(() => {
-        fetchComments();
+        setLoading(true);
+        const commentsRef = collection(db, "comments");
+
+        let q = query(commentsRef, where("novelId", "==", novelId));
+
+        if (sortOption === "newest") {
+            q = query(q, orderBy("createdAt", "desc"));
+        } else if (sortOption === "oldest") {
+            q = query(q, orderBy("createdAt", "asc"));
+        } else {
+            q = query(q, orderBy("createdAt", "desc"));
+        }
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const commentsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Comment));
+            setComments(commentsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching comments realtime:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [novelId, sortOption]);
 
     const handleDelete = async (commentId: string) => {
@@ -43,7 +63,7 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
         try {
             await deleteComment(commentId);
             toast.success("Yorum silindi.");
-            fetchComments();
+            // onSnapshot updates automatically
         } catch (error) {
             console.error(error);
             toast.error("Silme işlemi başarısız.");
@@ -73,14 +93,14 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
                 </Select>
             </div>
 
-            <CommentForm novelId={novelId} onCommentAdded={fetchComments} />
+            <CommentForm novelId={novelId} onCommentAdded={() => { }} />
 
             {loading ? (
                 <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 </div>
             ) : (
-                <CommentList comments={comments} onDelete={handleDelete} onReplyAdded={fetchComments} />
+                <CommentList comments={comments} onDelete={handleDelete} onReplyAdded={() => { }} />
             )}
         </div>
     );

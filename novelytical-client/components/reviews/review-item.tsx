@@ -1,11 +1,11 @@
 "use client";
 
-import { Review, interactWithReview, deleteReview } from "@/services/review-service";
+import { Review, interactWithReview, deleteReview, getUserInteractionForReview } from "@/services/review-service";
 import { StarRating } from "./star-rating";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ThumbsUp, ThumbsDown, Info, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import {
@@ -25,10 +25,28 @@ interface ReviewItemProps {
 
 export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
     const { user } = useAuth();
-    const [likes, setLikes] = useState(review.likes || 0);
-    const [unlikes, setUnlikes] = useState(review.unlikes || 0);
     const [isExpanded, setIsExpanded] = useState(false);
     const [showSpoiler, setShowSpoiler] = useState(false);
+    const [userVote, setUserVote] = useState<'like' | 'unlike' | null>(null);
+
+    // Local state for optimistic updates
+    const [likes, setLikes] = useState(Math.max(0, review.likes || 0));
+    const [unlikes, setUnlikes] = useState(Math.max(0, review.unlikes || 0));
+
+    // Sync with server changes
+    useEffect(() => {
+        setLikes(Math.max(0, review.likes || 0));
+    }, [review.likes]);
+
+    useEffect(() => {
+        setUnlikes(Math.max(0, review.unlikes || 0));
+    }, [review.unlikes]);
+
+    useEffect(() => {
+        if (user && review.id) {
+            getUserInteractionForReview(review.id, user.uid).then(setUserVote);
+        }
+    }, [user, review.id]);
 
     const MAX_REVIEW_LENGTH = 400;
     const isLongReview = review.content.length > MAX_REVIEW_LENGTH;
@@ -41,8 +59,28 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
             toast.error("Etkileşim için giriş yapmalısınız.");
             return;
         }
+
+        const previousVote = userVote;
+        const previousLikes = likes;
+        const previousUnlikes = unlikes;
+
+        if (userVote === action) {
+            setUserVote(null);
+            if (action === 'like') setLikes(l => Math.max(0, l - 1));
+            else setUnlikes(u => Math.max(0, u - 1));
+        } else {
+            setUserVote(action);
+            if (action === 'like') {
+                setLikes(l => l + 1);
+                if (userVote === 'unlike') setUnlikes(u => Math.max(0, u - 1));
+            } else {
+                setUnlikes(u => u + 1);
+                if (userVote === 'like') setLikes(l => Math.max(0, l - 1));
+            }
+        }
+
         try {
-            const result = await interactWithReview(
+            await interactWithReview(
                 review.id,
                 user.uid,
                 action,
@@ -51,21 +89,10 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
                 review.userId,
                 review.novelId
             );
-
-            if (result === 'added') {
-                action === 'like' ? setLikes(l => l + 1) : setUnlikes(u => u + 1);
-            } else if (result === 'removed') {
-                action === 'like' ? setLikes(l => l - 1) : setUnlikes(u => u - 1);
-            } else if (result === 'changed') {
-                if (action === 'like') {
-                    setLikes(l => l + 1);
-                    setUnlikes(u => u - 1);
-                } else {
-                    setLikes(l => l - 1);
-                    setUnlikes(u => u + 1);
-                }
-            }
         } catch (error) {
+            setUserVote(previousVote);
+            setLikes(previousLikes);
+            setUnlikes(previousUnlikes);
             console.error(error);
         }
     };
@@ -171,17 +198,23 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
             <div className="flex items-center gap-4 mt-1">
                 <button
                     onClick={() => handleInteraction('like')}
-                    className="text-xs font-medium text-muted-foreground hover:text-green-400 transition-colors flex items-center gap-1.5"
+                    className={cn(
+                        "text-xs font-medium flex items-center gap-1.5 transition-colors",
+                        userVote === 'like' ? "text-green-400" : "text-muted-foreground hover:text-green-400"
+                    )}
                 >
-                    <ThumbsUp size={14} className={cn(likes > 0 && "fill-green-400/20 text-green-400")} />
+                    <ThumbsUp size={14} className={cn(userVote === 'like' && "fill-green-400/20 text-green-400")} />
                     <span className="tabular-nums min-w-[14px] text-center">{likes}</span>
                 </button>
 
                 <button
                     onClick={() => handleInteraction('unlike')}
-                    className="text-xs font-medium text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1.5"
+                    className={cn(
+                        "text-xs font-medium flex items-center gap-1.5 transition-colors",
+                        userVote === 'unlike' ? "text-red-400" : "text-muted-foreground hover:text-red-400"
+                    )}
                 >
-                    <ThumbsDown size={14} className={cn(unlikes > 0 && "fill-red-400/20 text-red-400")} />
+                    <ThumbsDown size={14} className={cn(userVote === 'unlike' && "fill-red-400/20 text-red-400")} />
                     <span className="tabular-nums min-w-[14px] text-center">{unlikes}</span>
                 </button>
             </div>

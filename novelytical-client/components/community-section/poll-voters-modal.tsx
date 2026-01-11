@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -95,10 +96,12 @@ export function PollVotersModal({ isOpen, onClose, postId, pollOptions }: PollVo
                                             <div className="space-y-3">
                                                 {optionVoters.map((voter) => (
                                                     <div key={voter.userId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                                                        <Avatar className="h-8 w-8 border border-border/50">
-                                                            <AvatarImage src={voter.userImage} />
-                                                            <AvatarFallback>{voter.userName?.[0] || "?"}</AvatarFallback>
-                                                        </Avatar>
+                                                        <UserAvatar
+                                                            src={voter.userImage}
+                                                            alt={voter.userName}
+                                                            frameId={voter.userFrame}
+                                                            className="h-8 w-8"
+                                                        />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium truncate">
                                                                 {voter.userName || "Anonim"}

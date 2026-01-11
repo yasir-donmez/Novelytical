@@ -40,7 +40,7 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
         setIsOpen(false);
 
         try {
-            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", content, null, isSpoiler);
+            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", user.photoURL, content, null, isSpoiler);
             setContent("");
             setIsSpoiler(false);
             toast.success("Yorumunuz eklendi!");
@@ -66,7 +66,7 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
     }
 
     return (
-        <div className="mb-6 transition-all duration-300">
+        <div className="mb-8 transition-all duration-300">
             <div className="bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-sm overflow-hidden">
                 <button
                     onClick={() => setIsOpen(!isOpen)}

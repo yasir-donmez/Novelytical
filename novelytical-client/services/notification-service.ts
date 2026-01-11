@@ -23,6 +23,7 @@ export interface Notification {
     senderId?: string; // Optional (system messages might not have one)
     senderName?: string;
     senderImage?: string;
+    senderFrame?: string; // Added senderFrame
     type: NotificationType;
     content: string;
     sourceId: string; // e.g., commentId or novelId
@@ -41,7 +42,8 @@ export const createNotification = async (
     sourceLink: string,
     senderId?: string,
     senderName?: string,
-    senderImage?: string
+    senderImage?: string,
+    senderFrame?: string
 ) => {
     try {
         if (recipientId === senderId) return; // Don't notify self
@@ -52,9 +54,10 @@ export const createNotification = async (
             content,
             sourceId,
             sourceLink,
-            senderId,
-            senderName,
-            senderImage,
+            senderId: senderId || null,
+            senderName: senderName || null,
+            senderImage: senderImage || null,
+            senderFrame: senderFrame || null,
             isRead: false,
             createdAt: serverTimestamp()
         });

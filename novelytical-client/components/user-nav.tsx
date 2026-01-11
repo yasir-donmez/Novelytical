@@ -4,6 +4,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { User, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { LevelService, UserLevelData, LEVEL_FRAMES } from "@/services/level-service";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +24,21 @@ import { useRouter } from "next/navigation";
 export function UserNav() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const [levelData, setLevelData] = useState<UserLevelData | null>(null);
+
+    useEffect(() => {
+        const fetchLevelData = () => {
+            if (user) {
+                LevelService.getUserLevelData(user.uid).then(setLevelData);
+            }
+        };
+
+        fetchLevelData();
+
+        // Listen for profile updates
+        window.addEventListener('user-profile-update', fetchLevelData);
+        return () => window.removeEventListener('user-profile-update', fetchLevelData);
+    }, [user]);
 
     const handleSignOut = async () => {
         try {
@@ -46,15 +65,18 @@ export function UserNav() {
         );
     }
 
+    const frameId = levelData?.selectedFrame || 'default';
+    const frameObj = LEVEL_FRAMES.find(f => f.id === frameId) || LEVEL_FRAMES[0];
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full overflow-hidden border p-0">
-                    {/* Fallback to Dicebear if no photo */}
-                    <img
-                        src={user.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${user.displayName || user.email?.split('@')[0] || "User"}`}
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+                    <UserAvatar
+                        src={user.photoURL}
                         alt={user.displayName || "User"}
-                        className="h-full w-full object-cover"
+                        frameId={levelData?.selectedFrame}
+                        className="h-9 w-9"
                     />
                 </Button>
             </DropdownMenuTrigger>
@@ -72,9 +94,9 @@ export function UserNav() {
                     <User className="mr-2 h-4 w-4" />
                     <span>Profilim</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Ayarlar (Yakında)</span>
+                    <span>Ayarlar</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-red-500 focus:text-red-500">

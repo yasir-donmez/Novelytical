@@ -62,7 +62,7 @@ export async function getNovelById(id: number | string) {
     const res = await fetch(`http://localhost:5050/api/novels/${id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
-        next: { revalidate: 60, tags: [`novel-${id}`] }
+        cache: 'no-store'
     });
     if (!res.ok) throw new Error('Failed to fetch novel');
     // Need to return data.data based on service structure? 

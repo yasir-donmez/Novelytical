@@ -7,9 +7,10 @@ import { MessageSquare, Star } from "lucide-react";
 
 interface InteractionTabsProps {
     novelId: number;
+    coverImage?: string;
 }
 
-export default function InteractionTabs({ novelId }: InteractionTabsProps) {
+export default function InteractionTabs({ novelId, coverImage }: InteractionTabsProps) {
     return (
         <div className="mt-8">
             <Tabs defaultValue="reviews" className="w-full">
@@ -25,7 +26,7 @@ export default function InteractionTabs({ novelId }: InteractionTabsProps) {
                 </TabsList>
 
                 <TabsContent value="reviews" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-                    <ReviewSection novelId={novelId} />
+                    <ReviewSection novelId={novelId} coverImage={coverImage} />
                 </TabsContent>
 
                 <TabsContent value="comments" className="mt-0 focus-visible:outline-none focus-visible:ring-0">

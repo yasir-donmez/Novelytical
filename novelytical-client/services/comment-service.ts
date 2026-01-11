@@ -13,41 +13,94 @@ import {
     Timestamp,
     updateDoc,
     getDoc,
-    limit
+    limit,
+    increment,
+    setDoc,
+    runTransaction
 } from "firebase/firestore";
+import { LevelService, XP_RULES } from "./level-service";
 import { createNotification } from "./notification-service";
+import { UserService } from "./user-service";
 
 export interface Comment {
     id: string;
     novelId: number;
     userId: string;
     userName: string;
+    userImage?: string; // Added userImage
+    userFrame?: string; // Added userFrame
     content: string;
     parentId: string | null;  // For replies
     isSpoiler?: boolean;
+    likeCount?: number;
+    dislikeCount?: number;
     createdAt: Timestamp;
 }
 
 const COLLECTION_NAME = "comments";
+const COMMENT_VOTES_COLLECTION = "votes"; // Subcollection name
 
 export const addComment = async (
     novelId: number,
     userId: string,
     userName: string,
+    userImage: string | null | undefined, // Added userImage
+    userFrame: string | null | undefined, // Added userFrame
     content: string,
     parentId: string | null = null, // Optional parentId
     isSpoiler: boolean = false
 ) => {
     try {
+        // Fetch userFrame if not provided (fallback)
+        if (!userFrame) {
+            const levelData = await LevelService.getUserLevelData(userId);
+            userFrame = levelData?.selectedFrame;
+        }
+
         const commentRef = await addDoc(collection(db, COLLECTION_NAME), {
             novelId,
             userId,
             userName,
+            userImage: userImage || null, // Store userImage
+            userFrame: userFrame || null, // Store userFrame
             content,
             parentId,
             isSpoiler,
+            likeCount: 0,
+            dislikeCount: 0,
             createdAt: serverTimestamp()
         });
+
+        // Award XP
+        await LevelService.gainXp(userId, XP_RULES.COMMENT);
+
+        // Handle Mentions
+        const mentionRegex = /@(\w+)/g;
+        const mentions = content.match(mentionRegex);
+
+        if (mentions) {
+            const mentionedUsers = new Set<string>();
+            for (const mention of mentions) {
+                const username = mention.substring(1); // Remove @
+                if (username.toLowerCase() === userName.toLowerCase()) continue;
+
+                const mentionedUserId = await UserService.getUserIdByUsername(username);
+                if (mentionedUserId && !mentionedUsers.has(mentionedUserId)) {
+                    mentionedUsers.add(mentionedUserId);
+                    await createNotification(
+                        mentionedUserId,
+                        'system',
+                        `${userName} bir yorumda sizden bahsetti.`,
+                        commentRef.id,
+                        `/novel/${novelId}`,
+                        userId,
+                        userName,
+                        userImage || undefined,
+                        userFrame || undefined
+                    );
+                }
+            }
+        }
 
         // Trigger notification if it's a reply
         if (parentId) {
@@ -65,18 +118,13 @@ export const addComment = async (
                             `/novel/${novelId}`, // Link to the novel
                             userId,
                             userName,
-                            // userImage is not passed to addComment currently, maybe update signature?
-                            // For now leaving undefined or we need to pass it.
-                            // Looking at addComment signature:
-                            // (novelId, userId, userName, content, parentId)
-                            // It doesn't receive userImage.
-                            undefined // senderImage
+                            userImage || undefined,
+                            userFrame || undefined
                         );
                     }
                 }
             } catch (notifyError) {
                 console.error("Failed to send notification:", notifyError);
-                // Don't fail the comment creation
             }
         }
 
@@ -142,14 +190,13 @@ export const deleteComment = async (commentId: string) => {
     }
 };
 
-export const updateUserIdentityInComments = async (userId: string, userName: string) => {
+export const updateUserIdentityInComments = async (userId: string, userName: string, userImage: string | null, userFrame: string | null) => {
     try {
         const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
         const snapshot = await getDocs(q);
 
-        // Note: Comments currently don't store userImage, only userName
         const updatePromises = snapshot.docs.map(doc =>
-            updateDoc(doc.ref, { userName })
+            updateDoc(doc.ref, { userName, userImage, userFrame })
         );
 
         await Promise.all(updatePromises);
@@ -176,5 +223,120 @@ export const getLatestComments = async (count: number = 5): Promise<Comment[]> =
     } catch (error) {
         console.error("Error fetching latest comments:", error);
         return [];
+    }
+};
+
+export const toggleCommentVote = async (
+    commentId: string,
+    userId: string,
+    action: 'like' | 'dislike',
+    novelId: number,
+    senderName: string,
+    senderImage: string | undefined,
+    senderFrame: string | undefined
+) => {
+    try {
+        // Fetch senderFrame if not provided (fallback)
+        if (!senderFrame) {
+            const levelData = await LevelService.getUserLevelData(userId);
+            senderFrame = levelData?.selectedFrame;
+        }
+
+        const commentRef = doc(db, COLLECTION_NAME, commentId);
+        const voteRef = doc(collection(commentRef, COMMENT_VOTES_COLLECTION), userId);
+
+        let result = '';
+
+        await runTransaction(db, async (transaction) => {
+            const commentDoc = await transaction.get(commentRef);
+            const voteDoc = await transaction.get(voteRef);
+
+            if (!commentDoc.exists()) {
+                throw "Comment does not exist!";
+            }
+
+            const data = commentDoc.data();
+            // Sanitize current counts (treat negative as 0)
+            let currentLikeCount = Math.max(0, data.likeCount || 0);
+            let currentDislikeCount = Math.max(0, data.dislikeCount || 0);
+
+            if (voteDoc.exists()) {
+                const currentAction = voteDoc.data().action;
+                if (currentAction === action) {
+                    // Remove vote (toggle off)
+                    transaction.delete(voteRef);
+                    if (action === 'like') currentLikeCount--;
+                    else currentDislikeCount--;
+                    result = 'removed';
+                } else {
+                    // Change vote
+                    transaction.set(voteRef, { action, votedAt: serverTimestamp() });
+                    if (currentAction === 'like') {
+                        currentLikeCount--;
+                        currentDislikeCount++;
+                    } else {
+                        currentDislikeCount--;
+                        currentLikeCount++;
+                    }
+                    result = 'changed';
+                }
+            } else {
+                // New vote
+                transaction.set(voteRef, { action, votedAt: serverTimestamp() });
+                if (action === 'like') currentLikeCount++;
+                else currentDislikeCount++;
+                result = 'added';
+            }
+
+            // Ensure we never go below 0 on write
+            transaction.update(commentRef, {
+                likeCount: Math.max(0, currentLikeCount),
+                dislikeCount: Math.max(0, currentDislikeCount)
+            });
+        });
+
+        // Notify comment owner (outside transaction)
+        if (result === 'added' || result === 'changed') {
+            const commentDoc = await getDoc(commentRef);
+            if (commentDoc.exists()) {
+                const commentData = commentDoc.data() as Comment;
+                if (commentData.userId !== userId) {
+                    const message = action === 'like'
+                        ? `${senderName} yorumunuzu beğendi.`
+                        : `${senderName} yorumunuzu beğenmedi.`;
+
+                    await createNotification(
+                        commentData.userId,
+                        action === 'like' ? 'like' : 'dislike',
+                        message,
+                        commentId,
+                        `/novel/${novelId}`,
+                        userId,
+                        senderName,
+                        senderImage,
+                        senderFrame
+                    );
+                }
+            }
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error toggling vote:", error);
+        throw error;
+    }
+};
+
+export const getUserVoteForComment = async (commentId: string, userId: string): Promise<'like' | 'dislike' | null> => {
+    try {
+        const voteRef = doc(db, COLLECTION_NAME, commentId, COMMENT_VOTES_COLLECTION, userId);
+        const voteDoc = await getDoc(voteRef);
+        if (voteDoc.exists()) {
+            return voteDoc.data().action as 'like' | 'dislike';
+        }
+        return null;
+    } catch (error) {
+        console.error("Error checking user vote:", error);
+        return null;
     }
 };

@@ -1,14 +1,14 @@
-"use client";
-
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { getSavedPostsData, Post, toggleSavePost } from "@/services/feed-service";
-import { BarChart2, Bookmark, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { getSavedPostsData, Post, toggleSavePost, getUserCreatedPolls } from "@/services/feed-service";
+import { BarChart2, Bookmark, ExternalLink, ChevronLeft, ChevronRight, Hash } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import Link from "next/link";
+import { PollVotersModal } from "@/components/community-section/poll-voters-modal";
 
 function timeAgo(date: any) {
     if (!date) return '';
@@ -28,25 +28,38 @@ function timeAgo(date: any) {
 
 export default function SavedPollsList() {
     const { user } = useAuth();
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+    const [createdPosts, setCreatedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [savedLoaded, setSavedLoaded] = useState(false);
+    const [createdLoaded, setCreatedLoaded] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [activeTab, setActiveTab] = useState("saved");
+    const [viewingPollId, setViewingPollId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user) return;
         loadPosts();
-    }, [user]);
+    }, [user, activeTab]);
 
     const loadPosts = async () => {
         setLoading(true);
         try {
             if (user) {
-                const data = await getSavedPostsData(user.uid);
-                // Filter only polls just in case
-                setPosts(data.filter(p => p.type === 'poll'));
+                if (activeTab === "saved") {
+                    // Only load if not already loaded to prevent redundant fetches? 
+                    // No, we might want to refresh. Let's keep it simple but mark as loaded.
+                    const data = await getSavedPostsData(user.uid);
+                    setSavedPosts(data.filter(p => p.type === 'poll'));
+                    setSavedLoaded(true);
+                } else {
+                    const data = await getUserCreatedPolls(user.uid);
+                    setCreatedPosts(data);
+                    setCreatedLoaded(true);
+                }
             }
         } catch (error) {
-            console.error("Failed to load saved polls", error);
+            console.error("Failed to load polls", error);
         } finally {
             setLoading(false);
         }
@@ -56,12 +69,14 @@ export default function SavedPollsList() {
         if (!user) return;
         try {
             await toggleSavePost(user.uid, postId);
-            setPosts(prev => prev.filter(p => p.id !== postId));
+            setSavedPosts(prev => prev.filter(p => p.id !== postId));
             toast.success("Anket kaydedilenlerden kaldırıldı.");
         } catch (error) {
             toast.error("İşlem başarısız.");
         }
     };
+
+    const currentPosts = activeTab === "saved" ? savedPosts : createdPosts;
 
     const PollGrid = ({ items }: { items: Post[] }) => {
         const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -132,36 +147,52 @@ export default function SavedPollsList() {
                 <div
                     ref={scrollContainerRef}
                     onScroll={!isExpanded ? checkScroll : undefined}
-                    className={`relative z-10 flex pt-2 pb-4 gap-4 scrollbar-hide ${isExpanded ? 'flex-wrap' : 'overflow-x-auto snap-x snap-mandatory'}`}
+                    className={`relative z-10 flex pt-2 pb-4 gap-4 scrollbar-hide items-stretch ${isExpanded ? 'flex-wrap' : 'overflow-x-auto snap-x snap-mandatory'}`}
                     style={maskStyle}
                 >
                     {items.map((post) => (
                         <div
                             key={post.id}
-                            className={`group-item shrink-0 relative flex flex-col p-4 rounded-xl bg-gradient-to-br from-purple-500/5 via-background to-pink-500/5 border border-primary/10 hover:border-primary/20 transition-all shadow-sm ${isExpanded
+                            className={`group-item shrink-0 relative flex flex-col p-4 rounded-xl bg-gradient-to-br from-purple-500/5 via-background to-pink-500/5 border border-primary/10 hover:border-primary/20 transition-all shadow-sm h-full ${isExpanded
                                 ? 'w-full md:w-[calc(50%_-_0.5rem)]'
                                 : 'min-w-[85%] md:min-w-0 md:w-[calc(50%_-_8px)] snap-start'
                                 }`}
                         >
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-3">
-                                <Avatar className="h-8 w-8 border border-primary/20">
-                                    <AvatarImage src={post.userImage} />
-                                    <AvatarFallback>{post.userName[0]}</AvatarFallback>
-                                </Avatar>
+                                <UserAvatar
+                                    src={post.userImage}
+                                    alt={post.userName}
+                                    frameId={post.userFrame}
+                                    className="h-8 w-8"
+                                />
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-sm truncate">{post.userName}</p>
                                     <p className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</p>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-primary hover:text-destructive hover:bg-destructive/10 -mr-2"
-                                    onClick={() => handleUnsave(post.id)}
-                                    title="Kaydetmeyi Kaldır"
-                                >
-                                    <Bookmark size={14} fill="currentColor" />
-                                </Button>
+                                <div className="flex items-center gap-0.5 -mr-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                        onClick={() => setViewingPollId(post.id)}
+                                        title="Detaylar"
+                                    >
+                                        <BarChart2 size={14} />
+                                    </Button>
+
+                                    {activeTab === "saved" && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-primary hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => handleUnsave(post.id)}
+                                            title="Kaydetmeyi Kaldır"
+                                        >
+                                            <Bookmark size={14} fill="currentColor" />
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Content */}
@@ -211,41 +242,58 @@ export default function SavedPollsList() {
     };
 
     return (
-        <Tabs defaultValue="posts" className="w-full">
-            <div className="flex items-center gap-4 mb-4">
-                {/* Header always visible */}
-                <div className="overflow-x-auto pb-2 scrollbar-hide">
-                    <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                        <TabsTrigger value="posts" className="flex-none px-4">Anketler {loading ? '' : posts.length}</TabsTrigger>
-                    </TabsList>
+        <>
+            <Tabs defaultValue="saved" className="w-full" onValueChange={setActiveTab} value={activeTab}>
+                <div className="flex items-center gap-4 mb-4">
+                    {/* Header always visible */}
+                    <div className="overflow-x-auto pb-2 scrollbar-hide">
+                        <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
+                            <TabsTrigger value="saved" className="flex-none px-4">
+                                Anketler {savedLoaded ? savedPosts.length : ''}
+                            </TabsTrigger>
+                            <TabsTrigger value="created" className="flex-none px-4">
+                                Geçmiş Anketler {createdLoaded ? createdPosts.length : ''}
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
+                    {!loading && currentPosts.length > 2 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
+                        >
+                            {isExpanded ? "Daralt" : "Tümünü Gör"}
+                        </Button>
+                    )}
                 </div>
-                {!loading && posts.length > 2 && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
-                    >
-                        {isExpanded ? "Daralt" : "Tümünü Gör"}
-                    </Button>
-                )}
-            </div>
 
-            {loading ? (
-                <div className="p-12 text-center text-muted-foreground animate-pulse min-h-[290px] flex items-center justify-center">
-                    Yükleniyor...
-                </div>
-            ) : posts.length === 0 ? (
-                <div className="text-center py-12 bg-black/5 dark:bg-zinc-800/40 rounded-xl border border-black/5 dark:border-white/10 min-h-[290px] flex flex-col items-center justify-center">
-                    <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-lg font-medium">Kaydedilen anket yok</h3>
-                    <p className="text-muted-foreground mt-2">Topluluk anketlerini buradan takip edebilirsiniz.</p>
-                </div>
-            ) : (
-                <TabsContent value="posts" className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[290px]">
-                    <PollGrid items={posts} />
-                </TabsContent>
+                {loading ? (
+                    <div className="p-12 text-center text-muted-foreground animate-pulse min-h-[290px] flex items-center justify-center">
+                        Yükleniyor...
+                    </div>
+                ) : currentPosts.length === 0 ? (
+                    <div className="text-center py-12 bg-black/5 dark:bg-zinc-800/40 rounded-xl border border-black/5 dark:border-white/10 min-h-[290px] flex flex-col items-center justify-center">
+                        <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-lg font-medium">Anket yok</h3>
+                        <p className="text-muted-foreground mt-2">
+                            {activeTab === "saved" ? "Kaydedilen anketler burada görünür." : "Henüz bir anket oluşturmadınız."}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mt-0 animate-in fade-in-50 slide-in-from-left-1 min-h-[290px]">
+                        <PollGrid items={currentPosts} />
+                    </div>
+                )}
+            </Tabs>
+            {viewingPollId && (
+                <PollVotersModal
+                    isOpen={!!viewingPollId}
+                    onClose={() => setViewingPollId(null)}
+                    postId={viewingPollId}
+                    pollOptions={currentPosts.find(p => p.id === viewingPollId)?.pollOptions || []}
+                />
             )}
-        </Tabs>
+        </>
     );
 }

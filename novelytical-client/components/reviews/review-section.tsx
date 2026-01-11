@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getReviewsByNovelId, Review } from "@/services/review-service";
+import { Review } from "@/services/review-service";
 import ReviewForm from "./review-form";
 import ReviewList from "./review-list";
 import { Badge } from "@/components/ui/badge";
@@ -13,25 +13,49 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ArrowUpDown } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 
 interface ReviewSectionProps {
     novelId: number;
+    coverImage?: string;
 }
 
-export default function ReviewSection({ novelId }: ReviewSectionProps) {
+export default function ReviewSection({ novelId, coverImage }: ReviewSectionProps) {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortOption, setSortOption] = useState("newest");
 
-    const fetchReviews = async () => {
-        setLoading(true);
-        const data = await getReviewsByNovelId(novelId, sortOption);
-        setReviews(data);
-        setLoading(false);
-    };
-
     useEffect(() => {
-        fetchReviews();
+        setLoading(true);
+        const reviewsRef = collection(db, "reviews");
+
+        let q = query(reviewsRef, where("novelId", "==", novelId));
+
+        // Sorting Logic
+        if (sortOption === "newest") {
+            q = query(q, orderBy("createdAt", "desc"));
+        } else if (sortOption === "oldest") {
+            q = query(q, orderBy("createdAt", "asc"));
+        } else if (sortOption === "highest-rating") {
+            q = query(q, orderBy("rating", "desc"), orderBy("createdAt", "desc"));
+        } else if (sortOption === "lowest-rating") {
+            q = query(q, orderBy("rating", "asc"), orderBy("createdAt", "desc"));
+        }
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const reviewsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Review));
+            setReviews(reviewsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching reviews realtime:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [novelId, sortOption]);
 
     return (
@@ -59,7 +83,7 @@ export default function ReviewSection({ novelId }: ReviewSectionProps) {
                 </Select>
             </div>
 
-            <ReviewForm novelId={novelId} onReviewAdded={fetchReviews} />
+            <ReviewForm novelId={novelId} coverImage={coverImage} onReviewAdded={() => { }} />
 
             {loading ? (
                 <div className="flex justify-center py-12">
@@ -67,7 +91,8 @@ export default function ReviewSection({ novelId }: ReviewSectionProps) {
                 </div>
             ) : (
                 <ReviewList reviews={reviews} onDelete={async (id) => {
-                    await fetchReviews(); // Refresh list after delete
+                    // Deletion logic handled by list component or service, 
+                    // onSnapshot updates the list automatically.
                 }} />
             )}
         </div>

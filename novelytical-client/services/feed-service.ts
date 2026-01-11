@@ -19,6 +19,7 @@ import {
     where,
     runTransaction
 } from "firebase/firestore";
+import { LevelService, XP_RULES } from "./level-service";
 
 const COLLECTION_NAME = "community_posts";
 const VOTES_COLLECTION = "post_votes"; // To track user votes on polls
@@ -65,6 +66,7 @@ export interface Post {
     userId: string;
     userName: string;
     userImage?: string;
+    userFrame?: string; // Added userFrame
     content: string;
     type: 'text' | 'poll';
     pollOptions?: PollOption[];
@@ -114,6 +116,7 @@ export const createPost = async (
     userId: string,
     userName: string,
     userImage: string | undefined,
+    userFrame: string | undefined, // Added userFrame
     content: string,
     type: 'text' | 'poll' = 'text',
     pollOptions: Omit<PollOption, 'votes'>[] = []
@@ -123,6 +126,7 @@ export const createPost = async (
             userId,
             userName,
             userImage,
+            userFrame: userFrame || null, // Store userFrame
             content,
             type,
             createdAt: serverTimestamp()
@@ -145,6 +149,10 @@ export const createPost = async (
         }
 
         await addDoc(collection(db, COLLECTION_NAME), postData);
+
+        // Award XP
+        await LevelService.gainXp(userId, XP_RULES.COMMUNITY_POST);
+
         return { success: true };
     } catch (error) {
         console.error("Error creating post:", error);
@@ -162,7 +170,7 @@ export const deletePost = async (postId: string) => {
     }
 };
 
-export const votePoll = async (postId: string, optionId: number, userId: string, userName?: string, userImage?: string) => {
+export const votePoll = async (postId: string, optionId: number, userId: string, userName?: string, userImage?: string, userFrame?: string) => {
     try {
         const voteId = `${postId}_${userId}`;
         const voteRef = doc(db, VOTES_COLLECTION, voteId);
@@ -240,6 +248,7 @@ export const votePoll = async (postId: string, optionId: number, userId: string,
                     userId,
                     userName: userName || 'Anonim',
                     userImage,
+                    userFrame: userFrame || null, // Added userFrame
                     optionId,
                     createdAt: serverTimestamp()
                 });
@@ -387,6 +396,7 @@ export interface VoteInfo {
     userId: string;
     userName?: string;
     userImage?: string;
+    userFrame?: string; // Added userFrame
     optionId: number;
 }
 
@@ -403,12 +413,50 @@ export const getPollVoters = async (postId: string): Promise<VoteInfo[]> => {
                 userId: data.userId,
                 userName: data.userName,
                 userImage: data.userImage,
+                userFrame: data.userFrame, // Added userFrame
                 optionId: data.optionId
             } as VoteInfo;
         });
     } catch (error) {
         console.error("Error fetching voters:", error);
         return [];
+    }
+};
+
+export const getUserCreatedPolls = async (userId: string): Promise<Post[]> => {
+    try {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            where("userId", "==", userId),
+            where("type", "==", "poll"),
+            orderBy("createdAt", "desc")
+        );
+
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Post));
+    } catch (error) {
+        console.error("Error fetching user created polls:", error);
+        return [];
+    }
+};
+
+export const updateUserIdentityInCommunityPosts = async (userId: string, userName: string, userImage: string | null, userFrame: string | null) => {
+    try {
+        const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
+        const snapshot = await getDocs(q);
+
+        const updatePromises = snapshot.docs.map(doc =>
+            updateDoc(doc.ref, { userName, userImage, userFrame })
+        );
+
+        await Promise.all(updatePromises);
+        return { success: true, count: snapshot.size };
+    } catch (error) {
+        console.error("Error syncing user identity in posts:", error);
+        throw error;
     }
 };
 

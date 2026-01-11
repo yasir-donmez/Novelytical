@@ -1,19 +1,124 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { getUserLibrary, LibraryItem, ReadingStatus } from "@/services/library-service";
+import { getUserLibrary, LibraryItem, ReadingStatus, updateLibraryProgress } from "@/services/library-service";
 import { novelService } from "@/services/novelService";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, BookOpen, Check, Calendar, Bookmark, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, BookOpen, Check, Calendar, Bookmark, Search, ChevronLeft, ChevronRight, Plus, Minus, Save } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { NovelListDto } from "@/types/novel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface LibrarySummary extends LibraryItem {
     novel?: NovelListDto;
 }
+
+const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate: (newChapter: number) => void }) => {
+    const [chapter, setChapter] = useState<string | number>(item.currentChapter || 0);
+    const [isOpen, setIsOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // Sync state when item changes
+    useEffect(() => {
+        setChapter(item.currentChapter || 0);
+    }, [item.currentChapter]);
+
+    const handleSave = async () => {
+        if (!item.userId) return;
+
+        const val = typeof chapter === 'string' ? parseInt(chapter) || 0 : chapter;
+
+        setSaving(true);
+        try {
+            await updateLibraryProgress(item.userId, item.novelId, val);
+            onUpdate(val);
+            setIsOpen(false);
+            toast.success("İlerleme kaydedildi");
+        } catch (error) {
+            toast.error("Kaydedilemedi");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleIncrement = () => {
+        setChapter(prev => {
+            const val = typeof prev === 'string' ? parseInt(prev) || 0 : prev;
+            const max = item.novel?.chapterCount || Infinity;
+            return Math.min(val + 1, max);
+        });
+    };
+
+    const handleDecrement = () => {
+        setChapter(prev => {
+            const val = typeof prev === 'string' ? parseInt(prev) || 0 : prev;
+            return Math.max(0, val - 1);
+        });
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (val === '') {
+            setChapter('');
+        } else {
+            const num = parseInt(val);
+            if (!isNaN(num)) {
+                const max = item.novel?.chapterCount || Infinity;
+                if (num <= max) {
+                    setChapter(num);
+                }
+            }
+        }
+    };
+
+    return (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+                <div
+                    role="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsOpen(prev => !prev);
+                    }}
+                    className="flex items-center gap-0.5 text-[10px] font-medium text-blue-400 bg-blue-500/5 px-1.5 py-0.5 rounded border border-blue-500/10 hover:bg-blue-500/20 cursor-pointer transition-colors relative z-10"
+                >
+                    {item.currentChapter}
+                    {item.novel?.chapterCount ? <span className="text-muted-foreground/50"> / {item.novel.chapterCount}</span> : ''}
+                </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-3 z-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                <div className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">Şu anki Bölüm</p>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={saving}>
+                            <Minus className="h-3 w-3" />
+                        </Button>
+                        <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={chapter}
+                            onChange={handleChange}
+                            className="h-8 text-center text-xs"
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                        />
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} disabled={saving}>
+                            <Plus className="h-3 w-3" />
+                        </Button>
+                    </div>
+                    <Button size="sm" className="w-full h-7 text-xs mt-1" onClick={handleSave} disabled={saving}>
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Kaydet"}
+                    </Button>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+};
 
 export default function UserLibraryList() {
     const { user } = useAuth();
@@ -61,6 +166,14 @@ export default function UserLibraryList() {
             case 'plan_to_read': return <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"><Calendar className="w-3 h-3 mr-1" /> Okuyacağım</Badge>;
             default: return null;
         }
+    };
+
+    const handleProgressUpdate = (novelId: number, newChapter: number) => {
+        setAllItems(prev => prev.map(item =>
+            item.novelId === novelId
+                ? { ...item, currentChapter: newChapter, updatedAt: ({ toDate: () => new Date() } as any) }
+                : item
+        ));
     };
 
     const LibraryGrid = ({ items }: { items: LibrarySummary[] }) => {
@@ -169,10 +282,10 @@ export default function UserLibraryList() {
                                     </div>
                                     <div className="flex justify-between items-end mt-auto">
                                         {item.status === 'reading' && (item.currentChapter || 0) > 0 && (
-                                            <div className="flex items-center gap-0.5 text-[10px] font-medium text-blue-400 bg-blue-500/5 px-1.5 py-0.5 rounded border border-blue-500/10">
-                                                {item.currentChapter}
-                                                {item.novel?.chapterCount ? <span className="text-muted-foreground/50"> / {item.novel.chapterCount}</span> : ''}
-                                            </div>
+                                            <ChapterEditPopover
+                                                item={item}
+                                                onUpdate={(newChapter) => handleProgressUpdate(item.novelId, newChapter)}
+                                            />
                                         )}
                                         <div className="text-[10px] text-muted-foreground ml-auto">
                                             {item.updatedAt?.toDate().toLocaleDateString('tr-TR')}

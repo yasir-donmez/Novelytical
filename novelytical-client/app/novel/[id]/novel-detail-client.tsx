@@ -123,7 +123,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 Yazar: <span className="text-foreground font-medium">{novel.author}</span>
                             </div>
                             <div className="flex items-center gap-4">
-                                <LibraryAction novelId={novel.id} />
+                                <LibraryAction novelId={novel.id} chapterCount={novel.chapterCount} />
                                 <SocialShare
                                     title={`${novel.title} - Novelytical'da keşfet!`}
                                     url={locationHref}

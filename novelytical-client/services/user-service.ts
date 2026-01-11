@@ -5,6 +5,7 @@ import {
     doc,
     getDoc,
     setDoc,
+    updateDoc,
     query,
     where,
     getDocs,
@@ -59,6 +60,19 @@ export const UserService = {
     },
 
     /**
+     * Updates an existing user profile.
+     */
+    async updateUserProfile(uid: string, username: string, photoURL?: string): Promise<void> {
+        const userRef = doc(db, USERS_COLLECTION, uid);
+
+        await updateDoc(userRef, {
+            username: username.trim(),
+            username_lower: username.toLowerCase().trim(),
+            photoURL: photoURL || null
+        });
+    },
+
+    /**
      * Generates a few available username suggestions based on the input.
      */
     async suggestUsernames(baseUsername: string): Promise<string[]> {
@@ -83,5 +97,46 @@ export const UserService = {
         }
 
         return suggestions;
+    },
+
+    /**
+     * Resolves a username to a User ID.
+     * Returns the uid if found, or null.
+     */
+    async getUserIdByUsername(username: string): Promise<string | null> {
+        const normalizedUsername = username.toLowerCase().trim().replace('@', '');
+        const q = query(
+            collection(db, USERS_COLLECTION),
+            where("username_lower", "==", normalizedUsername)
+        );
+
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            return snapshot.docs[0].id;
+        }
+        return null;
+    },
+
+    /**
+     * Fetches the full user profile from Firestore.
+     */
+    async getUserProfile(uid: string): Promise<UserProfile | null> {
+        try {
+            const docRef = doc(db, USERS_COLLECTION, uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                return {
+                    uid,
+                    username: data.username,
+                    email: data.email,
+                    photoURL: data.photoURL,
+                    createdAt: data.createdAt
+                };
+            }
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+        }
+        return null;
     }
 };

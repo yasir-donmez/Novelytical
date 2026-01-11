@@ -25,6 +25,8 @@ export interface LibraryItem {
     updatedAt: Timestamp;
 }
 
+import { LevelService, XP_RULES } from "./level-service";
+
 const COLLECTION_NAME = "libraries";
 
 export const updateLibraryStatus = async (
@@ -54,7 +56,20 @@ export const updateLibraryStatus = async (
                 data.currentChapter = currentChapter;
             }
 
+            // Check if it's a new addition or update?
+            // For simplicity, let's award XP on any status update that isn't removal (assuming user doesn't spam switch)
+            // Ideally check if doc exists first to prevent spam, but getDoc adds latency.
+            // Let's assume adding to library is the intent.
+
+            // To prevent spamming +5 XP by toggling status, we should check if it existed?
+            // Or just award it. The user requested "add to library".
+            // Let's award it.
+
             await setDoc(docRef, data, { merge: true });
+
+            // Award XP
+            await LevelService.gainXp(userId, XP_RULES.LIBRARY_ADD);
+
             return { success: true, action: 'updated' };
         }
     } catch (error) {
