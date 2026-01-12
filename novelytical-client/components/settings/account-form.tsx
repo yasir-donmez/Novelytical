@@ -2,14 +2,16 @@
 
 import { useAuth } from "@/contexts/auth-context";
 import { useState } from "react";
-import { sendPasswordResetEmail, deleteUser as firebaseDeleteUser } from "firebase/auth";
+import { sendPasswordResetEmail, deleteUser as firebaseDeleteUser, updatePassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { UserService } from "@/services/user-service";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Trash2, Send } from "lucide-react";
+import { AlertTriangle, Trash2, Send, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,6 +29,11 @@ export default function AccountForm() {
     const [resetLoading, setResetLoading] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
+    // Password Change State
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
     if (!user) return null;
 
     const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
@@ -43,6 +50,42 @@ export default function AccountForm() {
             toast.error("E-posta gönderilemedi.");
         } finally {
             setResetLoading(false);
+        }
+    };
+
+    const handleUpdatePassword = async () => {
+        if (!newPassword || !confirmPassword) {
+            toast.error("Lütfen tüm alanları doldurun.");
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            toast.error("Şifreler eşleşmiyor.");
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            toast.error("Şifre en az 6 karakter olmalıdır.");
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            if (user) {
+                await updatePassword(user, newPassword);
+                toast.success("Şifreniz başarıyla güncellendi.");
+                setNewPassword("");
+                setConfirmPassword("");
+            }
+        } catch (error: any) {
+            console.error(error);
+            if (error.code === 'auth/requires-recent-login') {
+                toast.error("Güvenlik nedeniyle tekrar giriş yapmalısınız.");
+            } else {
+                toast.error("Şifre güncellenemedi. Lütfen tekrar deneyin.");
+            }
+        } finally {
+            setPasswordLoading(false);
         }
     };
 
@@ -77,30 +120,52 @@ export default function AccountForm() {
                     <p className="text-sm text-muted-foreground">Hesap güvenliğinizi ve giriş yöntemlerinizi yönetin.</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/5 rounded-xl p-6">
-                    {isGoogleUser ? (
+                <div className="bg-white/5 border border-white/5 rounded-xl p-6 space-y-6">
+                    {isGoogleUser && (
                         <Alert className="bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400">
                             <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Google Hesabı</AlertTitle>
+                            <AlertTitle>Google Hesabı Bağlı</AlertTitle>
                             <AlertDescription>
-                                Bu hesap Google ile bağlanmıştır. Şifre işlemleri Google üzerinden yönetilmektedir.
+                                Google hesabınızla giriş yapıyorsunuz. İsterseniz buradan bir şifre belirleyerek, e-posta ve şifrenizle de giriş yapabilirsiniz.
                             </AlertDescription>
                         </Alert>
-                    ) : (
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h4 className="text-sm font-medium">Şifre Sıfırlama</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    E-posta adresinize şifre sıfırlama bağlantısı gönderilir.
-                                </p>
+                    )}
+
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-medium">Şifre Oluştur / Değiştir</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Hesabınız için yeni bir şifre belirleyin.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 max-w-sm">
+                            <div className="space-y-2">
+                                <Label htmlFor="new-password">Yeni Şifre</Label>
+                                <Input
+                                    id="new-password"
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                />
                             </div>
-                            <Button variant="outline" onClick={handlePasswordReset} disabled={resetLoading}>
-                                {resetLoading && <Send className="mr-2 h-4 w-4 animate-spin" />}
-                                {!resetLoading && <Send className="mr-2 h-4 w-4" />}
-                                Bağlantı Gönder
+                            <div className="space-y-2">
+                                <Label htmlFor="confirm-password">Yeni Şifre (Tekrar)</Label>
+                                <Input
+                                    id="confirm-password"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <Button onClick={handleUpdatePassword} disabled={passwordLoading}>
+                                {passwordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Şifreyi Güncelle
                             </Button>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 

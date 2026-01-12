@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserHoverCard } from "@/components/ui/user-hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
@@ -96,16 +97,31 @@ export function PollVotersModal({ isOpen, onClose, postId, pollOptions }: PollVo
                                             <div className="space-y-3">
                                                 {optionVoters.map((voter) => (
                                                     <div key={voter.userId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                                                        <UserAvatar
-                                                            src={voter.userImage}
-                                                            alt={voter.userName}
-                                                            frameId={voter.userFrame}
-                                                            className="h-8 w-8"
-                                                        />
+                                                        <UserHoverCard
+                                                            userId={voter.userId}
+                                                            username={voter.userName || "Kullanıcı"}
+                                                            image={voter.userImage}
+                                                            frame={voter.userFrame}
+                                                        >
+                                                            <UserAvatar
+                                                                src={voter.userImage}
+                                                                alt={voter.userName}
+                                                                frameId={voter.userFrame}
+                                                                className="h-10 w-10 border border-border"
+                                                                fallbackClass="bg-primary/10 text-primary font-bold"
+                                                            />
+                                                        </UserHoverCard>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium truncate">
-                                                                {voter.userName || "Anonim"}
-                                                            </p>
+                                                            <UserHoverCard
+                                                                userId={voter.userId}
+                                                                username={voter.userName || "Kullanıcı"}
+                                                                image={voter.userImage}
+                                                                frame={voter.userFrame}
+                                                            >
+                                                                <p className="font-medium hover:underline decoration-primary cursor-pointer truncate">
+                                                                    {voter.userName || "İsimsiz Kullanıcı"}
+                                                                </p>
+                                                            </UserHoverCard>
                                                         </div>
                                                     </div>
                                                 ))}

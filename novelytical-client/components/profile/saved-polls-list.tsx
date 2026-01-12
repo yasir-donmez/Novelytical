@@ -4,6 +4,7 @@ import { getSavedPostsData, Post, toggleSavePost, getUserCreatedPolls } from "@/
 import { BarChart2, Bookmark, ExternalLink, ChevronLeft, ChevronRight, Hash } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserHoverCard } from "@/components/ui/user-hover-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -40,23 +41,22 @@ export default function SavedPollsList() {
     useEffect(() => {
         if (!user) return;
         loadPosts();
-    }, [user, activeTab]);
+    }, [user]);
 
     const loadPosts = async () => {
         setLoading(true);
         try {
             if (user) {
-                if (activeTab === "saved") {
-                    // Only load if not already loaded to prevent redundant fetches? 
-                    // No, we might want to refresh. Let's keep it simple but mark as loaded.
-                    const data = await getSavedPostsData(user.uid);
-                    setSavedPosts(data.filter(p => p.type === 'poll'));
-                    setSavedLoaded(true);
-                } else {
-                    const data = await getUserCreatedPolls(user.uid);
-                    setCreatedPosts(data);
-                    setCreatedLoaded(true);
-                }
+                const [savedData, createdData] = await Promise.all([
+                    getSavedPostsData(user.uid),
+                    getUserCreatedPolls(user.uid)
+                ]);
+
+                setSavedPosts(savedData.filter(p => p.type === 'poll'));
+                setSavedLoaded(true);
+
+                setCreatedPosts(createdData);
+                setCreatedLoaded(true);
             }
         } catch (error) {
             console.error("Failed to load polls", error);
@@ -160,14 +160,30 @@ export default function SavedPollsList() {
                         >
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-3">
-                                <UserAvatar
-                                    src={post.userImage}
-                                    alt={post.userName}
-                                    frameId={post.userFrame}
-                                    className="h-8 w-8"
-                                />
+                                <UserHoverCard
+                                    userId={post.userId}
+                                    username={post.userName}
+                                    image={post.userImage}
+                                    frame={post.userFrame}
+                                    className="shrink-0"
+                                >
+                                    <UserAvatar
+                                        src={post.userImage}
+                                        alt={post.userName}
+                                        frameId={post.userFrame}
+                                        className="h-9 w-9 border border-border"
+                                        fallbackClass="bg-primary/10 text-primary"
+                                    />
+                                </UserHoverCard>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm truncate">{post.userName}</p>
+                                    <UserHoverCard
+                                        userId={post.userId}
+                                        username={post.userName}
+                                        image={post.userImage}
+                                        frame={post.userFrame}
+                                    >
+                                        <p className="font-semibold text-sm truncate hover:underline decoration-primary cursor-pointer">{post.userName}</p>
+                                    </UserHoverCard>
                                     <p className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</p>
                                 </div>
                                 <div className="flex items-center gap-0.5 -mr-2">
@@ -249,10 +265,10 @@ export default function SavedPollsList() {
                     <div className="overflow-x-auto pb-2 scrollbar-hide">
                         <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
                             <TabsTrigger value="saved" className="flex-none px-4">
-                                Anketler {savedLoaded ? savedPosts.length : ''}
+                                Anketler {savedLoaded && <span className="ml-1 font-bold">{savedPosts.length}</span>}
                             </TabsTrigger>
                             <TabsTrigger value="created" className="flex-none px-4">
-                                Geçmiş Anketler {createdLoaded ? createdPosts.length : ''}
+                                Geçmiş Anketler {createdLoaded && <span className="ml-1 font-bold">{createdPosts.length}</span>}
                             </TabsTrigger>
                         </TabsList>
                     </div>

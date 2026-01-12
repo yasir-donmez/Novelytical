@@ -17,7 +17,7 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, MessageCircle } from "lucide-react";
+import { Bell, Check, MessageCircle, Heart, UserPlus, Circle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -114,18 +114,27 @@ export default function NotificationBell() {
                                     onClick={() => handleRead(notification.id, notification.sourceLink)}
                                 >
                                     <DropdownMenuItem className="p-3 cursor-pointer items-start gap-3 mx-1">
-                                        {notification.senderImage ? (
-                                            <UserAvatar
-                                                src={notification.senderImage}
-                                                alt={notification.senderName}
-                                                frameId={notification.senderFrame}
-                                                className="h-8 w-8 shrink-0"
-                                            />
-                                        ) : (
-                                            <div className="mt-1 h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                                                <MessageCircle className="h-4 w-4 text-purple-400" />
+                                        <div className="relative">
+                                            {notification.senderImage ? (
+                                                <UserAvatar
+                                                    src={notification.senderImage}
+                                                    alt={notification.senderName}
+                                                    frameId={notification.senderFrame}
+                                                    className="h-10 w-10 shrink-0 border border-white/10"
+                                                />
+                                            ) : (
+                                                <div className="h-10 w-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0">
+                                                    <Bell className="h-4 w-4 text-zinc-400" />
+                                                </div>
+                                            )}
+                                            <div className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 shadow-sm border border-border">
+                                                {notification.type === 'like' && <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 p-0.5" />}
+                                                {notification.type === 'dislike' && <Heart className="w-3.5 h-3.5 text-gray-500 p-0.5" />}
+                                                {notification.type === 'reply' && <MessageCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500 p-0.5" />}
+                                                {notification.type === 'follow' && <UserPlus className="w-3.5 h-3.5 text-green-500 fill-green-500 p-0.5" />}
+                                                {notification.type === 'system' && <Bell className="w-3.5 h-3.5 text-amber-500 p-0.5" />}
                                             </div>
-                                        )}
+                                        </div>
                                         <div className="space-y-1 flex-1">
                                             <p className="text-sm leading-snug">
                                                 {notification.content}

@@ -1,10 +1,11 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Palette, Shield } from "lucide-react";
+import { User, Shield, Bell, Users } from "lucide-react";
 import ProfileForm from "@/components/settings/profile-form";
-import AppearanceForm from "@/components/settings/appearance-form";
+import ConnectionsForm from "@/components/settings/connections-form";
 import AccountForm from "@/components/settings/account-form";
+import NotificationsForm from "@/components/settings/notifications-form";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -36,11 +37,14 @@ export default function SettingsPage() {
                             <TabsTrigger value="profile" className="gap-2 px-6">
                                 <User className="h-4 w-4" /> Profil
                             </TabsTrigger>
-                            <TabsTrigger value="appearance" className="gap-2 px-6">
-                                <Palette className="h-4 w-4" /> Görünüm
+                            <TabsTrigger value="connections" className="gap-2 px-6">
+                                <Users className="h-4 w-4" /> Bağlantılar
                             </TabsTrigger>
                             <TabsTrigger value="account" className="gap-2 px-6">
                                 <Shield className="h-4 w-4" /> Hesap
+                            </TabsTrigger>
+                            <TabsTrigger value="notifications" className="gap-2 px-6">
+                                <Bell className="h-4 w-4" /> Bildirimler
                             </TabsTrigger>
                         </TabsList>
 
@@ -49,12 +53,16 @@ export default function SettingsPage() {
                                 <ProfileForm />
                             </TabsContent>
 
-                            <TabsContent value="appearance" className="animate-in fade-in-50 slide-in-from-left-2 duration-300 focus-visible:outline-none">
-                                <AppearanceForm />
+                            <TabsContent value="connections" className="animate-in fade-in-50 slide-in-from-left-2 duration-300 focus-visible:outline-none">
+                                <ConnectionsForm />
                             </TabsContent>
 
                             <TabsContent value="account" className="animate-in fade-in-50 slide-in-from-left-2 duration-300 focus-visible:outline-none">
                                 <AccountForm />
+                            </TabsContent>
+
+                            <TabsContent value="notifications" className="animate-in fade-in-50 slide-in-from-left-2 duration-300 focus-visible:outline-none">
+                                <NotificationsForm />
                             </TabsContent>
                         </div>
                     </Tabs>

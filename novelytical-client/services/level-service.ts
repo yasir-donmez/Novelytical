@@ -18,7 +18,7 @@ export interface LevelFrame {
 }
 
 export const LEVEL_FRAMES: LevelFrame[] = [
-    { id: 'default', name: 'Çaylak', minLevel: 0, color: 'text-gray-400', cssClass: 'border-2 border-gray-200 dark:border-gray-800' },
+    { id: 'default', name: 'Çaylak', minLevel: 0, color: 'text-gray-400', cssClass: 'border-2 border-gray-500/50 dark:border-gray-600 ring-2 ring-gray-400/20' },
     { id: 'bronze', name: 'Acemi', minLevel: 5, color: 'text-amber-700', cssClass: 'frame-bronze' },
     { id: 'silver', name: 'Gezgin', minLevel: 10, color: 'text-slate-400', cssClass: 'frame-silver' },
     { id: 'gold', name: 'Bilge', minLevel: 15, color: 'text-yellow-500', cssClass: 'frame-gold' },

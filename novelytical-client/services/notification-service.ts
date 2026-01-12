@@ -15,7 +15,7 @@ import {
     writeBatch
 } from "firebase/firestore";
 
-export type NotificationType = 'reply' | 'system' | 'like' | 'dislike';
+export type NotificationType = 'reply' | 'system' | 'like' | 'dislike' | 'follow';
 
 export interface Notification {
     id: string;

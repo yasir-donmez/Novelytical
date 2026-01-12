@@ -10,11 +10,14 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import UserInteractionList from "@/components/profile/user-interaction-list";
 import UserLibraryList from "@/components/profile/user-library-list";
 import SavedPollsList from "@/components/profile/saved-polls-list";
-import { BookOpen, Mail, CalendarDays, MessageSquare, BarChart2, Settings } from "lucide-react";
+import NotificationList from "@/components/notifications/notification-list";
+import { BookOpen, Mail, CalendarDays, MessageSquare, BarChart2, Settings, Bell } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LevelService, UserLevelData, LEVEL_FRAMES } from "@/services/level-service";
+import { FollowService } from "@/services/follow-service";
 import { cn } from "@/lib/utils";
+import { FollowListDialog } from "@/components/profile/follow-list-dialog";
 
 export default function ProfilePage() {
     const { user, loading } = useAuth();
@@ -22,6 +25,11 @@ export default function ProfilePage() {
 
     const [levelData, setLevelData] = useState<UserLevelData | null>(null);
     const [progress, setProgress] = useState({ current: 0, next: 100, percent: 0 });
+    const [socialStats, setSocialStats] = useState({ followers: 0, following: 0 });
+
+    // Dialog State
+    const [isFollowDialogOpen, setIsFollowDialogOpen] = useState(false);
+    const [followDialogTab, setFollowDialogTab] = useState<"followers" | "following">("followers");
 
     useEffect(() => {
         if (!loading && !user) {
@@ -37,9 +45,41 @@ export default function ProfilePage() {
                 if (data) {
                     setProgress(LevelService.getLevelProgress(data.xp));
                 }
+
+                // Sync Auth profile to Firestore (ensures photoURL is always up-to-date)
+                if (user.photoURL || user.displayName) {
+                    try {
+                        const { UserService } = await import("@/services/user-service");
+                        await UserService.updateUserProfile(
+                            user.uid,
+                            user.displayName || user.email?.split('@')[0] || "User",
+                            user.photoURL || undefined
+                        );
+                    } catch (e) {
+                        // Silent fail - not critical
+                    }
+                }
             };
             loadLevel();
         }
+    }, [user]);
+
+    // Real-time follower/following count subscription
+    useEffect(() => {
+        if (!user) return;
+
+        const unsubFollowers = FollowService.subscribeToFollowerCount(user.uid, (count) => {
+            setSocialStats(prev => ({ ...prev, followers: count }));
+        });
+
+        const unsubFollowing = FollowService.subscribeToFollowingCount(user.uid, (count) => {
+            setSocialStats(prev => ({ ...prev, following: count }));
+        });
+
+        return () => {
+            unsubFollowers();
+            unsubFollowing();
+        };
     }, [user]);
 
     if (loading) {
@@ -96,7 +136,29 @@ export default function ProfilePage() {
                                 {user.email}
                             </p>
 
+                        </div>
 
+                        <div className="flex items-center justify-center md:justify-start gap-6 text-sm">
+                            <div
+                                className="flex flex-col items-center md:items-start cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                    setFollowDialogTab("followers");
+                                    setIsFollowDialogOpen(true);
+                                }}
+                            >
+                                <span className="font-bold text-lg">{socialStats.followers}</span>
+                                <span className="text-muted-foreground">Takipçi</span>
+                            </div>
+                            <div
+                                className="flex flex-col items-center md:items-start cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                    setFollowDialogTab("following");
+                                    setIsFollowDialogOpen(true);
+                                }}
+                            >
+                                <span className="font-bold text-lg">{socialStats.following}</span>
+                                <span className="text-muted-foreground">Takip Edilen</span>
+                            </div>
                         </div>
 
 
@@ -120,6 +182,16 @@ export default function ProfilePage() {
                     <UserLibraryList />
                 </div>
 
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span className="bg-amber-500/20 p-2 rounded-lg text-amber-400">
+                            <Bell size={20} />
+                        </span>
+                        Bildirimler
+                    </h2>
+                    <NotificationList />
+                </div>
+
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-16 shadow-lg">
                     <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                         <span className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
@@ -140,6 +212,15 @@ export default function ProfilePage() {
                     <SavedPollsList />
                 </div>
             </div>
+
+            {user && (
+                <FollowListDialog
+                    userId={user.uid}
+                    isOpen={isFollowDialogOpen}
+                    onClose={() => setIsFollowDialogOpen(false)}
+                    defaultTab={followDialogTab}
+                />
+            )}
         </div>
     );
 }

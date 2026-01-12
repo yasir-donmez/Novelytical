@@ -7,6 +7,7 @@ import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSave
 import { createNotification } from '@/services/notification-service';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { UserHoverCard } from '@/components/ui/user-hover-card';
 import { LevelService, UserLevelData } from '@/services/level-service';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -489,7 +490,7 @@ export function CommunityPulse() {
                                 </div>
                             </div>
 
-                            <Card className="border-border/50 bg-background/50 backdrop-blur-sm h-[calc(100vh-180px)] min-h-[500px] flex flex-col relative overflow-visible ring-1 ring-border/50 shadow-xl rounded-xl py-0">
+                            <Card className="border-border/50 bg-background/50 backdrop-blur-sm h-[calc(100vh-180px)] min-h-[500px] flex flex-col relative overflow-visible ring-1 ring-border/50 shadow-xl rounded-xl py-0 z-20">
 
                                 {/* FEED TAB */}
                                 <TabsContent value="feed" className="flex-1 flex flex-col h-full mt-0 data-[state=inactive]:hidden">
@@ -510,13 +511,21 @@ export function CommunityPulse() {
                                                 return (
                                                     <div key={post.id} className={`w-full flex mb-3 ${isOwner ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex gap-4 max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            <UserAvatar
-                                                                src={post.userImage}
-                                                                alt={post.userName}
-                                                                frameId={post.userFrame}
-                                                                className="h-8 w-8 shrink-0 self-start"
-                                                                fallbackClass="text-[10px] bg-primary/10 text-primary"
-                                                            />
+                                                            <UserHoverCard
+                                                                userId={post.userId}
+                                                                username={post.userName}
+                                                                image={post.userImage}
+                                                                frame={post.userFrame}
+                                                                className="shrink-0 self-start"
+                                                            >
+                                                                <UserAvatar
+                                                                    src={post.userImage}
+                                                                    alt={post.userName}
+                                                                    frameId={post.userFrame}
+                                                                    className="h-8 w-8 transition-transform hover:scale-105"
+                                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                                />
+                                                            </UserHoverCard>
                                                             <div className={`relative min-w-0 flex-1 p-3 shadow-sm transition-all overflow-hidden
                                                             ${isOwner
                                                                     ? 'bg-primary/10 rounded-2xl rounded-tr-none border border-primary/20'
@@ -525,7 +534,16 @@ export function CommunityPulse() {
                                                         `}>
                                                                 <div className="flex items-center justify-between mb-1">
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <span className="font-semibold text-xs text-foreground/90">{post.userName}</span>
+                                                                        <UserHoverCard
+                                                                            userId={post.userId}
+                                                                            username={post.userName}
+                                                                            image={post.userImage}
+                                                                            frame={post.userFrame}
+                                                                        >
+                                                                            <span className="font-semibold text-xs text-foreground/90 hover:underline decoration-primary transition-all cursor-pointer">
+                                                                                {post.userName}
+                                                                            </span>
+                                                                        </UserHoverCard>
                                                                         <span className="text-[10px] text-muted-foreground/60">{timeAgo(post.createdAt)}</span>
                                                                     </div>
                                                                     {/* Delete button for text posts only - top right */}
@@ -832,17 +850,34 @@ export function CommunityPulse() {
                                             </div>
                                         ) : posts.filter(p => p.type === 'poll').map((post) => (
                                             <div key={post.id} className="flex gap-4 w-full max-w-2xl mx-auto">
-                                                <UserAvatar
-                                                    src={post.userImage}
-                                                    alt={post.userName}
-                                                    frameId={post.userFrame}
-                                                    className="h-8 w-8 shrink-0 self-start"
-                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
-                                                />
+                                                <UserHoverCard
+                                                    userId={post.userId}
+                                                    username={post.userName}
+                                                    image={post.userImage}
+                                                    frame={post.userFrame}
+                                                    className="shrink-0 self-start"
+                                                >
+                                                    <UserAvatar
+                                                        src={post.userImage}
+                                                        alt={post.userName}
+                                                        frameId={post.userFrame}
+                                                        className="h-8 w-8 transition-transform hover:scale-105"
+                                                        fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                    />
+                                                </UserHoverCard>
 
                                                 <div className="flex flex-col min-w-0 items-start w-full">
                                                     <div className="flex items-center gap-2 mb-1 px-1">
-                                                        <span className="text-sm font-bold text-foreground/90">{post.userName}</span>
+                                                        <UserHoverCard
+                                                            userId={post.userId}
+                                                            username={post.userName}
+                                                            image={post.userImage}
+                                                            frame={post.userFrame}
+                                                        >
+                                                            <span className="text-sm font-bold text-foreground/90 hover:underline decoration-primary cursor-pointer">
+                                                                {post.userName}
+                                                            </span>
+                                                        </UserHoverCard>
                                                         <span className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</span>
                                                     </div>
 
@@ -972,17 +1007,34 @@ export function CommunityPulse() {
                                     ) : (
                                         reviews.map((review) => (
                                             <div key={review.id} className="flex gap-4 w-full max-w-2xl mx-auto">
-                                                <UserAvatar
-                                                    src={review.userImage}
-                                                    alt={review.userName}
-                                                    frameId={review.userFrame}
-                                                    className="h-8 w-8 shrink-0 self-start"
-                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
-                                                />
+                                                <UserHoverCard
+                                                    userId={review.userId}
+                                                    username={review.userName}
+                                                    image={review.userImage}
+                                                    frame={review.userFrame}
+                                                    className="shrink-0 self-start"
+                                                >
+                                                    <UserAvatar
+                                                        src={review.userImage}
+                                                        alt={review.userName}
+                                                        frameId={review.userFrame}
+                                                        className="h-8 w-8 transition-transform hover:scale-105"
+                                                        fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                    />
+                                                </UserHoverCard>
 
                                                 <div className="flex flex-col min-w-0 items-start w-full">
                                                     <div className="flex items-center gap-2 mb-1 px-1">
-                                                        <span className="text-sm font-bold text-foreground/90">{review.userName}</span>
+                                                        <UserHoverCard
+                                                            userId={review.userId}
+                                                            username={review.userName}
+                                                            image={review.userImage}
+                                                            frame={review.userFrame}
+                                                        >
+                                                            <span className="text-sm font-bold text-foreground/90 hover:underline decoration-primary cursor-pointer">
+                                                                {review.userName}
+                                                            </span>
+                                                        </UserHoverCard>
                                                         <span className="text-[10px] text-muted-foreground">{timeAgo(review.createdAt)}</span>
                                                     </div>
 

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserHoverCard } from "@/components/ui/user-hover-card";
 import { cn } from "@/lib/utils";
 
 interface CommentItemProps {
@@ -186,21 +187,42 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                             <Trash2 size={14} className="text-muted-foreground/50" />
                         </div>
                     ) : (
-                        <UserAvatar
-                            src={avatarSrc}
-                            alt={displayName}
-                            frameId={comment.userFrame}
+                        <UserHoverCard
+                            userId={comment.userId}
+                            username={comment.userName}
+                            image={avatarSrc}
+                            frame={comment.userFrame}
                             className="h-8 w-8 flex-shrink-0 shadow-sm"
-                            fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold"
-                        />
+                        >
+                            <UserAvatar
+                                src={avatarSrc}
+                                alt={displayName}
+                                frameId={comment.userFrame}
+                                className="h-8 w-8 transition-transform hover:scale-105"
+                                fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold"
+                            />
+                        </UserHoverCard>
                     )}
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
-                            <span className={cn("font-semibold text-sm", isDeleted ? "text-muted-foreground italic" : "text-foreground/95")}>
-                                {displayName}
-                            </span>
+                            {isDeleted ? (
+                                <span className="font-semibold text-sm text-muted-foreground italic">
+                                    {displayName}
+                                </span>
+                            ) : (
+                                <UserHoverCard
+                                    userId={comment.userId}
+                                    username={comment.userName}
+                                    image={avatarSrc}
+                                    frame={comment.userFrame}
+                                >
+                                    <span className="font-semibold text-sm text-foreground/95 hover:underline decoration-primary transition-all cursor-pointer">
+                                        {displayName}
+                                    </span>
+                                </UserHoverCard>
+                            )}
                             {!isDeleted && (
                                 <>
                                     <span className="text-[10px] text-muted-foreground/80">•</span>

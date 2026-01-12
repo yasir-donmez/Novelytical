@@ -214,7 +214,7 @@ export default function UserLibraryList() {
 
         if (items.length === 0) {
             return (
-                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50">
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border border-dashed border-border/40 rounded-lg bg-black/5 dark:bg-zinc-800/50 mt-2">
                     <div className="flex items-center gap-2">
                         <Bookmark className="w-5 h-5 opacity-50" />
                         <p className="text-sm">Bu liste boş.</p>

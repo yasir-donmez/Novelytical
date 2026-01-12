@@ -51,7 +51,7 @@ export default function RegisterPage() {
                 try {
                     // Check if profile exists first (optional but good practice)
                     // For now, assuming standard flow
-                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "");
+                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "", result.user.photoURL || undefined);
                 } catch (e) {
                     // Ignore if already exists
                 }

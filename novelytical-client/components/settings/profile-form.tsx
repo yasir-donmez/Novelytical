@@ -220,9 +220,9 @@ export default function ProfileForm() {
                         <div className="space-y-3">
                             <Label>Avatar Değiştir</Label>
                             <Tabs defaultValue="select" onValueChange={setCurrentTab}>
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="select">Karakter Seç</TabsTrigger>
-                                    <TabsTrigger value="custom">URL Yapıştır</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-2 bg-black/20 p-1 border border-white/5 h-auto">
+                                    <TabsTrigger value="select" className="py-2.5">Karakter Seç</TabsTrigger>
+                                    <TabsTrigger value="custom" className="py-2.5">URL Yapıştır</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="select" className="mt-4">
                                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
