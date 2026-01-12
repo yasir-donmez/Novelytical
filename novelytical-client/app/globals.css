@@ -318,94 +318,32 @@ body {
   }
   /* Avatar Frames */
   
-  /* Bronze: Aged metallic */
   .frame-bronze {
-    @apply border-transparent;
-    background: linear-gradient(135deg, #cd7f32 0%, #8b4513 50%, #cd7f32 100%);
-    box-shadow: 0 0 0 2px #8b4513, inset 0 0 10px rgba(0,0,0,0.6);
+    border: 2px solid #cd7f32;
+    box-shadow: 0 0 4px rgba(205, 127, 50, 0.3);
   }
 
-  /* Silver: Shiny / Chrome */
   .frame-silver {
-    @apply border-transparent;
-    background: linear-gradient(45deg, #e0e0e0 0%, #ffffff 25%, #a0a0a0 50%, #ffffff 75%, #e0e0e0 100%);
-    background-size: 200% 200%;
-    box-shadow: 0 0 0 2px #a0a0a0, 0 0 10px rgba(255, 255, 255, 0.5);
-    animation: shine-silver-bg 3s infinite linear;
-    transform: translateZ(0); /* Fix for potential layout shifting/flickering */
+    border: 2px solid #c0c0c0;
+    box-shadow: 0 0 5px rgba(192, 192, 192, 0.3);
   }
 
-  @keyframes shine-silver-bg {
-    0% { filter: brightness(100%); background-position: 0% 50%; }
-    50% { filter: brightness(130%); background-position: 100% 50%; }
-    100% { filter: brightness(100%); background-position: 0% 50%; }
-  }
-
-  /* Gold: Sparkling & Rich */
   .frame-gold {
-    @apply border-transparent;
-    background: radial-gradient(ellipse at center, #ffd700 0%, #b8860b 60%, #8b6508 100%);
-    box-shadow: 0 0 0 2px #b8860b, 0 0 15px rgba(255, 215, 0, 0.6);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .frame-gold::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.8) 10%, transparent 10.5%);
-    background-size: 20px 20px;
-    opacity: 0.3;
-    animation: spin-slow 20s linear infinite;
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
   }
 
-  /* Diamond: Ice Blue & Glassy */
   .frame-diamond {
-    @apply border-transparent;
-    background: linear-gradient(135deg, #e0ffff 0%, #00ffff 50%, #00ced1 100%);
-    box-shadow: 0 0 5px #00ffff, 0 0 15px #00ced1, inset 0 0 10px rgba(255,255,255,0.8);
-    backdrop-filter: blur(4px);
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
   }
 
-  /* Founder: Animated Gradient */
   .frame-founder {
-    @apply border-transparent p-[2px];
-    background: linear-gradient(
-      90deg, 
-      #ff0000, 
-      #ff7f00, 
-      #ffff00, 
-      #00ff00, 
-      #0000ff, 
-      #4b0082, 
-      #9400d3, 
-      #ff0000
-    );
-    background-size: 400% 400%;
-    animation: rainbow-border 6s linear infinite;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
-  }
-
-  /* Utility Animations */
-  @keyframes shine-silver {
-    0% { filter: brightness(100%); background-position: 0% 50%; }
-    50% { filter: brightness(130%); background-position: 100% 50%; }
-    100% { filter: brightness(100%); background-position: 0% 50%; }
-  }
-
-  @keyframes rotate-shine {
-    0% { transform: rotate(0deg); opacity: 0; }
-    50% { opacity: 0.5; }
-    100% { transform: rotate(360deg); opacity: 0; }
-  }
-
-  @keyframes spin-slow {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    border: 2px solid transparent;
+    background: linear-gradient(#18181b, #18181b) padding-box,
+                linear-gradient(90deg, #a855f7, #ec4899, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7) border-box;
+    background-size: 100% 100%, 200% 200%;
+    animation: rainbow-slide 4s linear infinite;
+    box-shadow: 0 0 4px rgba(168, 85, 247, 0.2);
   }
 }
