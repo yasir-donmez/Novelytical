@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { ScrollManager } from "@/components/scroll-manager";
 import NotificationBell from "@/components/notifications/notification-bell";
 import { SiteHeader } from "@/components/site-header";
+import { ChatFloatingDialog } from "@/components/chat/chat-floating-dialog";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -85,6 +86,7 @@ export default function RootLayout({
               <ScrollManager />
               {children}
               <Footer />
+              <ChatFloatingDialog />
             </ThemeProvider>
           </QueryProvider>
         </AuthProvider>
