@@ -166,6 +166,7 @@
   - [x] Profil güncelleme formu.
   - [x] Tema ayarları.
   - [x] Hesap silme fonksiyonu.
+  - [x] Bildirim Ayarları (Tercihler) [YENİ].
 - [x] **Seviye Sistemi (Gamification) [YENİ]**:
   - [x] `level-service.ts` (XP kazanım mantığı).
   - [x] Firestore kullanıcı şeması güncellemesi (xp, level).
@@ -222,10 +223,23 @@
   - [ ] Yorum yanıtlama bildirimi (reply notifications)
   - [ ] Mention bildirimi (zaten var mı kontrol et)
   - [ ] Firestore `notifications` koleksiyonu ve servis yapısı
-  - [ ] Frontend: Bildirim gösterimi ve okundu/okunmadı durumu
+  - [x] Frontend: Bildirim gösterimi ve okundu/okunmadı durumu
 - [ ] Favoriler (AddFavoriteCommand, GetFavoritesQuery)
 - [ ] Rating (RateNovelCommand, GetUserRatingQuery)
 - [ ] User profile
+  - [ ] Kullanıcı profil sayfası (`/profile/[id]` veya benzeri)
+  - [ ] Başkasının profilini görme
+  - [ ] Takipleşme Sistemi (Follow/Unfollow)
+  - [ ] Karşılıklı Takip (Mutual) kontrolü
+  - [ ] Profil Gizliliği (Sadece takipleşenler kütüphaneyi görebilir)
+
+### Sosyal & Mesajlaşma (Phase 5)
+- [/] Backend: Follow Service (Takip et, Bırak, Listele)
+- [/] Backend: Chat Service (Mesaj gönder, Real-time dinle)
+- [ ] UI: Settings -> "Görünüm" yerine "Bağlantılar" (Takipçilerim/Takip Ettiklerim)
+- [ ] UI: Profil Sayfası -> Takip Et butonu ve Sayaçlar
+- [ ] UI: Global Chat Dialog (Sağ alt köşe, Instagram tarzı)
+- [ ] Logic: Sadece karşılıklı takipleşenler mesajlaşabilir
 
 ### 4.4: AI Moderasyon ve İçerik Güvenliği [YENİ]
 - [ ] **AI Tabanlı Argo ve Küfür Tespiti**:
