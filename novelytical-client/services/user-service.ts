@@ -20,6 +20,26 @@ export interface UserProfile {
     email: string;
     createdAt: any;
     photoURL?: string;
+    frame?: string;
+    notificationSettings?: NotificationSettings;
+    privacySettings?: PrivacySettings;
+}
+
+export interface PrivacySettings {
+    privateProfile: boolean;
+    allowMessagesFromNonFollowers: boolean;
+    showOnlineStatus: boolean;
+    restrictContentToMutuals?: boolean;
+}
+
+export interface NotificationSettings {
+    emailReplies: boolean;
+    emailMentions: boolean;
+    emailUpdates: boolean;
+    pushReplies: boolean;
+    pushNewChapters: boolean;
+    pushFollows: boolean;
+    retentionPeriod: '7' | '30' | '90' | 'forever';
 }
 
 export const UserService = {
@@ -131,12 +151,49 @@ export const UserService = {
                     username: data.username,
                     email: data.email,
                     photoURL: data.photoURL,
-                    createdAt: data.createdAt
+                    frame: data.selectedFrame,
+                    createdAt: data.createdAt,
+                    privacySettings: data.privacySettings,
+                    notificationSettings: data.notificationSettings
                 };
             }
         } catch (error) {
             console.error("Error fetching user profile:", error);
         }
         return null;
+    },
+
+    /**
+     * Updates user notification settings.
+     */
+    async updateNotificationSettings(uid: string, settings: NotificationSettings): Promise<void> {
+        const userRef = doc(db, USERS_COLLECTION, uid);
+        // We use setDoc with merge: true to ensure we don't overwrite other fields if the doc exists
+        // or create it if it doesn't (though user doc should exist).
+        // Actually updateDoc is safer if we assume user exists.
+        await updateDoc(userRef, { notificationSettings: settings });
+    },
+
+    /**
+     * Gets user notification settings.
+     */
+    async getNotificationSettings(uid: string): Promise<NotificationSettings | null> {
+        try {
+            const docRef = doc(db, USERS_COLLECTION, uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().notificationSettings) {
+                return docSnap.data().notificationSettings as NotificationSettings;
+            }
+        } catch (error) {
+            console.error("Error fetching notification settings:", error);
+        }
+        return null;
+    },
+    /**
+     * Updates user privacy settings.
+     */
+    async updatePrivacySettings(uid: string, settings: PrivacySettings): Promise<void> {
+        const userRef = doc(db, USERS_COLLECTION, uid);
+        await updateDoc(userRef, { privacySettings: settings });
     }
 };
