@@ -122,8 +122,15 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         // Create if auth matches senderId
         allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
-        // Allow update/delete for sender
-        allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.senderId;
+        
+        // Update: Sender can update everything (e.g. edit text), others can ONLY mark as read
+        allow update: if isAuthenticated() && (
+          request.auth.uid == resource.data.senderId || 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
+        );
+        
+        // Delete: Only sender can delete
+        allow delete: if isAuthenticated() && request.auth.uid == resource.data.senderId;
       }
     }
   }

@@ -14,7 +14,9 @@ import {
     serverTimestamp,
     Timestamp,
     limit,
-    getDocs
+    getDocs,
+    writeBatch,
+    increment
 } from "firebase/firestore";
 import { UserService, UserProfile } from "./user-service";
 
@@ -62,22 +64,44 @@ export const ChatService = {
     /**
      * Sends a message in a specific chat.
      */
-    async sendMessage(chatId: string, senderId: string, content: string): Promise<void> {
+    async sendMessage(chatId: string, senderId: string, content: string, recipientId?: string): Promise<void> {
         const chatRef = doc(db, CHATS_COLLECTION, chatId);
         const messagesRef = collection(chatRef, "messages");
 
-        await addDoc(messagesRef, {
+        // If recipientId is not provided, try to find it (fallback)
+        let targetUserId = recipientId;
+        if (!targetUserId) {
+            const chatSnap = await getDoc(chatRef);
+            if (chatSnap.exists()) {
+                const data = chatSnap.data();
+                targetUserId = data.participants.find((p: string) => p !== senderId);
+            }
+        }
+
+        const batch = writeBatch(db);
+
+        // 1. Add message
+        const newMessageRef = doc(messagesRef); // Auto-ID
+        batch.set(newMessageRef, {
             senderId,
             content,
             createdAt: serverTimestamp(),
             isRead: false
         });
 
-        // Update last message on the chat document
-        await updateDoc(chatRef, {
+        // 2. Update chat metadata and increment unread count for recipient
+        const updateData: any = {
             lastMessage: content,
             lastMessageTime: serverTimestamp()
-        });
+        };
+
+        if (targetUserId) {
+            updateData[`unreadCounts.${targetUserId}`] = increment(1);
+        }
+
+        batch.update(chatRef, updateData);
+
+        await batch.commit();
     },
 
     /**
@@ -132,6 +156,11 @@ export const ChatService = {
                         chat.participantProfiles = [profile];
                     }
                 }
+
+                // Use denormalized unread count
+                const unreadCounts = (chat as any).unreadCounts || {};
+                chat.unseenCount = unreadCounts[userId] || 0;
+
                 return chat;
             }));
 
@@ -152,17 +181,42 @@ export const ChatService = {
             let totalUnread = 0;
 
             for (const chatDoc of snapshot.docs) {
-                const messagesRef = collection(db, CHATS_COLLECTION, chatDoc.id, "messages");
-                const unreadQuery = query(
-                    messagesRef,
-                    where("isRead", "==", false),
-                    where("senderId", "!=", userId)
-                );
-                const unreadSnap = await getDocs(unreadQuery);
-                totalUnread += unreadSnap.size;
+                const data = chatDoc.data();
+                const count = (data.unreadCounts?.[userId] || 0) as number;
+                totalUnread += count;
             }
 
             callback(totalUnread);
         });
+    },
+
+    /**
+     * Marks all unread messages in a chat as read for the current user.
+     */
+    async markMessagesAsRead(chatId: string, userId: string): Promise<void> {
+        const messagesRef = collection(db, CHATS_COLLECTION, chatId, "messages");
+        const q = query(
+            messagesRef,
+            where("isRead", "==", false),
+            where("senderId", "!=", userId)
+        );
+
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) return;
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => {
+            batch.update(doc.ref, { isRead: true });
+        });
+
+        // Touch the chat document to trigger the unread count listener
+        const chatRef = doc(db, CHATS_COLLECTION, chatId);
+        batch.update(chatRef, {
+            [`lastSeen_${userId}`]: serverTimestamp(),
+            [`unreadCounts.${userId}`]: 0
+        });
+
+        await batch.commit();
     }
 };

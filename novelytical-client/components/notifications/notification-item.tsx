@@ -22,19 +22,21 @@ export default function NotificationItem({ notification, onClick }: Notification
     useEffect(() => {
         // Fetch latest user data to ensure frame/image transparency
         if (notification.senderId) {
-            import("@/services/user-service").then(({ UserService }) => {
-                import("@/lib/firebase").then(({ db }) => {
-                    import("firebase/firestore").then(({ doc, getDoc }) => {
-                        getDoc(doc(db, "users", notification.senderId!)).then(userDoc => {
-                            if (userDoc.exists()) {
-                                const userData = userDoc.data();
-                                setSenderFrame(userData.selectedFrame);
-                                setSenderImage(userData.photoURL);
-                            }
-                        });
-                    });
-                });
-            });
+            const fetchUserData = async () => {
+                try {
+                    const { doc, getDoc } = await import("firebase/firestore");
+                    const { db } = await import("@/lib/firebase");
+                    const userDoc = await getDoc(doc(db, "users", notification.senderId!));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        setSenderFrame(userData.selectedFrame);
+                        setSenderImage(userData.photoURL);
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data for notification:", error);
+                }
+            };
+            fetchUserData();
         }
     }, [notification.senderId]);
 

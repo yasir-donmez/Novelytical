@@ -40,7 +40,7 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
         setIsOpen(false);
 
         try {
-            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", user.photoURL, content, null, isSpoiler);
+            await addComment(novelId, user.uid, user.displayName || user.email || "Kullanıcı", user.photoURL, null, content, null, isSpoiler);
             setContent("");
             setIsSpoiler(false);
             toast.success("Yorumunuz eklendi!");

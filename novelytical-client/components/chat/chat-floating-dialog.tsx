@@ -7,6 +7,7 @@ import { UserProfile } from "@/services/user-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Minimize2, Send, ChevronLeft, ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,9 @@ export function ChatFloatingDialog() {
     const [newMessage, setNewMessage] = useState("");
     const [unreadCount, setUnreadCount] = useState(0);
     const [showScrollButton, setShowScrollButton] = useState(false);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Load user chats
     useEffect(() => {
@@ -35,35 +38,65 @@ export function ChatFloatingDialog() {
 
     // Load active chat messages
     useEffect(() => {
-        if (!activeChat) {
+        if (!activeChat || !isOpen) {
             setMessages([]);
             return;
         }
+
+        setIsLoadingMessages(true);
         const unsubscribe = ChatService.subscribeToMessages(activeChat.id, (msgs) => {
             setMessages(msgs);
-            setTimeout(() => {
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                    setShowScrollButton(false);
-                }
-            }, 100);
+            setIsLoadingMessages(false);
+
+            // Mark as read if there are unread messages
+            if (activeChat.id && user) {
+                ChatService.markMessagesAsRead(activeChat.id, user.uid).catch(console.error);
+            }
         });
 
-        // Add scroll event listener to detect when not at bottom
+        // Add scroll event listener to detect when not at bottom (visually top due to reverse)
         const scrollElement = scrollRef.current;
         const handleScroll = () => {
             if (scrollElement) {
-                const isAtBottom = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight < 50;
+                // In reverse mode, scrollTop > 0 means we successfully scrolled "up" (visually) into history
+                // We want to show button if we are NOT at 0 (Visual Bottom)
+                const isAtBottom = Math.abs(scrollElement.scrollTop) < 50;
                 setShowScrollButton(!isAtBottom);
             }
         };
-        scrollElement?.addEventListener('scroll', handleScroll);
+
+        // Use a timeout to attach listener to ensure ref is ready
+        setTimeout(() => {
+            if (scrollRef.current) {
+                scrollRef.current.addEventListener('scroll', handleScroll);
+            }
+        }, 100);
 
         return () => {
             unsubscribe();
-            scrollElement?.removeEventListener('scroll', handleScroll);
+            if (scrollRef.current) {
+                scrollRef.current.removeEventListener('scroll', handleScroll);
+            }
         };
-    }, [activeChat]);
+    }, [activeChat, isOpen]);
+
+    // Cleanup scroll button logic - simpler now since default is bottom
+    useEffect(() => {
+        if (showScrollButton && !activeChat) setShowScrollButton(false);
+    }, [activeChat, showScrollButton]);
+
+    // Separate effect for auto-scrolling
+    useEffect(() => {
+        if (messages.length > 0 && isOpen) {
+            const timer = setTimeout(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = 0; // Scroll to visual bottom (actual top)
+                    setShowScrollButton(false);
+                }
+            }, 50); // Reduced delay slightly for snappier feel
+            return () => clearTimeout(timer);
+        }
+    }, [messages, isOpen, activeChat]);
 
     // Subscribe to unread message count
     useEffect(() => {
@@ -114,18 +147,37 @@ export function ChatFloatingDialog() {
         e.preventDefault();
         if (!user || !activeChat || !newMessage.trim()) return;
 
+        const messageToSend = newMessage.trim();
+
+        // Optimistic clear
+        setNewMessage("");
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+        }
+
+        const recipientId = activeChat.participants.find(p => p !== user.uid);
+
         try {
-            await ChatService.sendMessage(activeChat.id, user.uid, newMessage.trim());
-            setNewMessage("");
+            await ChatService.sendMessage(activeChat.id, user.uid, messageToSend, recipientId);
         } catch (error) {
             console.error(error);
+            // Optionally restore message on failure could go here, but for now simple optimistic is fine
+            setNewMessage(messageToSend); // Restore if failed
         }
     };
 
     if (!user) return null;
 
+    // Calculate position to prevent scrollbar shift
+    const positionStyle = {
+        left: isOpen ? 'calc(100vw - 366px)' : 'calc(100vw - 72px)'
+    };
+
     return (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div
+            className="fixed bottom-4 z-50 transition-[left] duration-200"
+            style={positionStyle}
+        >
             {!isOpen && (
                 <Button
                     className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform hover:scale-105 relative"
@@ -168,20 +220,29 @@ export function ChatFloatingDialog() {
                         {activeChat ? (
                             // Chat View
                             <div className="flex flex-col h-full relative">
+                                {isLoadingMessages && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 transition-opacity duration-200">
+                                        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
                                 <div
                                     ref={scrollRef}
-                                    className="flex-1 p-4 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40"
+                                    style={{ scrollBehavior: 'auto' }}
+                                    className={cn(
+                                        "flex-1 p-4 overscroll-contain scale-y-[-1] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40",
+                                        isLoadingMessages ? "overflow-hidden opacity-0" : "overflow-y-auto"
+                                    )}
                                 >
                                     <div className="space-y-1 min-h-full">
                                         {messages.length === 0 && (
-                                            <div className="text-center text-xs text-muted-foreground mt-4">
+                                            <div className="text-center text-xs text-muted-foreground mt-4 scale-y-[-1]">
                                                 Mesajlaşmaya başlayın.
                                             </div>
                                         )}
-                                        {messages.map((msg) => {
+                                        {[...messages].reverse().map((msg) => {
                                             const isMe = msg.senderId === user.uid;
                                             return (
-                                                <div key={msg.id} className={cn("flex group items-center gap-1", isMe ? "justify-end" : "justify-start")}>
+                                                <div key={msg.id} className={cn("flex group items-center gap-1 scale-y-[-1]", isMe ? "justify-end" : "justify-start")}>
                                                     {isMe && (
                                                         <button
                                                             onClick={() => ChatService.deleteMessage(activeChat.id, msg.id)}
@@ -217,8 +278,7 @@ export function ChatFloatingDialog() {
                                         className="absolute bottom-16 right-4 h-8 w-8 rounded-full shadow-lg"
                                         onClick={() => {
                                             if (scrollRef.current) {
-                                                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                                                setShowScrollButton(false);
+                                                scrollRef.current.scrollTop = 0; // 0 is visually bottom in reverse mode
                                             }
                                         }}
                                     >
@@ -226,14 +286,37 @@ export function ChatFloatingDialog() {
                                     </Button>
                                 )}
 
-                                <form onSubmit={handleSendMessage} className="p-3 border-t bg-background flex gap-2">
-                                    <Input
-                                        value={newMessage}
-                                        onChange={e => setNewMessage(e.target.value)}
-                                        placeholder="Mesaj yaz..."
-                                        className="h-9 rounded-full px-4"
-                                    />
-                                    <Button type="submit" size="icon" className="h-9 w-9 rounded-full" disabled={!newMessage.trim()}>
+                                <form
+                                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(e); }}
+                                    className="p-3 border-t bg-background flex gap-2 items-end"
+                                >
+                                    <div className="flex-1 relative">
+                                        <Textarea
+                                            ref={textareaRef}
+                                            value={newMessage}
+                                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                                setNewMessage(e.target.value);
+                                                // Auto-resize
+                                                e.target.style.height = 'auto';
+                                                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                            }}
+                                            onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleSendMessage(e as any);
+                                                }
+                                            }}
+                                            placeholder="Mesaj yaz..."
+                                            className="min-h-[40px] max-h-[120px] rounded-2xl px-4 py-3 resize-none scrollbar-hide break-all"
+                                            rows={1}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full shrink-0 mb-0.5"
+                                        disabled={!newMessage.trim()}
+                                    >
                                         <Send className="h-4 w-4" />
                                     </Button>
                                 </form>
@@ -264,7 +347,14 @@ export function ChatFloatingDialog() {
                                                     </Avatar>
                                                     <div className="flex-1 overflow-hidden">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="font-medium text-sm truncate">{otherUser.username}</span>
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <span className="font-medium text-sm truncate">{otherUser.username}</span>
+                                                                {chat.unseenCount && chat.unseenCount > 0 ? (
+                                                                    <span className="bg-red-500 text-white rounded-full text-[10px] min-w-[20px] h-5 flex items-center justify-center px-1 font-bold shrink-0 animate-in zoom-in-50 duration-200">
+                                                                        {chat.unseenCount > 9 ? '9+' : chat.unseenCount}
+                                                                    </span>
+                                                                ) : null}
+                                                            </div>
                                                             {chat.lastMessageTime && (
                                                                 <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
                                                                     {formatDistanceToNow(chat.lastMessageTime.toDate(), { addSuffix: false, locale: tr })}

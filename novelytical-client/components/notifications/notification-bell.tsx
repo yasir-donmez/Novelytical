@@ -51,7 +51,7 @@ export default function NotificationBell() {
 
             // Sort by createdAt desc in client since snapshot order isn't guaranteed without index/sort in query
             // But complex query requires index. Let's sort locally for the Dropdown.
-            unreadData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            unreadData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
 
             setNotifications(unreadData);
             setUnreadCount(unreadData.length);
@@ -108,50 +108,75 @@ export default function NotificationBell() {
                     ) : (
                         <div className="py-1">
                             {notifications.map((notification) => (
-                                <Link
+                                <BellNotificationItem
                                     key={notification.id}
-                                    href={notification.sourceLink}
-                                    onClick={() => handleRead(notification.id, notification.sourceLink)}
-                                >
-                                    <DropdownMenuItem className="p-3 cursor-pointer items-start gap-3 mx-1">
-                                        <div className="relative">
-                                            {notification.senderImage ? (
-                                                <UserAvatar
-                                                    src={notification.senderImage}
-                                                    alt={notification.senderName}
-                                                    frameId={notification.senderFrame}
-                                                    className="h-10 w-10 shrink-0 border border-white/10"
-                                                />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0">
-                                                    <Bell className="h-4 w-4 text-zinc-400" />
-                                                </div>
-                                            )}
-                                            <div className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 shadow-sm border border-border">
-                                                {notification.type === 'like' && <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 p-0.5" />}
-                                                {notification.type === 'dislike' && <Heart className="w-3.5 h-3.5 text-gray-500 p-0.5" />}
-                                                {notification.type === 'reply' && <MessageCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500 p-0.5" />}
-                                                {notification.type === 'follow' && <UserPlus className="w-3.5 h-3.5 text-green-500 fill-green-500 p-0.5" />}
-                                                {notification.type === 'system' && <Bell className="w-3.5 h-3.5 text-amber-500 p-0.5" />}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1 flex-1">
-                                            <p className="text-sm leading-snug">
-                                                {notification.content}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {notification.createdAt?.toDate ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true, locale: tr }) : "Az önce"}
-                                            </p>
-                                        </div>
-                                        <div className="h-2 w-2 rounded-full bg-purple-500 mt-2 shrink-0" />
-                                    </DropdownMenuItem>
-                                </Link>
+                                    notification={notification}
+                                    onRead={handleRead}
+                                />
                             ))}
                         </div>
                     )}
                 </ScrollArea>
-                {/* View all link could go here */}
             </DropdownMenuContent>
         </DropdownMenu>
+    );
+}
+
+function BellNotificationItem({ notification, onRead }: { notification: Notification, onRead: (id: string, link: string) => void }) {
+    const [senderFrame, setSenderFrame] = useState(notification.senderFrame);
+    const [senderImage, setSenderImage] = useState(notification.senderImage);
+
+    useEffect(() => {
+        if (notification.senderId) {
+            import("firebase/firestore").then(({ doc, getDoc }) => {
+                getDoc(doc(db, "users", notification.senderId!)).then(userDoc => {
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        setSenderFrame(userData.selectedFrame);
+                        setSenderImage(userData.photoURL);
+                    }
+                });
+            });
+        }
+    }, [notification.senderId]);
+
+    return (
+        <Link
+            href={notification.sourceLink || '#'}
+            onClick={() => onRead(notification.id, notification.sourceLink)}
+        >
+            <DropdownMenuItem className="p-3 cursor-pointer items-start gap-3 mx-1 focus:bg-white/5">
+                <div className="relative shrink-0">
+                    {senderImage || senderFrame ? (
+                        <UserAvatar
+                            src={senderImage}
+                            alt={notification.senderName}
+                            frameId={senderFrame}
+                            className="h-10 w-10 rounded-full"
+                        />
+                    ) : (
+                        <div className="h-10 w-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0">
+                            <Bell className="h-4 w-4 text-zinc-400" />
+                        </div>
+                    )}
+                    <div className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 shadow-sm border border-border z-10">
+                        {notification.type === 'like' && <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 p-0.5" />}
+                        {notification.type === 'dislike' && <Heart className="w-3.5 h-3.5 text-gray-500 p-0.5" />}
+                        {notification.type === 'reply' && <MessageCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500 p-0.5" />}
+                        {notification.type === 'follow' && <UserPlus className="w-3.5 h-3.5 text-green-500 fill-green-500 p-0.5" />}
+                        {notification.type === 'system' && <Bell className="w-3.5 h-3.5 text-amber-500 p-0.5" />}
+                    </div>
+                </div>
+                <div className="space-y-1 flex-1 min-w-0">
+                    <p className="text-sm leading-snug line-clamp-2 break-all">
+                        {notification.content}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                        {notification.createdAt?.toDate ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true, locale: tr }) : "Az önce"}
+                    </p>
+                </div>
+                <div className="h-2 w-2 rounded-full bg-purple-500 mt-2 shrink-0" />
+            </DropdownMenuItem>
+        </Link>
     );
 }
