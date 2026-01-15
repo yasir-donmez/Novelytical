@@ -33,7 +33,8 @@ export const updateLibraryStatus = async (
     userId: string,
     novelId: number,
     status: ReadingStatus | null,
-    currentChapter?: number
+    currentChapter?: number,
+    userInfo?: { displayName?: string; photoURL?: string } // Added userInfo
 ) => {
     try {
         const docId = `${userId}_${novelId}`;
@@ -49,7 +50,8 @@ export const updateLibraryStatus = async (
                 userId,
                 novelId,
                 status,
-                updatedAt: serverTimestamp()
+                updatedAt: serverTimestamp(),
+                ...userInfo // Merge user info
             };
 
             if (currentChapter !== undefined) {
@@ -78,14 +80,15 @@ export const updateLibraryStatus = async (
     }
 };
 
-export const updateLibraryProgress = async (userId: string, novelId: number, currentChapter: number) => {
+export const updateLibraryProgress = async (userId: string, novelId: number, currentChapter: number, userInfo?: { displayName?: string; photoURL?: string }) => {
     try {
         const docId = `${userId}_${novelId}`;
         const docRef = doc(db, COLLECTION_NAME, docId);
 
         await setDoc(docRef, {
             currentChapter,
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
+            ...userInfo // Merge user info
         }, { merge: true }); // Merge ensures we don't overwrite status
 
         return { success: true };

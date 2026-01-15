@@ -62,7 +62,10 @@ export default function LibraryAction({ novelId, chapterCount }: LibraryActionPr
             // When updating status, preserve currentChapter if exists, or init to 0 if reading
             const chapterToSave = newStatus === 'reading' ? (currentChapter || 0) : currentChapter;
 
-            await updateLibraryStatus(user.uid, novelId, newStatus, chapterToSave);
+            await updateLibraryStatus(user.uid, novelId, newStatus, chapterToSave, {
+                displayName: user.displayName || 'İsimsiz Okur',
+                photoURL: user.photoURL || ''
+            });
 
             if (newStatus === null) {
                 toast.success("Listeden çıkarıldı.");
@@ -94,7 +97,10 @@ export default function LibraryAction({ novelId, chapterCount }: LibraryActionPr
         setInputValue(newChapter.toString());
 
         try {
-            await updateLibraryProgress(user.uid, novelId, newChapter);
+            await updateLibraryProgress(user.uid, novelId, newChapter, {
+                displayName: user.displayName || 'İsimsiz Okur',
+                photoURL: user.photoURL || ''
+            });
         } catch (error) {
             console.error("Failed to update progress", error);
         }
