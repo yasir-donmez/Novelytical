@@ -56,18 +56,21 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
             <div className="grid grid-cols-1 min-[550px]:grid-cols-[200px_1fr] md:grid-cols-[240px_1fr] lg:grid-cols-[300px_1fr] gap-6 sm:gap-8 lg:gap-12">
                 {/* Left Column: Cover & Quick Actions */}
                 <div className="space-y-6">
-                    <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-border/10">
-                        {novel.coverUrl ? (
-                            <img
-                                src={novel.coverUrl}
-                                alt={novel.title}
-                                className="object-cover w-full h-full block"
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-muted">
-                                <BookOpen className="h-20 w-20 text-muted-foreground/30" />
-                            </div>
-                        )}
+                    {/* Wrapper for Cover */}
+                    <div className="relative w-full group">
+                        <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-border/10 z-10">
+                            {novel.coverUrl ? (
+                                <img
+                                    src={novel.coverUrl}
+                                    alt={novel.title}
+                                    className="object-cover w-full h-full block"
+                                />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-muted">
+                                    <BookOpen className="h-20 w-20 text-muted-foreground/30" />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <Card>
@@ -173,6 +176,8 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                             )}
                         </div>
                     </div>
+
+                    {/* Reading Journey moved to tabs below */}
 
                     {novel.aiSummary && (
                         <div className="bg-primary/5 rounded-xl p-6 border border-primary/10">

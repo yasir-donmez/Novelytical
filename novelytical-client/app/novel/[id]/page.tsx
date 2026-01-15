@@ -152,7 +152,7 @@ export default async function NovelDetailPage({ params }: PageProps) {
                 </Suspense>
 
                 <div className="border-t border-gray-100 pb-12">
-                    <InteractionTabs novelId={novelId} coverImage={novel.coverUrl} />
+                    <InteractionTabs novelId={novelId} coverImage={novel.coverUrl} chapterCount={novel.chapterCount} />
                 </div>
             </div>
         </div>
