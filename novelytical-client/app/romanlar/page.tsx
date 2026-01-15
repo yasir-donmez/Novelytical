@@ -43,7 +43,7 @@ export default async function NovelsPage({
 
     const searchString = typeof params.q === 'string' ? params.q : undefined;
     const tags = typeof params.tag === 'string' ? [params.tag] : (Array.isArray(params.tag) ? params.tag : undefined);
-    const sortOrder = typeof params.sort === 'string' ? params.sort : undefined;
+    const sortOrder = typeof params.sort === 'string' ? params.sort : 'date_desc';
     const pageNumber = typeof params.page === 'string' ? parseInt(params.page) : 1;
 
     // Advanced filter params

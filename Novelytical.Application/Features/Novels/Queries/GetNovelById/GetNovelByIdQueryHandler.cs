@@ -29,6 +29,9 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
             Author = novel.Author ?? string.Empty,
             Description = novel.Description ?? string.Empty,
             Rating = novel.Rating,
+            ScrapedRating = novel.ScrapedRating, // New
+            ViewCount = novel.ViewCount,         // New
+            Status = novel.Status,               // New
             ChapterCount = novel.ChapterCount,
             LastUpdated = novel.LastUpdated,
             CoverUrl = novel.CoverUrl,
@@ -36,11 +39,20 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
             Tags = novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).ToList()
         };
 
-        // Mock rating data (Simulated for Phase 4) // TODO: Replace with real rating system
-        var seed = novel.Id * 17 + 42; // Consistent seed
-        var random = new Random(seed);
-        dto.AverageRating = Math.Round(3.5 + (random.NextDouble() * 1.5), 1); // 3.5-5.0
-        dto.RatingCount = random.Next(100, 5000); // 100-5000 range
+        // Use ScrapedRating if available, otherwise mock or default
+        if (novel.ScrapedRating.HasValue && novel.ScrapedRating.Value > 0)
+        {
+            dto.AverageRating = (double)novel.ScrapedRating.Value;
+            dto.RatingCount = novel.ViewCount / 100; // Rough estimate of ratings based on views
+        }
+        else
+        {
+            // Fallback Mock
+            var seed = novel.Id * 17 + 42; 
+            var random = new Random(seed);
+            dto.AverageRating = Math.Round(3.5 + (random.NextDouble() * 1.5), 1); 
+            dto.RatingCount = random.Next(100, 5000); 
+        }
 
         return new Response<NovelDetailDto>(dto);
     }

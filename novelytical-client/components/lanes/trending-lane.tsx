@@ -1,6 +1,9 @@
 import { ScrollableSection } from '@/components/scrollable-section';
 import { NovelCard } from '@/components/novel-card';
 import { fetchNovels } from '@/lib/data/novels';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 
 interface TrendingLaneProps {
     title: string;
@@ -10,7 +13,7 @@ interface TrendingLaneProps {
 export async function TrendingLane({ title, icon }: TrendingLaneProps) {
     let novels = [];
     try {
-        const res = await fetchNovels({ pageSize: 10, sortOrder: 'rating_desc' });
+        const res = await fetchNovels({ pageSize: 10, sortOrder: 'views_desc' });
         novels = res.data || [];
     } catch (error) {
         console.error(`Failed to fetch Trending Lane:`, error);
@@ -20,7 +23,18 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
     if (novels.length === 0) return null;
 
     return (
-        <ScrollableSection title={title} icon={icon} hideBorder={true}>
+        <ScrollableSection
+            title={title}
+            icon={icon}
+            hideBorder={true}
+            headerAction={
+                <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 hover:text-primary" asChild>
+                    <Link href="/romanlar?sort=views_desc">
+                        Tümünü Gör <ChevronRight className="h-4 w-4" />
+                    </Link>
+                </Button>
+            }
+        >
             {novels.map((novel: any, index: number) => (
                 <div key={novel.id} className="relative w-[210px] sm:w-[250px] flex-none group/rank">
                     {/* Big Ranking Number */}

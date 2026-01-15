@@ -13,6 +13,12 @@ namespace Novelytical.Data
         public string? CoverUrl { get; set; }
         public string SourceUrl { get; set; } = string.Empty;
         public decimal Rating { get; set; }
+        
+        // Siteden çekilen veriler
+        public decimal? ScrapedRating { get; set; }
+        public int ViewCount { get; set; }
+        public string Status { get; set; } = "Unknown"; // Ongoing / Completed
+
         public int ChapterCount { get; set; }
         public DateTime LastUpdated { get; set; }
 
@@ -24,6 +30,7 @@ namespace Novelytical.Data
         // --- FULL-TEXT SEARCH ---
         // tsvector -> PostgreSQL Full-Text Search için
         [Column(TypeName = "tsvector")]
+        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public NpgsqlTsVector? SearchVector { get; set; }
 
         public List<NovelTag> NovelTags { get; set; } = new();

@@ -37,10 +37,10 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
             q = query(q, orderBy("createdAt", "desc"));
         } else if (sortOption === "oldest") {
             q = query(q, orderBy("createdAt", "asc"));
-        } else if (sortOption === "highest-rating") {
-            q = query(q, orderBy("rating", "desc"), orderBy("createdAt", "desc"));
-        } else if (sortOption === "lowest-rating") {
-            q = query(q, orderBy("rating", "asc"), orderBy("createdAt", "desc"));
+        } else if (sortOption === "likes_desc") {
+            q = query(q, orderBy("likes", "desc"));
+        } else if (sortOption === "dislikes_desc") {
+            q = query(q, orderBy("unlikes", "desc"));
         }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -68,7 +68,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
                     </Badge>
                 </div>
                 <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger className="w-[180px] h-9 text-xs font-medium bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-colors focus:ring-0">
+                    <SelectTrigger className="w-[200px] h-9 text-xs font-medium bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-colors focus:ring-0">
                         <div className="flex items-center gap-2">
                             <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
                             <SelectValue placeholder="Sıralama" />
@@ -77,8 +77,8 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
                     <SelectContent position="popper" align="end" sideOffset={5}>
                         <SelectItem value="newest">En Yeni</SelectItem>
                         <SelectItem value="oldest">En Eski</SelectItem>
-                        <SelectItem value="highest-rating">En Yüksek Puan</SelectItem>
-                        <SelectItem value="lowest-rating">En Düşük Puan</SelectItem>
+                        <SelectItem value="likes_desc">En Çok Beğenilenler</SelectItem>
+                        <SelectItem value="dislikes_desc">En Çok Beğenilmeyenler</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

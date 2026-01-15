@@ -8,9 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from '@/components/rating-stars';
 import { SocialShare } from '@/components/social-share';
-import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star } from 'lucide-react';
 import LibraryAction from '@/components/novel/library-action';
 import type { NovelDetailDto } from '@/types/novel';
+import { cn } from '@/lib/utils';
+import { getRelativeTimeString } from '@/lib/utils/date';
 
 interface NovelDetailClientProps {
     novel: NovelDetailDto;
@@ -72,19 +74,36 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         <CardContent className="p-4 space-y-3">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
-                                    Puan
+                                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> Puan
                                 </span>
                                 <RatingStars
-                                    rating={novel.averageRating || novel.rating}
-                                    count={novel.ratingCount}
-                                    size="sm"
+                                    rating={novel.scrapedRating ?? novel.rating}
+                                    size="md"
                                 />
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-blue-500" /> Yayın
+                                    <Eye className="h-4 w-4 text-purple-500" /> Okunma
                                 </span>
-                                <span className="font-semibold">{novel.year}</span>
+                                <span className="font-semibold">
+                                    {novel.viewCount ? new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(novel.viewCount) : '0'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-blue-500" /> Son Güncelleme
+                                </span>
+                                <span className="font-semibold">
+                                    {novel.lastUpdated ? getRelativeTimeString(novel.lastUpdated) : '-'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-orange-500" /> Durum
+                                </span>
+                                <span className="font-semibold">
+                                    {novel.status === 'Ongoing' ? 'Devam Ediyor' : (novel.status === 'Completed' ? 'Tamamlandı' : novel.status)}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
@@ -106,10 +125,11 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                         {novel.category}
                                     </Badge>
                                 )}
-                                {novel.isCompleted && (
-                                    <Badge variant="outline" className="text-sm px-3 py-1 border-green-500 text-green-500 gap-1.5">
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Tamamlandı
+                                {novel.status && (
+                                    <Badge variant="outline" className={cn("text-sm px-3 py-1 gap-1.5",
+                                        novel.status === 'Completed' ? "border-green-500 text-green-500" : "border-blue-500 text-blue-500")}>
+                                        {novel.status === 'Completed' ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
+                                        {novel.status}
                                     </Badge>
                                 )}
                             </div>

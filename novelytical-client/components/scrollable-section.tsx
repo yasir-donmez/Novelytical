@@ -12,9 +12,10 @@ interface ScrollableSectionProps {
     scrollStep?: 'half' | 'full';
     className?: string;
     hideBorder?: boolean;
+    headerAction?: React.ReactNode;
 }
 
-export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, hideBorder = false }: ScrollableSectionProps) {
+export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, hideBorder = false, headerAction }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [hasOverflow, setHasOverflow] = useState(false);
     const [isAtStart, setIsAtStart] = useState(true);
@@ -93,38 +94,44 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">{title}</h2>
                 </div>
 
-                {/* Navigation Arrows - Only show if content overflows */}
-                {hasOverflow && (
-                    <div className="hidden md:flex gap-2">
-                        {/* Left Arrow */}
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className={cn(
-                                "h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/10 hover:text-primary z-20 transition-all duration-200",
-                                isAtStart && "invisible pointer-events-none"
-                            )}
-                            onClick={(e) => scroll('left', e)}
-                            aria-label="Sola kaydır"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
+                {/* Header Actions (Custom + Navigation) */}
+                <div className="flex items-center gap-2">
+                    {/* Custom Action (e.g. View All) */}
+                    {headerAction}
 
-                        {/* Right Arrow */}
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className={cn(
-                                "h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/10 hover:text-primary z-20 transition-all duration-200",
-                                isAtEnd && "invisible pointer-events-none"
-                            )}
-                            onClick={(e) => scroll('right', e)}
-                            aria-label="Sağa kaydır"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
+                    {/* Navigation Arrows - Only show if content overflows */}
+                    {hasOverflow && (
+                        <div className="hidden md:flex gap-2">
+                            {/* Left Arrow */}
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className={cn(
+                                    "h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/10 hover:text-primary z-20 transition-all duration-200",
+                                    isAtStart && "invisible pointer-events-none"
+                                )}
+                                onClick={(e) => scroll('left', e)}
+                                aria-label="Sola kaydır"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+
+                            {/* Right Arrow */}
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className={cn(
+                                    "h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/10 hover:text-primary z-20 transition-all duration-200",
+                                    isAtEnd && "invisible pointer-events-none"
+                                )}
+                                onClick={(e) => scroll('right', e)}
+                                aria-label="Sağa kaydır"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="relative">

@@ -110,7 +110,7 @@ export default function ReviewForm({ novelId, coverImage, onReviewAdded }: Revie
                 setInitialContent(content);
                 setInitialIsSpoiler(isSpoiler);
             } else {
-                await addReview(novelId, user.uid, user.displayName || user.email || "Okur", user.photoURL || null, ratings, content, isSpoiler);
+                await addReview(novelId, user.uid, user.displayName || user.email || "Okur", user.photoURL || null, null, ratings, content, isSpoiler);
                 toast.success("Değerlendirmeniz başarıyla eklendi!");
             }
 

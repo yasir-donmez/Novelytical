@@ -11,8 +11,8 @@ interface BentoGridLaneProps {
 }
 
 export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
-    const res = await fetchNovels({ pageSize: 7, sortOrder: 'created_desc' });
-    const novels = res.data || [];
+    const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc' });
+    const novels = res.data?.slice(0, 7) || [];
 
     if (novels.length === 0) return null;
 
@@ -28,7 +28,7 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">{title}</h2>
                 </div>
                 <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 hover:text-primary" asChild>
-                    <Link href="/kesfet?sort=newest">
+                    <Link href="/romanlar?sort=date_desc">
                         Tümünü Gör <ChevronRight className="h-4 w-4" />
                     </Link>
                 </Button>

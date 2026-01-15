@@ -1,6 +1,7 @@
 import { getSimilarNovels } from '@/lib/data/novels';
 import { NovelCard } from '@/components/novel-card';
 import { ScrollableSection } from '@/components/scrollable-section';
+import { NovelListDto } from '@/types/novel';
 
 export async function SimilarNovelsServer({ id }: { id: number | string }) {
     // Fetch 12 similar novels (double the previous limit)
@@ -20,11 +21,12 @@ export async function SimilarNovelsServer({ id }: { id: number | string }) {
                     </span>
                 }
             >
-                {novels.map((novel: any) => (
+                {novels.map((novel: NovelListDto) => (
                     <div
                         key={novel.id}
                         className="w-full md:w-40 lg:w-[calc((100%-6.25rem)/6)] flex-shrink-0 snap-center md:snap-start flex flex-col"
                     >
+                        {/* console.log(`Novel: ${novel.title}, ID: ${novel.id}, Rating: ${novel.rating}, Scraped: ${novel.scrapedRating}`) */}
                         <NovelCard
                             novel={novel}
                             className="flex-grow h-full"

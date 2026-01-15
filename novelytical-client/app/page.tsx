@@ -41,9 +41,9 @@ export default async function DiscoveryPage() {
         </Suspense>
 
         {/* 2. New Arrivals Lane */}
-        <Suspense fallback={<LaneSkeleton title="Yeni Eklenenler" icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />} />}>
+        <Suspense fallback={<LaneSkeleton title="Son Güncellenenler" icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />} />}>
           <BentoGridLane
-            title="Yeni Eklenenler"
+            title="Son Güncellenenler"
             icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />}
           />
         </Suspense>

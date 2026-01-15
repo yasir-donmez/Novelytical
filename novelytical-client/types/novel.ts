@@ -4,6 +4,9 @@ export interface NovelListDto {
     title: string;
     author: string;
     rating: number;
+    scrapedRating?: number; // New field
+    viewCount?: number;     // New field
+    status?: string;        // New field
     chapterCount: number;
     lastUpdated: string;
     coverUrl?: string;

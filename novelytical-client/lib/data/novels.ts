@@ -100,7 +100,7 @@ export async function getSimilarNovels(id: number | string, count: number = 12) 
     // Endpoint: /novels/{id}/similar
     // Params: limit (Service uses 'limit', I previously used 'count' which was wrong)
     const res = await fetch(`http://localhost:5050/api/novels/${id}/similar?limit=${count}`, {
-        next: { revalidate: 86400 }
+        cache: 'no-store'
     });
     if (!res.ok) return [];
     const json = await res.json();

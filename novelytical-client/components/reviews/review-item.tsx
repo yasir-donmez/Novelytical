@@ -86,6 +86,7 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
                 action,
                 user.displayName || 'İsimsiz Kullanıcı',
                 user.photoURL || undefined,
+                undefined, // senderFrame
                 review.userId,
                 review.novelId
             );
