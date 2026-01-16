@@ -8,8 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from '@/components/rating-stars';
 import { SocialShare } from '@/components/social-share';
-import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LibraryAction from '@/components/novel/library-action';
+import { RatingCriteriaTooltip } from '@/components/rating-criteria-tooltip';
+import { getReviewsByNovelId } from '@/services/review-service';
 import type { NovelDetailDto } from '@/types/novel';
 import { cn } from '@/lib/utils';
 import { getRelativeTimeString } from '@/lib/utils/date';
@@ -36,10 +39,35 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     const displayedDescription = isExpanded || !shouldTruncate ? description : description.slice(0, 300) + '...';
 
     const [locationHref, setLocationHref] = useState('');
+    const [criteria, setCriteria] = useState<{
+        story: number;
+        characters: number;
+        world: number;
+        flow: number;
+        grammar: number;
+    } | null>(null);
+    const [ratingsLoading, setRatingsLoading] = useState(true);
 
     useEffect(() => {
         setLocationHref(window.location.href);
-    }, []);
+
+        // Fetch ratings for tooltip
+        getReviewsByNovelId(novel.id)
+            .then(reviews => {
+                if (reviews && reviews.length > 0) {
+                    const averages = {
+                        story: reviews.reduce((sum, r) => sum + r.ratings.story, 0) / reviews.length,
+                        characters: reviews.reduce((sum, r) => sum + r.ratings.characters, 0) / reviews.length,
+                        world: reviews.reduce((sum, r) => sum + r.ratings.world, 0) / reviews.length,
+                        flow: reviews.reduce((sum, r) => sum + r.ratings.flow, 0) / reviews.length,
+                        grammar: reviews.reduce((sum, r) => sum + r.ratings.grammar, 0) / reviews.length,
+                    };
+                    setCriteria(averages);
+                }
+            })
+            .catch(err => console.error('Error details ratings:', err))
+            .finally(() => setRatingsLoading(false));
+    }, [novel.id]);
 
     return (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 space-y-8 overflow-x-hidden">
@@ -79,10 +107,22 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 <span className="text-muted-foreground flex items-center gap-2">
                                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" /> Puan
                                 </span>
-                                <RatingStars
-                                    rating={novel.scrapedRating ?? novel.rating}
-                                    size="md"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <RatingStars
+                                        rating={novel.scrapedRating ?? novel.rating}
+                                        size="md"
+                                    />
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Info size={14} className="text-muted-foreground/70 hover:text-purple-400 cursor-help transition-colors" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="bg-zinc-950 border-white/10 text-zinc-100">
+                                                <RatingCriteriaTooltip criteria={criteria} loading={ratingsLoading} />
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
