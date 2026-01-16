@@ -79,21 +79,20 @@ export default function UserInteractionList() {
                 // Limit concurrency if needed, but for now Promise.all is okay for reasonable amounts
                 const summariesWithNovels = await Promise.all(summaryList.map(async (item) => {
                     try {
-                        // Assuming getNovelById returns detailed info, can be heavy.
-                        // Ideally we'd have a lighter endpoint or ID list support.
                         const novelData = await novelService.getNovelById(item.novelId);
-                        // Convert Detail to ListDto shape vaguely or just use relevant fields
                         return { ...item, novel: novelData as unknown as NovelListDto };
                     } catch (e) {
-                        console.error(`Failed to load novel ${item.novelId}`, e);
-                        return item;
+                        // Novel might be deleted or API error
+                        console.warn(`Could not load details for novel ${item.novelId}, skipping interaction.`);
+                        return null; // Return null to filter out
                     }
                 }));
 
-                // Sort by last interaction
-                summariesWithNovels.sort((a, b) => b.lastInteraction.getTime() - a.lastInteraction.getTime());
+                // Filter out nulls (failed loads) and sort
+                const validSummaries = summariesWithNovels.filter(item => item !== null) as InteractionSummary[];
+                validSummaries.sort((a, b) => b.lastInteraction.getTime() - a.lastInteraction.getTime());
 
-                setInteractions(summariesWithNovels);
+                setInteractions(validSummaries);
 
             } catch (error) {
                 console.error("Error fetching interactions", error);

@@ -2,8 +2,18 @@ import axios from 'axios';
 import { handleError } from '@/lib/errors/handler';
 import { NetworkError, ServerError } from '@/lib/errors/types';
 
+const getBaseUrl = () => {
+    // If env var is set, verify/append /api
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        const url = process.env.NEXT_PUBLIC_API_URL;
+        return url.endsWith('/api') ? url : `${url}/api`;
+    }
+    // Default fallback
+    return typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api';
+};
+
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || (typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api'),
+    baseURL: getBaseUrl(),
     headers: {
         'Content-Type': 'application/json',
     },

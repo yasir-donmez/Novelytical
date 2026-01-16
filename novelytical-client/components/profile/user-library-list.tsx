@@ -139,6 +139,8 @@ export default function UserLibraryList() {
                         const novelData = await novelService.getNovelById(item.novelId);
                         return { ...item, novel: novelData as unknown as NovelListDto };
                     } catch (e) {
+                        console.error(`[UserLibraryList] Failed to load details for novel ${item.novelId}:`, e);
+                        // Return item without novel data (will display fallback)
                         return item;
                     }
                 }));
