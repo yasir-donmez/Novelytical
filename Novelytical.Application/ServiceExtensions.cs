@@ -9,10 +9,6 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
-        // Services
-        // Services
-        // INovelService removed - using CQRS
-        
         // Memory Cache
         services.AddMemoryCache();
 

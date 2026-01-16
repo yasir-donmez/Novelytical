@@ -39,7 +39,7 @@ export function NovelGridClient() {
             if (minRating !== null) queryParams.append('minRating', minRating.toString());
             if (maxRating !== null) queryParams.append('maxRating', maxRating.toString());
 
-            const response = await api.get(`http://localhost:5050/api/novels?${queryParams.toString()}`);
+            const response = await api.get(`/novels?${queryParams.toString()}`);
             return response.data;
         },
         retry: 1,

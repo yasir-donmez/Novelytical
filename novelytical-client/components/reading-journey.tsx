@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import {
@@ -11,9 +11,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy } from "lucide-react";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { Trophy, Users } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface LibraryItem {
     userId: string;
@@ -22,6 +22,7 @@ interface LibraryItem {
     status: "reading" | "completed" | "dropped";
     photoURL?: string;
     displayName?: string;
+    selectedFrame?: string;
 }
 
 interface ReadingJourneyProps {
@@ -29,453 +30,377 @@ interface ReadingJourneyProps {
     chapterCount?: number;
     className?: string;
     orientation?: "horizontal" | "vertical";
-}
-
-interface AnimationControls {
-    torso: ReturnType<typeof useAnimation>;
-    rightArmUpper: ReturnType<typeof useAnimation>;
-    rightArmFore: ReturnType<typeof useAnimation>;
-    leftArm: ReturnType<typeof useAnimation>;
-    legs: ReturnType<typeof useAnimation>;
-    head: ReturnType<typeof useAnimation>;
-    bowStringUpper: ReturnType<typeof useAnimation>;
-    bowStringLower: ReturnType<typeof useAnimation>;
+    coverImage?: string;
 }
 
 // ====================================================================
 // CUSTOM HOOKS
 // ====================================================================
 
-/**
- * Hook for fetching novel readers from Firestore
- */
 function useNovelReaders(novelId: number) {
     const [readers, setReaders] = useState<LibraryItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchReaders = async () => {
-            try {
-                const librariesRef = collection(db, "libraries");
-                const q = query(librariesRef, where("novelId", "==", novelId));
-                const snapshot = await getDocs(q);
+        const librariesRef = collection(db, "libraries");
+        const q = query(librariesRef, where("novelId", "==", novelId));
 
-                const items = snapshot.docs.map((doc) => {
-                    const data = doc.data();
-                    return {
-                        userId: data.userId,
-                        novelId: data.novelId,
-                        currentChapter: data.currentChapter || 0,
-                        status: data.status || "reading",
-                        photoURL: data.photoURL,
-                        displayName: data.displayName,
-                    } as LibraryItem;
-                });
+        // REAL-TIME LISTENER
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            const items = snapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                    userId: data.userId,
+                    novelId: data.novelId,
+                    currentChapter: data.currentChapter || 0,
+                    status: data.status || "reading",
+                    photoURL: data.photoURL,
+                    displayName: data.displayName,
+                } as LibraryItem;
+            });
 
-                setReaders(items);
-            } catch (error) {
-                console.error("Failed to fetch reading journey", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+            // Fetch selectedFrame for each user
+            const itemsWithFrames = await Promise.all(
+                items.map(async (item) => {
+                    try {
+                        const userDoc = await getDocs(
+                            query(collection(db, "users"), where("uid", "==", item.userId))
+                        );
+                        if (!userDoc.empty) {
+                            const userData = userDoc.docs[0].data();
+                            item.selectedFrame = userData.selectedFrame || "default";
+                        }
+                    } catch (error) {
+                        console.error(`Failed to fetch frame for user ${item.userId}`, error);
+                    }
+                    return item;
+                })
+            );
 
-        fetchReaders();
+            setReaders(itemsWithFrames);
+            setLoading(false);
+        }, (error) => {
+            console.error("Failed to subscribe to reading journey", error);
+            setLoading(false);
+        });
+
+        // Cleanup listener on unmount
+        return () => unsubscribe();
     }, [novelId]);
 
     return { readers, loading };
 }
 
+// ====================================================================
+// TOWER LOGIC & SUB-COMPONENTS
+// ====================================================================
+
+interface FloorData {
+    id: number;
+    label: string;
+    rangeStart: number;
+    rangeEnd: number;
+    users: LibraryItem[];
+    isActive: boolean;
+    isMyFloor: boolean;
+}
+
 /**
- * Hook for archer animation logic
+ * Groups readers into 10 Tower Floors
  */
-function useArcherAnimation() {
-    const [isRevealed, setIsRevealed] = useState(false);
-    const [isAnimating, setIsAnimating] = useState(false);
-    const [hasShot, setHasShot] = useState(false);
+function useTowerFloors(readers: LibraryItem[], chapterCount: number = 100, currentUserId?: string) {
+    return useMemo(() => {
+        const floors: FloorData[] = [];
+        const floorCount = 10;
+        const chaptersPerFloor = Math.ceil(Math.max(chapterCount, 1) / floorCount);
 
-    const controls: AnimationControls = {
-        torso: useAnimation(),
-        rightArmUpper: useAnimation(),
-        rightArmFore: useAnimation(),
-        leftArm: useAnimation(),
-        legs: useAnimation(),
-        head: useAnimation(),
-        bowStringUpper: useAnimation(),
-        bowStringLower: useAnimation(),
-    };
+        for (let i = 0; i < floorCount; i++) {
+            const start = i * chaptersPerFloor;
+            const end = (i + 1) * chaptersPerFloor;
 
-    // IDLE ANIMATION LOOP
-    useEffect(() => {
-        if (!isAnimating) {
-            controls.torso.start({
-                rotate: [0, 1, 0],
-                y: [0, 1, 0],
-                transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-            });
+            // Find users in this range
+            // Floor 1 (i=0) includes chapter 0 to X
+            const floorUsers = readers.filter(r =>
+                r.currentChapter >= start && r.currentChapter < end
+            );
 
-            controls.leftArm.start({
-                rotate: [0, -2, 0],
-                transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-            });
+            // Special case for the final floor to include the exact max chapter
+            if (i === floorCount - 1) {
+                const finalUsers = readers.filter(r => r.currentChapter >= end);
+                floorUsers.push(...finalUsers);
+            }
 
-            controls.rightArmUpper.start({
-                rotate: [0, 2, 0],
-                transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-            });
+            // Sort users by chapter (Highest -> Lowest)
+            floorUsers.sort((a, b) => b.currentChapter - a.currentChapter);
 
-            controls.head.start({
-                rotate: [0, -2, 0],
-                y: [0, 1, 0],
-                transition: {
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.1,
-                },
+            const isMyFloor = floorUsers.some(u => u.userId === currentUserId);
+
+            floors.push({
+                id: i + 1,
+                label: `${i + 1}. Mühür`,
+                rangeStart: start,
+                rangeEnd: end,
+                users: floorUsers,
+                isActive: floorUsers.length > 0,
+                isMyFloor
             });
         }
-    }, [isAnimating, controls]);
 
-    const handleTelAliClick = async () => {
-        if (isRevealed || isAnimating) return;
+        // Return reversed so floor 10 is at top, floor 1 at bottom
+        return floors.reverse();
+    }, [readers, chapterCount, currentUserId]);
+}
 
-        setIsAnimating(true);
-        setHasShot(false);
+interface TowerSealProps {
+    floor: FloorData;
+    currentUserId?: string;
+    isCenter?: boolean;
+}
 
-        const drawDuration = 1.0;
+function TowerSeal({ floor, currentUserId }: TowerSealProps) {
+    const isFilled = floor.isActive;
 
-        // PHASE 1: DRAW (Yayı Ger)
-        await Promise.all([
-            controls.torso.start({
-                rotate: -5,
-                x: -2,
-                transition: { duration: drawDuration, ease: "easeInOut" },
-            }),
-
-            controls.head.start({
-                rotate: 0,
-                x: 2,
-                transition: { duration: drawDuration },
-            }),
-
-            controls.leftArm.start({
-                rotate: -45,
-                x: 0,
-                y: -5,
-                transition: { duration: drawDuration, ease: "easeInOut" },
-            }),
-
-            controls.rightArmUpper.start({
-                rotate: -150,
-                x: -5,
-                y: -5,
-                transition: { duration: drawDuration, ease: "easeInOut" },
-            }),
-
-            controls.rightArmFore.start({
-                rotate: -120,
-                transition: { duration: drawDuration, ease: "easeInOut" },
-            }),
-
-            controls.legs.start({
-                scaleY: 0.95,
-                y: 3,
-                transition: { duration: drawDuration },
-            }),
-        ]);
-
-        // PHASE 2: AIM & HOLD (Nişan Al)
-        await new Promise((r) => setTimeout(r, 400));
-
-        // PHASE 3: RELEASE (Bırak)
-        setHasShot(true);
-
-        await Promise.all([
-            controls.torso.start({
-                rotate: 0,
-                x: 2,
-                transition: { duration: 0.2, type: "spring", stiffness: 200 },
-            }),
-
-            controls.rightArmUpper.start({
-                rotate: -130,
-                x: 5,
-                transition: { duration: 0.15, ease: "easeOut" },
-            }),
-
-            controls.rightArmFore.start({
-                rotate: -40,
-                transition: { duration: 0.15, ease: "easeOut" },
-            }),
-
-            controls.leftArm.start({
-                rotate: -40,
-                y: 0,
-                transition: { duration: 0.2, type: "spring" },
-            }),
-        ]);
-
-        // PHASE 4: RELAX
-        await new Promise((r) => setTimeout(r, 500));
-
-        await Promise.all([
-            controls.torso.start({
-                rotate: 0,
-                x: 0,
-                transition: { duration: 1 },
-            }),
-
-            controls.leftArm.start({
-                rotate: 0,
-                y: 0,
-                transition: { duration: 1 },
-            }),
-
-            controls.rightArmUpper.start({
-                rotate: 0,
-                x: 0,
-                y: 0,
-                transition: { duration: 1 },
-            }),
-
-            controls.rightArmFore.start({
-                rotate: 0,
-                transition: { duration: 1 },
-            }),
-
-            controls.legs.start({
-                scaleY: 1,
-                y: 0,
-                transition: { duration: 1 },
-            }),
-        ]);
-
-        setIsRevealed(true);
-        setTimeout(() => setIsAnimating(false), 1500);
+    // Animation Variants for the Mechanical Shells
+    const shellVariants = {
+        closed: { y: 0 },
+        openTop: { y: -8 }, // Move up
+        openBottom: { y: 8 } // Move down
     };
 
-    return {
-        isRevealed,
-        isAnimating,
-        hasShot,
-        controls,
-        handleTelAliClick,
-    };
-}
-
-/**
- * Generates stats from readers data
- */
-function useReadingStats(
-    readers: LibraryItem[],
-    user: any,
-    chapterCount?: number
-) {
-    const maxChapter = useMemo(() => {
-        const readerMax = Math.max(0, ...readers.map((r) => r.currentChapter || 0));
-        return Math.max(chapterCount || 0, readerMax, 100);
-    }, [chapterCount, readers]);
-
-    const myProgress = useMemo(() => {
-        if (!user) return null;
-        return readers.find((r) => r.userId === user.uid) || null;
-    }, [readers, user]);
-
-    const myPercent = useMemo(() => {
-        if (!myProgress?.currentChapter) return 0;
-        return Math.min(100, (myProgress.currentChapter / maxChapter) * 100);
-    }, [myProgress, maxChapter]);
-
-    const topReaders = useMemo(() => {
-        return [...readers]
-            .sort((a, b) => (b.currentChapter || 0) - (a.currentChapter || 0))
-            .slice(0, 10);
-    }, [readers]);
-
-    return { maxChapter, myProgress, myPercent, topReaders };
-}
-
-// ====================================================================
-// SUB-COMPONENTS
-// ====================================================================
-
-interface ArcherComponentProps {
-    user: any;
-    isRevealed: boolean;
-    isAnimating: boolean;
-    hasShot: boolean;
-    controls: AnimationControls;
-    onTelAliClick: () => void;
-}
-
-function ArcherComponent({
-    user,
-    isRevealed,
-    isAnimating,
-    hasShot,
-    controls,
-    onTelAliClick,
-}: ArcherComponentProps) {
     return (
-        <div className="absolute bottom-2 left-4 sm:left-[20%] z-30 scale-125 origin-bottom">
-            <motion.div className="relative w-[120px] h-[150px]">
-                <motion.svg
-                    width="120"
-                    height="150"
-                    viewBox="0 0 120 200"
-                    className="stroke-zinc-200 stroke-[3px] fill-none drop-shadow-xl overflow-visible absolute inset-0"
-                    animate={controls.legs}
-                >
-                    {/* TORSO GROUP */}
-                    <motion.g
-                        animate={controls.torso}
-                        style={{ originX: "60px", originY: "100px" }}
-                    >
-                        <line x1="60" y1="45" x2="60" y2="100" />
+        <div className="w-full h-full flex items-center justify-center relative">
+            {/* VEIN BRANCH (The Connector) */}
+            <div className="absolute left-1/2 top-1/2 -translate-y-1/2 w-1/2 h-1 -translate-x-1/2 z-0">
+                {/* Empty Vein Path */}
+                <div className="absolute inset-0 bg-stone-950/60 border-y border-amber-900/30 shadow-inner" />
+                {/* Liquid Fill */}
+                <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: isFilled ? "100%" : "0%" }}
+                    transition={{ duration: 1, delay: floor.id * 0.05 }}
+                    className={cn(
+                        "absolute left-0 top-0 h-full bg-gradient-to-r from-fuchsia-800 via-purple-600 to-fuchsia-400 shadow-[0_0_8px_#d946ef]",
+                        isFilled ? "opacity-100" : "opacity-0"
+                    )}
+                />
+            </div>
 
-                        {/* USER HEAD */}
-                        <foreignObject x="35" y="0" width="50" height="50">
+            {/* THE MECHANICAL SEAL */}
+            {!floor.isActive ? (
+                // INACTIVE SEAL - Rusted/Locked Shutter
+                <div className="relative z-10 w-10 h-10 rounded-full border border-amber-900/40 bg-stone-950 flex flex-col items-center justify-center overflow-hidden grayscale opacity-60 shadow-lg">
+                    <div className="w-full h-1/2 bg-gradient-to-b from-stone-800 to-stone-900 border-b border-stone-950" />
+                    <div className="w-full h-1/2 bg-gradient-to-t from-stone-800 to-stone-900 border-t border-stone-700/50" />
+                    <div className="absolute inset-0 rounded-full shadow-[inset_0_0_10px_black]" />
+                </div>
+            ) : (
+                // ACTIVE SEAL - Golden Mechanical "Pokeball"
+                <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
                             <motion.div
-                                animate={controls.head}
-                                className="w-full h-full flex items-center justify-center"
+                                className="relative z-10 w-12 h-12 cursor-pointer group flex items-center justify-center"
+                                initial="closed"
+                                whileHover="open"
+                                animate="closed"
                             >
-                                <Avatar className="h-10 w-10 border-2 border-zinc-200 bg-zinc-900">
-                                    <AvatarImage
-                                        src={user?.photoURL || undefined}
-                                        className="object-cover"
-                                    />
-                                    <AvatarFallback className="bg-purple-900 text-[8px] text-white">
-                                        BEN
-                                    </AvatarFallback>
-                                </Avatar>
+                                {/* 1. INNER CORE (The Pulse) - Revealed on Hover */}
+                                <div className={cn(
+                                    "absolute inset-1 rounded-full overflow-hidden flex items-center justify-center z-0",
+                                    "bg-stone-950 border border-fuchsia-500/50 shadow-[0_0_15px_#d946ef]"
+                                )}>
+                                    {/* Liquid Background */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-fuchsia-900 via-purple-600 to-fuchsia-400 animate-pulse opacity-90" />
+
+                                    {/* USER COUNT (Inside the Core) */}
+                                    <span className={cn(
+                                        "relative z-10 font-serif font-bold text-lg text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
+                                        "opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                    )}>
+                                        {floor.users.length}
+                                    </span>
+                                </div>
+
+                                {/* 2. OUTER SHELL - TOP (Mechanical Hemisphere) */}
+                                <motion.div
+                                    variants={{ closed: { y: 0 }, open: { y: -14 } }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                    className="absolute top-0 left-0 right-0 h-1/2 z-10 overflow-hidden flex justify-center"
+                                >
+                                    <div className="w-full h-[200%] bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 rounded-t-full rounded-b-none border-t border-x border-amber-800/60 shadow-[inset_0_5px_15px_rgba(0,0,0,0.8)] flex items-end justify-center pb-[2px] relative">
+                                        {/* Grunge Texture Overlay */}
+                                        <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] mix-blend-multiply pointer-events-none" />
+
+                                        {/* Old Metal Highlight (Top Shine) */}
+                                        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-yellow-200/40 to-transparent" />
+
+                                        {/* Mechanical Seam/Detail */}
+                                        <div className="w-2/3 h-[2px] bg-black/60 rounded-full mb-0.5 shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                                    </div>
+
+                                    {/* ENGRAVED NUMBER (TOP HALF) */}
+                                    {/* Darkstone Etching style */}
+                                    <span className={cn(
+                                        "absolute bottom-0 translate-y-[37%] z-20 font-serif font-extrabold text-[16px] leading-none",
+                                        "text-stone-950 mix-blend-multiply",
+                                        "drop-shadow-[0_1px_0_rgba(180,100,50,0.3)]" // Faint rust/gold highlight
+                                    )}>
+                                        {floor.id}
+                                    </span>
+                                </motion.div>
+
+                                {/* 3. OUTER SHELL - BOTTOM (Mechanical Hemisphere) */}
+                                <motion.div
+                                    variants={{ closed: { y: 0 }, open: { y: 14 } }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                    className="absolute bottom-0 left-0 right-0 h-1/2 z-10 overflow-hidden flex justify-center"
+                                >
+                                    <div className="absolute bottom-0 w-full h-[200%] bg-gradient-to-t from-amber-500 via-amber-800 to-amber-950 rounded-b-full rounded-t-none border-b border-x border-amber-800/60 shadow-[inset_0_-5px_15px_rgba(0,0,0,0.8)] flex items-start justify-center pt-[2px]">
+                                        {/* Grunge Texture Overlay */}
+                                        <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] mix-blend-multiply pointer-events-none" />
+
+                                        {/* Old Metal Highlight (Bottom Shine) */}
+                                        <div className="absolute bottom-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-yellow-200/40 to-transparent" />
+
+                                        {/* Mechanical Seam/Detail */}
+                                        <div className="w-1/2 h-[2px] bg-black/60 rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                                    </div>
+
+                                    {/* ENGRAVED NUMBER (BOTTOM HALF) */}
+                                    <span className={cn(
+                                        "absolute top-0 -translate-y-[63%] z-20 font-serif font-extrabold text-[16px] leading-none",
+                                        "text-stone-950 mix-blend-multiply",
+                                        "drop-shadow-[0_1px_0_rgba(180,100,50,0.3)]"
+                                    )}>
+                                        {floor.id}
+                                    </span>
+                                </motion.div>
+
+                                {/* 4. CENTER GLOW (Pulse when closed) */}
+                                <div className="absolute inset-0 z-20 pointer-events-none mix-blend-screen group-hover:opacity-0 transition-opacity duration-300">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[2px] bg-fuchsia-400 blur-sm animate-pulse" />
+                                </div>
+
                             </motion.div>
-                        </foreignObject>
+                        </TooltipTrigger>
+                        {/* Tooltip Content remains largely same */}
+                        <TooltipContent side="right" sideOffset={20} className="bg-stone-950/95 border border-amber-600/40 p-0 rounded-xl shadow-2xl backdrop-blur-md min-w-[220px] overflow-hidden">
+                            {/* ... Header ... */}
+                            <div className="bg-gradient-to-r from-amber-950/80 to-stone-900/80 border-b border-amber-500/10 p-3 relative overflow-hidden">
+                                <h4 className="font-serif font-bold text-amber-400 flex items-center gap-2 relative z-10 text-sm drop-shadow-md">
+                                    <Users size={14} className="text-amber-600" />
+                                    {floor.label}
+                                </h4>
+                                <span className="text-[10px] text-amber-700 font-mono relative z-10 block mt-1">
+                                    Seviye {floor.rangeStart} - {floor.rangeEnd}
+                                </span>
+                            </div>
+                            {/* ... Users list ... */}
+                            <div className="p-2 space-y-1 max-h-[250px] overflow-y-auto custom-scrollbar">
+                                {floor.users.map((user, idx) => (
+                                    <div key={user.userId} className={cn(
+                                        "flex items-center gap-3 text-xs p-2 rounded border border-transparent transition-colors",
+                                        user.userId === currentUserId
+                                            ? "bg-amber-900/20 border-amber-500/20"
+                                            : "hover:bg-white/5"
+                                    )}>
+                                        {/* Rank Badge (Framed) */}
+                                        <div className="w-5 h-5 rounded-full bg-stone-900 border border-amber-800/60 flex items-center justify-center shadow-sm">
+                                            <span className="font-mono text-[9px] text-amber-600 font-bold">{idx + 1}</span>
+                                        </div>
 
-                        {/* RIGHT ARM (Draw Hand) - KINEMATIC CHAIN */}
-                        {/* Origin: Shoulder (60,50) */}
-                        <motion.g
-                            animate={controls.rightArmUpper}
-                            style={{ originX: "60px", originY: "50px" }}
-                        >
-                            {/* Upper Arm Bone */}
-                            <line x1="60" y1="50" x2="60" y2="90" className="stroke-zinc-400 stroke-[4px] rounded-full" />
+                                        {/* User Avatar with Frame */}
+                                        <div className="p-1">
+                                            <UserAvatar
+                                                src={user.photoURL}
+                                                alt={user.displayName || "User"}
+                                                frameId={user.selectedFrame}
+                                                size="sm"
+                                            />
+                                        </div>
 
-                            {/* ELBOW JOINT (Nested Group) */}
-                            {/* Origin: The end of the upper arm (60, 90) */}
-                            <motion.g
-                                animate={controls.rightArmFore}
-                                style={{ originX: "60px", originY: "90px" }}
-                            >
-                                {/* Elbow visual */}
-                                <circle cx="60" cy="90" r="3" className="fill-zinc-500" />
-
-                                {/* Forearm Bone */}
-                                <line x1="60" y1="90" x2="60" y2="125" className="stroke-zinc-400 stroke-[3px] rounded-full" />
-
-                                {/* Hand Visual */}
-                                <circle cx="60" cy="125" r="2.5" className="fill-zinc-500" />
-
-                                {/* ARROW (Nocked) */}
-                                <motion.line
-                                    x1="60" y1="125" x2="0" y2="125"
-                                    className="stroke-zinc-200 stroke-[2px]"
-                                    initial={{ opacity: 0, pathLength: 0 }}
-                                    animate={{
-                                        opacity: isAnimating && !hasShot ? 1 : 0,
-                                        pathLength: isAnimating && !hasShot ? 1 : 0,
-                                    }}
-                                    transition={{ duration: 0.3 }}
-                                />
-                            </motion.g>
-                        </motion.g>
-
-                        {/* LEFT ARM (Bow Hand) */}
-                        <motion.g
-                            animate={controls.leftArm}
-                            style={{ originX: "60px", originY: "50px" }}
-                        >
-                            {/* Arm */}
-                            <line x1="60" y1="50" x2="30" y2="80" className="stroke-zinc-400 stroke-[3px] rounded-full" />
-                            <circle cx="30" cy="80" r="2.5" className="fill-zinc-500" />
-
-                            {/* THE BOW */}
-                            <g transform="translate(30, 80) rotate(45)">
-                                <path
-                                    d="M -10 -45 Q 25 0 -10 45"
-                                    className="stroke-amber-700 stroke-[3px]"
-                                    fill="none"
-                                />
-                                <line
-                                    x1="-10"
-                                    y1="-45"
-                                    x2="-10"
-                                    y2="45"
-                                    className="stroke-zinc-600 stroke-[1px] opacity-50"
-                                />
-                            </g>
-                        </motion.g>
-                    </motion.g>
-
-                    {/* LEGS */}
-                    <g>
-                        <line
-                            x1="60"
-                            y1="100"
-                            x2="40"
-                            y2="180"
-                            className="stroke-zinc-400"
-                        />
-                        <line
-                            x1="60"
-                            y1="100"
-                            x2="80"
-                            y2="180"
-                            className="stroke-zinc-400"
-                        />
-                    </g>
-                </motion.svg>
-
-                {/* BUTTON */}
-                {!isRevealed && !isAnimating && (
-                    <button
-                        onClick={onTelAliClick}
-                        aria-label="Nişan al ve okuyucuların ilerlemesini göster"
-                        className="absolute inset-0 w-full h-full cursor-pointer z-50 flex items-center justify-center outline-none focus:outline-none pointer-events-auto"
-                    >
-                        <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded animate-bounce whitespace-nowrap font-bold shadow-lg border border-purple-400">
-                            Nişan Al!
-                        </span>
-                    </button>
-                )}
-            </motion.div>
+                                        <span className={cn(
+                                            "truncate flex-1 font-serif",
+                                            user.userId === currentUserId ? "text-amber-200 font-bold" : "text-stone-400"
+                                        )}>
+                                            {user.displayName || "Maceracı"}
+                                        </span>
+                                        <span className="text-[9px] text-amber-600 font-bold ml-auto font-mono">
+                                            Lv.{user.currentChapter}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
         </div>
     );
 }
 
-interface ArrowProjectileProps {
-    startX: string;
-    targetY: number;
+// ====================================================================
+// SUB-COMPONENTS (Filter & Leaderboard)
+// ====================================================================
+
+interface FilterPanelProps {
+    filter: "everyone" | "friends";
+    setFilter: (filter: "everyone" | "friends") => void;
 }
 
-function ArrowProjectile({ startX, targetY }: ArrowProjectileProps) {
+function FilterPanel({ filter, setFilter }: FilterPanelProps) {
     return (
-        <motion.div
-            initial={{ bottom: "120px", left: startX, rotate: 60, scale: 0.8, opacity: 0 }}
-            animate={{
-                bottom: `${Math.max(15, targetY)}%`,
-                left: "50%",
-                rotate: 135,
-                opacity: [0, 1, 1, 0],
-            }}
-            transition={{ duration: 0.4, ease: "linear" }}
-            className="absolute z-40 origin-bottom"
-        >
-            {/* Main Arrow Shaft */}
-            <div className="w-0.5 h-16 bg-white shadow-[0_0_10px_white]" />
-            {/* Fletching (Feathers) */}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-4 bg-purple-500/50 clip-arrow-feather" />
-        </motion.div>
+        <div className="flex flex-col gap-4 relative mt-4 group">
+            {/* The PIN (Static Wall Anchor) */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-600 border border-black shadow-[0_2px_4px_black]" />
+                <div className="w-16 h-8 bg-black/40 blur-md -mt-2 -z-10 rounded-full" />
+            </div>
+
+            <motion.div
+                style={{ transformOrigin: "50% -12px" }}
+                animate={{ rotate: 0 }} // Resting state
+                whileHover={{
+                    rotate: [0, 1.5, -1.5, 0.7, -0.7, 0],
+                    transition: { duration: 0.6, ease: "easeInOut" }
+                }}
+                transition={{ type: "spring", stiffness: 200, damping: 10 }} // Return spring
+                className="relative"
+            >
+                {/* Stone Plate Background */}
+                <div className="absolute inset-0 bg-stone-900 rounded-lg border-[3px] border-amber-700/60 shadow-2xl" />
+
+                <div className="relative z-10 bg-stone-900/95 backdrop-blur-sm p-4 rounded-lg border border-white/5 space-y-3">
+                    <h4 className="text-amber-500 font-serif text-xs font-bold uppercase tracking-widest mb-2 border-b border-amber-700/30 pb-2 text-center">
+                        Görünüm Modu
+                    </h4>
+
+                    <button
+                        onClick={() => setFilter("friends")}
+                        className={cn(
+                            "w-full text-left px-3 py-2 rounded text-xs font-bold transition-all border",
+                            filter === "friends"
+                                ? "bg-amber-900/40 border-amber-600 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                : "bg-transparent border-transparent text-stone-500 hover:bg-stone-800 hover:text-stone-300"
+                        )}
+                    >
+                        ⚔️  Sadece Dostlar
+                    </button>
+
+                    <button
+                        onClick={() => setFilter("everyone")}
+                        className={cn(
+                            "w-full text-left px-3 py-2 rounded text-xs font-bold transition-all border",
+                            filter === "everyone"
+                                ? "bg-purple-900/40 border-purple-600 text-purple-400 shadow-[0_0_10px_rgba(192,38,211,0.2)]"
+                                : "bg-transparent border-transparent text-stone-500 hover:bg-stone-800 hover:text-stone-300"
+                        )}
+                    >
+                        🌍  Herkes
+                    </button>
+                </div>
+            </motion.div>
+        </div>
     );
 }
 
@@ -485,118 +410,115 @@ interface LeaderboardProps {
 
 function Leaderboard({ topReaders }: LeaderboardProps) {
     return (
-        <div className="w-64 bg-zinc-900/30 rounded-xl border border-white/5 p-4 backdrop-blur-sm h-fit">
-            <h4 className="text-sm font-bold text-zinc-100 mb-4 flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-yellow-500" />
-                Lider Tablosu
-            </h4>
-            <div className="space-y-3">
-                {topReaders.map((reader, index) => {
-                    let rankColor = "text-zinc-500";
-                    let rankIcon: string | null = null;
+        <div className="w-72 relative group mt-4"> {/* Added mt-4 to give space for the pin/swing */}
 
-                    if (index === 0) {
-                        rankColor = "text-yellow-500";
-                        rankIcon = "🥇";
-                    } else if (index === 1) {
-                        rankColor = "text-zinc-300";
-                        rankIcon = "🥈";
-                    } else if (index === 2) {
-                        rankColor = "text-amber-700";
-                        rankIcon = "🥉";
-                    }
+            {/* The PIN (Static Wall Anchor) */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none">
+                {/* The Nail Head */}
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-600 border border-black shadow-[0_2px_4px_black]" />
+                {/* Shadow of the board hanging */}
+                <div className="w-20 h-12 bg-black/50 blur-xl -mt-2 -z-10 rounded-full" />
+            </div>
 
-                    return (
-                        <div
-                            key={`${reader.userId}-${index}`}
-                            className="flex items-center justify-between text-xs group"
-                        >
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <span
+            {/* SWINGING BOARD CONTAINER */}
+            <motion.div
+                style={{ transformOrigin: "50% -12px" }} // Swing from the pin location
+                animate={{ rotate: 0 }} // Resting state
+                whileHover={{
+                    rotate: [0, 2, -2, 1, -1, 0],
+                    transition: { duration: 0.6, ease: "easeInOut" }
+                }}
+                transition={{ type: "spring", stiffness: 200, damping: 10 }} // Return spring physics
+                className="relative"
+            >
+                {/* Parchment/Stone Board Background */}
+                <div className="absolute inset-0 bg-stone-900 rounded-lg border-[3px] border-amber-700/60 shadow-2xl" />
+
+                <div className="relative bg-stone-900/95 backdrop-blur-sm p-4 rounded-lg border border-white/5 z-10 min-h-[450px] max-h-[600px] flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3 border-b border-amber-700/30 pb-2 flex-shrink-0">
+                        <h4 className="text-amber-500 font-serif tracking-wider font-bold text-sm flex items-center gap-2">
+                            <Trophy className="h-4 w-4 text-amber-500" />
+                            Lider Tablosu
+                        </h4>
+                        <div className="bg-amber-900/30 text-amber-500 text-[10px] px-2 py-0.5 rounded border border-amber-800/50">
+                            Top 10
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5 overflow-y-auto flex-grow pr-1 custom-scrollbar">
+                        {topReaders.map((reader, index) => {
+                            let rankColor = "text-stone-500";
+                            let rankIcon: React.ReactNode = <span>{index + 1}</span>;
+                            let rowBg = "hover:bg-amber-900/10";
+
+                            if (index === 0) {
+                                rankColor = "text-yellow-400";
+                                rankIcon = "👑";
+                                rowBg = "bg-gradient-to-r from-amber-900/20 to-transparent";
+                            } else if (index === 1) {
+                                rankColor = "text-zinc-300";
+                                rankIcon = "⚔️";
+                            } else if (index === 2) {
+                                rankColor = "text-amber-700";
+                                rankIcon = "🛡️";
+                            }
+
+                            return (
+                                <div
+                                    key={`${reader.userId}-${index}`}
                                     className={cn(
-                                        "font-mono font-bold w-4 text-center",
-                                        rankColor
+                                        "flex items-center justify-between text-xs p-2 rounded transition-colors group/item",
+                                        rowBg
                                     )}
                                 >
-                                    {rankIcon || index + 1}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6 border border-white/10">
-                                        {reader.photoURL && (
-                                            <AvatarImage src={reader.photoURL} />
-                                        )}
-                                        <AvatarFallback className="text-[9px] bg-zinc-800 text-zinc-400">
-                                            {reader.displayName?.slice(0, 1) || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span
-                                        className={cn(
-                                            "truncate max-w-[80px]",
-                                            index < 3
-                                                ? "text-white font-medium"
-                                                : "text-zinc-400"
-                                        )}
-                                    >
-                                        {reader.displayName || `Okuyucu ${index + 1}`}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <span
+                                            className={cn(
+                                                "font-mono font-bold w-5 text-center flex-shrink-0",
+                                                rankColor
+                                            )}
+                                        >
+                                            {rankIcon}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            {/* User Avatar with Frame */}
+                                            <div className="p-1">
+                                                <UserAvatar
+                                                    src={reader.photoURL}
+                                                    alt={reader.displayName || "User"}
+                                                    frameId={reader.selectedFrame}
+                                                    size="sm"
+                                                />
+                                            </div>
+                                            <span
+                                                className={cn(
+                                                    "truncate font-serif tracking-wide",
+                                                    index < 3
+                                                        ? "text-amber-100/90 font-medium"
+                                                        : "text-stone-400"
+                                                )}
+                                            >
+                                                {reader.displayName || `Maceracı ${index + 1}`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="font-mono text-amber-600/80 font-bold text-[10px] flex-shrink-0 ml-2 group-hover/item:text-amber-400 transition-colors">
+                                        Lv.{reader.currentChapter}
+                                    </div>
                                 </div>
+                            );
+                        })}
+
+                        {topReaders.length === 0 && (
+                            <div className="text-stone-600 text-center py-6 text-xs italic font-serif mt-10">
+                                Lonca Salonu bomboş...
                             </div>
-                            <div className="font-mono text-zinc-500 group-hover:text-purple-400 transition-colors">
-                                {reader.currentChapter}
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {topReaders.length === 0 && (
-                    <div className="text-zinc-600 text-center py-4 text-xs">
-                        Henüz kimse zirveye ulaşmadı.
+                        )}
                     </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-interface UserAvatarTooltipProps {
-    user: any;
-    progress: LibraryItem;
-    position?: "top" | "right";
-}
-
-function UserAvatarTooltip({
-    user,
-    progress,
-    position = "top",
-}: UserAvatarTooltipProps) {
-    return (
-        <TooltipProvider>
-            <Tooltip open={true}>
-                <TooltipTrigger asChild>
-                    <div className="relative group cursor-pointer">
-                        <div className="absolute inset-0 bg-purple-500 rounded-full animate-ping opacity-75" />
-
-                        <Avatar className="h-10 w-10 border-2 border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.6)]">
-                            {user?.photoURL && (
-                                <AvatarImage src={user.photoURL} />
-                            )}
-                            <AvatarFallback className="bg-purple-950 text-[10px] text-purple-200">
-                                {user.displayName?.slice(0, 2) || "ME"}
-                            </AvatarFallback>
-                        </Avatar>
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent
-                    side={position}
-                    className="bg-zinc-900 border-purple-500/30 text-xs z-50"
-                >
-                    <span className="font-bold text-white">Sen Buradasın! </span>
-                    <div className="text-zinc-400">
-                        {progress.currentChapter}.  Bölüm
-                    </div>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+                </div>
+            </motion.div >
+        </div >
     );
 }
 
@@ -609,85 +531,158 @@ export function ReadingJourney({
     chapterCount,
     className,
     orientation = "vertical",
+    coverImage,
 }: ReadingJourneyProps) {
     const { user } = useAuth();
+    const [filter, setFilter] = useState<"everyone" | "friends">("everyone");
     const { readers, loading } = useNovelReaders(novelId);
-    const { myProgress, myPercent, topReaders } = useReadingStats(
-        readers,
-        user,
-        chapterCount
-    );
-    const {
-        isRevealed,
-        isAnimating,
-        hasShot,
-        controls,
-        handleTelAliClick,
-    } = useArcherAnimation();
+
+    // Calculate max chapter for percentage
+    const maxChapter = useMemo(() => {
+        const readerMax = Math.max(0, ...readers.map((r) => r.currentChapter || 0));
+        return Math.max(chapterCount || 0, readerMax, 100);
+    }, [chapterCount, readers]);
+
+    const topReaders = useMemo(() => {
+        return [...readers]
+            .sort((a, b) => (b.currentChapter || 0) - (a.currentChapter || 0))
+            .slice(0, 10);
+    }, [readers]);
+
+    // Calculate My Percent separate for the Mana Bar fill (keep this for personal visual)
+    const myPercent = useMemo(() => {
+        const myProgress = readers.find((r) => r.userId === user?.uid);
+        if (!myProgress?.currentChapter) return 0;
+        return Math.min(100, (myProgress.currentChapter / maxChapter) * 100);
+    }, [readers, user, maxChapter]);
+
+    // TOWER FLOORS LOGIC
+    const floors = useTowerFloors(readers, maxChapter, user?.uid);
 
     if (loading) {
         return (
-            <div className="w-full h-[600px] rounded-xl bg-zinc-900/50 animate-pulse border border-white/5" />
+            <div className="w-full h-[600px] flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+            </div>
         );
     }
 
     if (readers.length === 0 && orientation === "horizontal") return null;
     if (orientation === "horizontal") return null;
 
-    // VERTICAL LAYOUT ("TOWER")
+    // ISEKAI TOWER THEME - PURPLE EDITION WITH FROSTED GLASS BACKGROUND
     return (
         <section
             className={cn(
-                "relative w-full flex flex-col items-center py-8 min-h-[600px] overflow-hidden sm:overflow-visible",
+                "relative w-full flex flex-col items-center justify-center py-16 min-h-[750px] overflow-hidden sm:overflow-visible",
                 className
             )}
         >
-            {/* ARCHER TEL ALI */}
-            <ArcherComponent
-                user={user}
-                isRevealed={isRevealed}
-                isAnimating={isAnimating}
-                hasShot={hasShot}
-                controls={controls}
-                onTelAliClick={handleTelAliClick}
-            />
+            {/* AMBIENT BACKGROUND EFFECTS */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {/* Mystic Fog - PURPLE */}
+                <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-purple-900/20 to-transparent blur-3xl opacity-60" />
 
-            {/* ARROW PROJECTILE */}
-            <AnimatePresence>
-                {isAnimating && hasShot && (
-                    <ArrowProjectile startX="30%" targetY={myPercent} />
-                )}
-            </AnimatePresence>
+                {/* Floating Particles */}
+                <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-fuchsia-400 rounded-full blur-[1px] opacity-30 animate-pulse" style={{ animationDuration: '4s' }} />
+                <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-purple-400 rounded-full blur-[1px] opacity-30 animate-pulse" style={{ animationDuration: '6s' }} />
+            </div>
 
-            {/* GRID */}
-            <div className="flex flex-col sm:grid sm:grid-cols-5 w-full max-w-5xl relative h-full flex-grow gap-4">
-                <div className="hidden sm:block sm:col-span-2" />
-                <div className="relative h-[600px] w-full sm:col-span-1 flex justify-center select-none py-12">
-                    <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-zinc-800/50 rounded-full h-full my-4 overflow-visible">
-                        <div className="w-full bg-gradient-to-t from-purple-600 via-purple-400 to-purple-600 h-full opacity-30" />
-                    </div>
-                    {user && myProgress && isRevealed && (
-                        <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 15,
-                            }}
-                            className="absolute left-1/2 -translate-x-1/2 z-20"
-                            style={{ bottom: `${myPercent}%`, marginBottom: "-20px" }}
-                        >
-                            <UserAvatarTooltip
-                                user={user}
-                                progress={myProgress}
-                                position="top"
-                            />
-                            <div className="absolute inset-0 rounded-full border border-purple-500/50 animate-ping opacity-50" />
-                        </motion.div>
-                    )}
+            <div className="relative z-10 flex w-full max-w-6xl items-end justify-center gap-8 sm:gap-24 px-4">
+
+                {/* LEFT: FILTER OPTIONS */}
+                <div className="hidden sm:block pb-32 w-48 order-1">
+                    <FilterPanel filter={filter} setFilter={setFilter} />
                 </div>
-                <div className="hidden sm:flex sm:col-span-2 justify-start pl-8 pt-8">
+
+                {/* CENTER: THE TOWER OF ASCENSION - SEAL SYSTEM */}
+                <div className="relative h-[660px] w-48 flex justify-center items-end flex-shrink-0 order-2">
+
+                    {/* Tower Base (Ancient Pedestal) - MAJESTIC & GRAND */}
+                    <div className="absolute bottom-[-20px] w-96 h-32 pointer-events-none z-0 flex justify-center items-end">
+                        {/* Ground Energy Fissure */}
+                        <div className="absolute bottom-4 w-80 h-10 bg-amber-600/20 blur-xl rounded-[100%]" />
+
+                        {/* Bottom Platform (Foundation) */}
+                        <div className="absolute bottom-0 w-72 h-10 bg-gradient-to-r from-amber-950 via-stone-950 to-amber-950 rounded-[100%] border border-amber-900/40 shadow-2xl" />
+
+                        {/* Middle Step */}
+                        <div className="absolute bottom-5 w-56 h-8 bg-gradient-to-r from-amber-900 via-stone-900 to-amber-900 rounded-[100%] border border-amber-800/50 shadow-xl" />
+
+                        {/* Top Step (Tower Mount) */}
+                        <div className="absolute bottom-9 w-40 h-6 bg-gradient-to-r from-yellow-900 via-amber-800 to-yellow-900 rounded-[100%] border border-amber-600/50 flex items-center justify-center">
+                            <div className="w-32 h-4 bg-black/30 rounded-[100%] blur-sm" />
+                        </div>
+                    </div>
+
+                    {/* The Monolith (Structure) - ANCIENT GOLD METALLIC */}
+                    <div className={cn(
+                        "relative w-24 h-full rounded-t-lg flex flex-col pt-4 pb-8 z-10 mb-8 overflow-hidden",
+                        // MATERIAL: Brushed Gold Gradient
+                        "bg-gradient-to-b from-amber-700 via-yellow-800 to-amber-950",
+                        // BEVEL: Light Top, Dark Sides, Inner Shadow
+                        "border-t-2 border-x border-amber-500/20 border-b-0",
+                        "shadow-[inset_0_0_40px_rgba(0,0,0,0.7),_0_0_50px_rgba(0,0,0,0.8)]"
+                    )}>
+                        {/* Shadow Gradient at Base Contact Point (Inside Monolith) */}
+                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black via-black/50 to-transparent z-10 opacity-80" />
+
+                        {/* Bevel Highlight (Left Edge) */}
+                        <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-yellow-300/40 to-transparent z-20" />
+                        {/* Bevel Shadow (Right Edge) */}
+                        <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-black/40 z-20" />
+
+                        {/* Grunge Texture Overlay */}
+                        <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] mix-blend-multiply pointer-events-none" />
+
+                        {/* CENTRAL ARTERY (Deep Groove) */}
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 top-0 w-3 bg-black/50 border-x border-black/80 z-0 shadow-[inset_0_0_5px_black]">
+                            {/* Liquid Fill */}
+                            <motion.div
+                                initial={{ height: "0%" }}
+                                animate={{ height: `${myPercent}%` }}
+                                transition={{ duration: 1.5, ease: "easeInOut" }}
+                                className="absolute bottom-0 w-full bg-gradient-to-t from-fuchsia-900 via-purple-600 to-fuchsia-500 shadow-[0_0_15px_#d946ef] animate-pulse"
+                            />
+                        </div>
+
+                        {/* TOWER FLOORS / SEALS CONTAINER */}
+                        <div className="relative w-full h-full flex flex-col justify-between items-center z-20 px-1 py-3">
+                            {floors.map((floor) => (
+                                <motion.div
+                                    key={floor.id}
+                                    className="w-full h-full flex items-center justify-center p-1"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.5, delay: floor.id * 0.1 }}
+                                >
+                                    <TowerSeal floor={floor} currentUserId={user?.uid} />
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* MOUNTING SOCKET (The Connector) - Hides the seam */}
+                    <div className="absolute bottom-6 w-36 h-12 pointer-events-none z-20 flex justify-center items-end">
+                        {/* Front Metal Lip */}
+                        <div className="absolute bottom-0 w-28 h-8 rounded-[100%] border-t-[3px] border-amber-500/40 bg-gradient-to-b from-amber-900/90 to-black shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-20" />
+
+                        {/* Side Grips/Claws (Visual) */}
+                        <div className="absolute bottom-2 w-32 h-6 flex justify-between">
+                            <div className="w-4 h-full bg-gradient-to-r from-amber-800 to-transparent skew-x-12 opacity-80" />
+                            <div className="w-4 h-full bg-gradient-to-l from-amber-800 to-transparent -skew-x-12 opacity-80" />
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* RIGHT: GUILD BOARD (Leaderboard) */}
+                <div className="hidden sm:block pb-32 order-3">
+                    <Leaderboard topReaders={topReaders} />
+                </div>
+
+                {/* MOBILE FALLBACK */}
+                <div className="sm:hidden absolute top-0 left-4 z-50">
                     <Leaderboard topReaders={topReaders} />
                 </div>
             </div>

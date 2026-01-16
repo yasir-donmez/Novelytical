@@ -47,10 +47,25 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.SetIsOriginAllowed(origin => true) // Allow any origin for dev
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+            if (builder.Environment.IsDevelopment())
+            {
+                // Development: Allow any origin
+                policy.SetIsOriginAllowed(origin => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            }
+            else
+            {
+                // Production: Only allow specific origins
+                var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+                    ?? new[] { "https://your-domain.com" };
+                
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            }
         });
     });
 
@@ -69,7 +84,8 @@ try
     });
 
     // 🔥 Firebase & Authentication Setup
-    var serviceAccountPath = Path.Combine(builder.Environment.ContentRootPath, "serviceAccountKey.json");
+    var serviceAccountPath = builder.Configuration["Firebase:ServiceAccountPath"] 
+        ?? Path.Combine(builder.Environment.ContentRootPath, "serviceAccountKey.json");
     
     if (File.Exists(serviceAccountPath))
     {
@@ -83,10 +99,10 @@ try
         Log.Warning("⚠️ serviceAccountKey.json not found! Firebase Admin SDK not initialized.");
     }
 
+    var projectId = builder.Configuration["Firebase:ProjectId"] ?? "novelytical";
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
-            var projectId = "novelytical"; // TODO: Move to appsettings
             options.Authority = $"https://securetoken.google.com/{projectId}";
             options.TokenValidationParameters = new TokenValidationParameters
             {

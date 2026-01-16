@@ -2,6 +2,16 @@ import api from '../axios';
 import { handleError } from '../errors/handler';
 import { NetworkError } from '../errors/types';
 
+// Helper function to get API base URL
+const getApiUrl = () => {
+    if (typeof window !== 'undefined') {
+        // Client-side: use '/api' proxy
+        return process.env.NEXT_PUBLIC_API_URL || '/api';
+    }
+    // Server-side: use full URL
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+};
+
 export async function fetchNovels(params: {
     searchString?: string;
     tags?: string[];
@@ -30,7 +40,7 @@ export async function fetchNovels(params: {
     if (params.maxRating !== null && params.maxRating !== undefined) queryParams.append('maxRating', params.maxRating.toString());
 
     try {
-        const url = `http://localhost:5050/api/novels?${queryParams.toString()}`;
+        const url = `${getApiUrl()}/api/novels?${queryParams.toString()}`;
 
         const res = await fetch(url, {
             method: 'GET',
@@ -59,7 +69,7 @@ export async function fetchNovels(params: {
 
 export async function getNovelById(id: number | string) {
     // Response from /novels/{id} is { data: NovelDetailDto }
-    const res = await fetch(`http://localhost:5050/api/novels/${id}`, {
+    const res = await fetch(`${getApiUrl()}/api/novels/${id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store'
@@ -81,7 +91,7 @@ export async function getNovelsByAuthor(author: string, currentNovelId: number |
     params.append('excludeId', currentNovelId.toString());
     params.append('pageSize', count.toString());
 
-    const url = `http://localhost:5050/api/novels/by-author?${params.toString()}`;
+    const url = `${getApiUrl()}/api/novels/by-author?${params.toString()}`;
     console.log('[getNovelsByAuthor] Fetching:', url);
 
     const res = await fetch(url, {
@@ -99,7 +109,7 @@ export async function getNovelsByAuthor(author: string, currentNovelId: number |
 export async function getSimilarNovels(id: number | string, count: number = 12) {
     // Endpoint: /novels/{id}/similar
     // Params: limit (Service uses 'limit', I previously used 'count' which was wrong)
-    const res = await fetch(`http://localhost:5050/api/novels/${id}/similar?limit=${count}`, {
+    const res = await fetch(`${getApiUrl()}/api/novels/${id}/similar?limit=${count}`, {
         cache: 'no-store'
     });
     if (!res.ok) return [];

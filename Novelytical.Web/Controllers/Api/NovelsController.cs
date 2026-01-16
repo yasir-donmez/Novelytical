@@ -18,10 +18,14 @@ namespace Novelytical.Web.Controllers.Api;
 public class NovelsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly Data.Interfaces.INovelRepository _novelRepository;
 
-    public NovelsController(IMediator mediator)
+    public NovelsController(
+        IMediator mediator, 
+        Data.Interfaces.INovelRepository novelRepository)
     {
         _mediator = mediator;
+        _novelRepository = novelRepository;
     }
 
     /// <summary>
@@ -145,4 +149,6 @@ public class NovelsController : ControllerBase
         var result = await _mediator.Send(new GetAllTagsQuery());
         return Ok(result);
     }
+
+
 }

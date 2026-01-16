@@ -35,7 +35,7 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
         setHasSearched(true);
         try {
             // Use configured api client to ensure auth headers are attached
-            const response = await api.get<{ data: Novel[] }>(`http://localhost:5050/api/novels?searchString=${encodeURIComponent(searchQuery)}`);
+            const response = await api.get<{ data: Novel[] }>(`/novels?searchString=${encodeURIComponent(searchQuery)}`);
 
             // Axios returns the body in response.data
             // Backend returns { data: novels[], totalCount: number }

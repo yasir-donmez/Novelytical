@@ -30,6 +30,9 @@ try
     // 2. Uygulama Katmanını Ekliyoruz (Embedder vb. için)
     builder.Services.AddApplicationLayer();
 
+    // 2.5 HTTP Client Ekle
+    builder.Services.AddHttpClient();
+
     // 3. Robotu (Worker) İşe Alıyoruz
     builder.Services.AddHostedService<Worker>();
 
