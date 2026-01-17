@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { ChatService, ChatSession, ChatMessage } from "@/services/chat-service";
 import { UserProfile } from "@/services/user-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserPresenceIndicator } from "./user-presence-indicator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -341,10 +343,19 @@ export function ChatFloatingDialog() {
                                                     className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-xl transition-colors text-left"
                                                     onClick={() => setActiveChat(chat)}
                                                 >
-                                                    <Avatar className="h-10 w-10">
-                                                        <AvatarImage src={otherUser.photoURL || undefined} />
-                                                        <AvatarFallback>{otherUser.username[0].toUpperCase()}</AvatarFallback>
-                                                    </Avatar>
+                                                    <UserAvatar
+                                                        src={otherUser.photoURL}
+                                                        alt={otherUser.username}
+                                                        frameId={otherUser.frame}
+                                                        size="lg"
+                                                        className="h-10 w-10" // Explicit override if needed, though size="lg" is 10
+                                                    >
+                                                        <UserPresenceIndicator
+                                                            userId={otherUser.uid}
+                                                            showOnlineStatus={otherUser.privacySettings?.showOnlineStatus ?? true}
+                                                            className="h-3 w-3 right-0 bottom-0 border-[2px] z-50"
+                                                        />
+                                                    </UserAvatar>
                                                     <div className="flex-1 overflow-hidden">
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center gap-2 overflow-hidden">

@@ -60,13 +60,13 @@ export function HeroSection({ novel }: HeroSectionProps) {
 
                     <div className="flex flex-wrap gap-4 pt-4">
                         <Button size="lg" className="gap-2 rounded-full font-semibold text-md h-12 px-8" asChild>
-                            <Link href={`/novel/${novel.id}`}>
+                            <Link href={`/novel/${novel.slug}`}>
                                 <Play className="h-5 w-5 fill-current" />
                                 Hemen Oku
                             </Link>
                         </Button>
                         <Button size="lg" variant="outline" className="gap-2 rounded-full font-semibold text-md h-12 px-8 bg-background/5 border-foreground/10 hover:bg-foreground/10 backdrop-blur-sm" asChild>
-                            <Link href={`/novel/${novel.id}/detay`}>
+                            <Link href={`/novel/${novel.slug}/detay`}>
                                 <Info className="h-5 w-5" />
                                 Detaylar
                             </Link>

@@ -130,6 +130,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         novels = pagedEntities.Select(n => new NovelListDto
         {
             Id = n.Id,
+            Slug = n.Slug, // Map Slug
             Title = n.Title,
             Author = n.Author ?? string.Empty,
             Rating = n.Rating,
@@ -275,6 +276,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                .Select(n => new NovelListDto
                {
                    Id = n.Id,
+                   Slug = n.Slug, // Map Slug
                    Title = n.Title,
                    Author = n.Author ?? string.Empty,
                    Rating = n.Rating,
@@ -314,6 +316,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             .Select(n => new NovelListDto
             {
                 Id = n.Id,
+                Slug = n.Slug, // Map Slug
                 Title = n.Title,
                 Author = n.Author ?? string.Empty,
                 Rating = n.Rating,

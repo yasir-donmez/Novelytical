@@ -24,6 +24,11 @@ namespace Novelytical.Data
 
             // 🧠 Vektör eklentisini aktif et (Pgvector)
             modelBuilder.HasPostgresExtension("vector");
+
+            // URL Slug'ları benzersiz olmalı
+            modelBuilder.Entity<Novel>()
+                .HasIndex(n => n.Slug)
+                .IsUnique();
         }
     }
 }

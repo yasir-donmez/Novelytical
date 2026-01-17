@@ -28,8 +28,8 @@ export const novelService = {
         return data;
     },
 
-    // Get single novel by ID
-    getNovelById: async (id: number): Promise<NovelDetailDto> => {
+    // Get single novel by ID or Slug
+    getNovelById: async (id: number | string): Promise<NovelDetailDto> => {
         const { data } = await api.get<{ data: NovelDetailDto }>(`/novels/${id}`);
         return data.data;
     },

@@ -12,6 +12,7 @@ namespace Novelytical.Data
         public string? Description { get; set; }
         public string? CoverUrl { get; set; }
         public string SourceUrl { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty; // URL-friendly ID
         public decimal Rating { get; set; }
         
         // Siteden çekilen veriler

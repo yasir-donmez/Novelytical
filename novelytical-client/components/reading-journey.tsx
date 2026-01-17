@@ -406,9 +406,10 @@ function FilterPanel({ filter, setFilter }: FilterPanelProps) {
 
 interface LeaderboardProps {
     topReaders: LibraryItem[];
+    currentUserId?: string;
 }
 
-function Leaderboard({ topReaders }: LeaderboardProps) {
+function Leaderboard({ topReaders, currentUserId }: LeaderboardProps) {
     return (
         <div className="w-72 relative group mt-4"> {/* Added mt-4 to give space for the pin/swing */}
 
@@ -446,44 +447,39 @@ function Leaderboard({ topReaders }: LeaderboardProps) {
                         </div>
                     </div>
 
-                    <div className="space-y-1.5 overflow-y-auto flex-grow pr-1 custom-scrollbar">
+                    <div className="space-y-1.5 overflow-y-auto flex-grow pr-1 custom-scrollbar px-2">
                         {topReaders.map((reader, index) => {
-                            let rankColor = "text-stone-500";
-                            let rankIcon: React.ReactNode = <span>{index + 1}</span>;
+                            const isCurrentUser = reader.userId === currentUserId;
                             let rowBg = "hover:bg-amber-900/10";
 
-                            if (index === 0) {
-                                rankColor = "text-yellow-400";
-                                rankIcon = "👑";
-                                rowBg = "bg-gradient-to-r from-amber-900/20 to-transparent";
-                            } else if (index === 1) {
-                                rankColor = "text-zinc-300";
-                                rankIcon = "⚔️";
-                            } else if (index === 2) {
-                                rankColor = "text-amber-700";
-                                rankIcon = "🛡️";
+                            if (isCurrentUser) {
+                                rowBg = "bg-amber-950/40 border-amber-500/30 ring-1 ring-amber-500/20";
                             }
 
                             return (
                                 <div
                                     key={`${reader.userId}-${index}`}
                                     className={cn(
-                                        "flex items-center justify-between text-xs p-2 rounded transition-colors group/item",
+                                        "flex items-center justify-between text-xs p-2 rounded-lg border transition-all group/item",
+                                        isCurrentUser ? "border-amber-500/30" : "border-transparent",
                                         rowBg
                                     )}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <span
-                                            className={cn(
-                                                "font-mono font-bold w-5 text-center flex-shrink-0",
-                                                rankColor
-                                            )}
-                                        >
-                                            {rankIcon}
-                                        </span>
+                                        {/* Rank Badge */}
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center border shadow-sm flex-shrink-0",
+                                            index === 0 ? "bg-amber-500/20 border-amber-500/50 text-amber-400" :
+                                                index === 1 ? "bg-stone-500/20 border-stone-400/50 text-stone-300" :
+                                                    index === 2 ? "bg-orange-800/20 border-orange-700/50 text-orange-500" :
+                                                        "bg-stone-900 border-amber-900/30 text-stone-500"
+                                        )}>
+                                            <span className="font-mono text-[10px] font-bold">{index + 1}</span>
+                                        </div>
+
                                         <div className="flex items-center gap-2">
                                             {/* User Avatar with Frame */}
-                                            <div className="p-1">
+                                            <div className="p-0.5">
                                                 <UserAvatar
                                                     src={reader.photoURL}
                                                     alt={reader.displayName || "User"}
@@ -493,10 +489,9 @@ function Leaderboard({ topReaders }: LeaderboardProps) {
                                             </div>
                                             <span
                                                 className={cn(
-                                                    "truncate font-serif tracking-wide",
-                                                    index < 3
-                                                        ? "text-amber-100/90 font-medium"
-                                                        : "text-stone-400"
+                                                    "truncate font-serif tracking-wide max-w-[100px]",
+                                                    isCurrentUser ? "text-amber-100 font-bold" :
+                                                        index < 3 ? "text-amber-100/90 font-medium" : "text-stone-400"
                                                 )}
                                             >
                                                 {reader.displayName || `Maceracı ${index + 1}`}
@@ -579,14 +574,7 @@ export function ReadingJourney({
             )}
         >
             {/* AMBIENT BACKGROUND EFFECTS */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {/* Mystic Fog - PURPLE */}
-                <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-purple-900/20 to-transparent blur-3xl opacity-60" />
 
-                {/* Floating Particles */}
-                <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-fuchsia-400 rounded-full blur-[1px] opacity-30 animate-pulse" style={{ animationDuration: '4s' }} />
-                <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-purple-400 rounded-full blur-[1px] opacity-30 animate-pulse" style={{ animationDuration: '6s' }} />
-            </div>
 
             <div className="relative z-10 flex w-full max-w-6xl items-end justify-center gap-8 sm:gap-24 px-4">
 
@@ -678,12 +666,12 @@ export function ReadingJourney({
 
                 {/* RIGHT: GUILD BOARD (Leaderboard) */}
                 <div className="hidden sm:block pb-32 order-3">
-                    <Leaderboard topReaders={topReaders} />
+                    <Leaderboard topReaders={topReaders} currentUserId={user?.uid} />
                 </div>
 
                 {/* MOBILE FALLBACK */}
                 <div className="sm:hidden absolute top-0 left-4 z-50">
-                    <Leaderboard topReaders={topReaders} />
+                    <Leaderboard topReaders={topReaders} currentUserId={user?.uid} />
                 </div>
             </div>
         </section>

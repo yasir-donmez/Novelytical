@@ -10,7 +10,8 @@ import {
     where,
     serverTimestamp,
     limit,
-    onSnapshot
+    onSnapshot,
+    updateDoc
 } from "firebase/firestore";
 import { UserService, UserProfile } from "./user-service";
 
@@ -30,28 +31,37 @@ export const FollowService = {
     async followUser(followerId: string, followingId: string): Promise<void> {
         if (followerId === followingId) return;
 
+        // 1. Check for Active Ban
+        const userProfile = await UserService.getUserProfile(followerId);
+        if (userProfile?.followBanUntil) {
+            const banDate = userProfile.followBanUntil.toDate ? userProfile.followBanUntil.toDate() : new Date(userProfile.followBanUntil);
+            if (banDate > new Date()) {
+                throw new Error(`Takip işlemleriniz geçici olarak kısıtlanmıştır. (Bitiş: ${banDate.toLocaleString()})`);
+            }
+        }
+
         const docId = `${followerId}_${followingId}`;
         const ref = doc(db, FOLLOWS_COLLECTION, docId);
 
         await setDoc(ref, {
             followerId,
             followingId,
+            createdAt: serverTimestamp()
         });
 
         // Send Notification
         try {
-            const followerProfile = await UserService.getUserProfile(followerId);
-            if (followerProfile) {
+            if (userProfile) {
                 await import("./notification-service").then(m => m.createNotification(
                     followingId,
                     'follow',
-                    `${followerProfile.username} sizi takip etti.`,
+                    `${userProfile.username} sizi takip etti.`,
                     followerId, // sourceId is the user who followed
                     `/profile/${followerId}`, // Link to their profile
                     followerId,
-                    followerProfile.username,
-                    followerProfile.photoURL,
-                    followerProfile.privacySettings?.privateProfile ? undefined : undefined // Frame could be added to profile interface later used here
+                    userProfile.username,
+                    userProfile.photoURL,
+                    userProfile.privacySettings?.privateProfile ? undefined : undefined // Frame could be added to profile interface later used here
                 ));
             }
         } catch (error) {
@@ -63,8 +73,62 @@ export const FollowService = {
      * Unfollows a user.
      */
     async unfollowUser(followerId: string, followingId: string): Promise<void> {
+        // 1. Check for Active Ban
+        const userProfile = await UserService.getUserProfile(followerId);
+        if (userProfile?.followBanUntil) {
+            const banDate = userProfile.followBanUntil.toDate ? userProfile.followBanUntil.toDate() : new Date(userProfile.followBanUntil);
+            if (banDate > new Date()) {
+                throw new Error(`Takip işlemleriniz geçici olarak kısıtlanmıştır. (Bitiş: ${banDate.toLocaleString()})`);
+            }
+        }
+
         const docId = `${followerId}_${followingId}`;
         const ref = doc(db, FOLLOWS_COLLECTION, docId);
+
+        // 2. Intelligent Spam Check
+        // We need to see WHEN they followed this person.
+        const followSnap = await getDoc(ref);
+        if (followSnap.exists() && userProfile) {
+            const followData = followSnap.data();
+            const createdAt = followData.createdAt?.toDate ? followData.createdAt.toDate() : new Date(followData.createdAt);
+
+            const now = Date.now();
+            // If createdAt is missing (legacy data), assume it's old/safe behavior (treat as > 1 hour)
+            const followTime = createdAt ? createdAt.getTime() : 0;
+            const followDuration = now - followTime;
+            const ONE_HOUR = 60 * 60 * 1000;
+
+            // If they are unfollowing very quickly (within 1 hour) AND createdAt exists
+            if (createdAt && followDuration < ONE_HOUR) {
+                // This counts as a "Spam Attempt"
+
+                let spamHistory = userProfile.recentSpamAttempts || [];
+                // Clean up old attempts (> 1 hour ago)
+                spamHistory = spamHistory.filter(ts => (now - ts) < ONE_HOUR);
+
+                // Add this current spam attempt
+                spamHistory.push(now);
+
+                // Check Limit: If this is the 2nd quick unfollow in the last hour
+                if (spamHistory.length >= 2) {
+                    // BAN USER
+                    const banUntil = new Date(now + 24 * 60 * 60 * 1000); // 24 hours
+
+                    await updateDoc(doc(db, "users", followerId), {
+                        followBanUntil: banUntil,
+                        recentSpamAttempts: [] // Clear attempts on ban
+                    });
+
+                    throw new Error("Kısa süre içinde birden fazla kez 'Takip Et - Çık' yaptığınız için 24 saat kısıtlama aldınız.");
+                } else {
+                    // Just warn/count
+                    await updateDoc(doc(db, "users", followerId), {
+                        recentSpamAttempts: spamHistory
+                    });
+                }
+            }
+        }
+
         await deleteDoc(ref);
     },
 

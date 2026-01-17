@@ -12,11 +12,14 @@ const firebaseConfig = {
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+import { getDatabase } from "firebase/database";
+
 // Initialize Firebase (SSR safe)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
 });
+const rtdb = getDatabase(app);
 
-export { app, auth, db };
+export { app, auth, db, rtdb };

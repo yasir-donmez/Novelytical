@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { BookOpen, Sparkles, GraduationCap, Lightbulb, Code2, Rocket } from "lucide-react";
+import DeveloperCard from "@/components/about/developer-card";
 
 export const metadata: Metadata = {
     title: "Hakkımızda | Novelytical",
@@ -95,21 +96,7 @@ export default function HakkimizdaPage() {
                         </div>
                         <h2 className="text-xl font-semibold">Geliştirici</h2>
                     </div>
-                    <div className="p-6 rounded-xl border bg-card">
-                        <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shrink-0">
-                                Y
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">Yasir</h3>
-                                <p className="text-sm text-muted-foreground mb-3">Öğrenci & Meraklı Geliştirici</p>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Yazılım geliştirmeyi öğrenen, yapay zeka ve web teknolojilerine ilgi duyan bir öğrenciyim.
-                                    Bu proje, öğrenme sürecimin bir parçası ve aynı zamanda roman okuma hobimin dijital bir yansıması.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <DeveloperCard />
                 </section>
 
                 {/* Teknolojiler */}

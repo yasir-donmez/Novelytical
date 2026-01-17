@@ -1,63 +1,63 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 export function ScrollManager() {
     const pathname = usePathname();
-    const prevPathname = useRef<string | null>(null);
-    const isBackNavigation = useRef(false);
 
-    // Detect back/forward navigation using popstate
+    // 1. Restore Scroll Logic
     useEffect(() => {
-        const handlePopState = () => {
-            isBackNavigation.current = true;
-        };
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
-
-    useEffect(() => {
-        // Disable browser's native scroll restoration
+        // Disable browser's auto restoration to prevent conflicts
         if ('scrollRestoration' in history) {
             history.scrollRestoration = 'manual';
         }
 
-        // Only restore scroll on back/forward navigation, not new visits
-        if (isBackNavigation.current && prevPathname.current !== null) {
+        const restoreScroll = () => {
             const savedScrollStr = sessionStorage.getItem(`scroll_${pathname}`);
-            if (savedScrollStr) {
-                const savedScroll = parseInt(savedScrollStr, 10);
-                // Simple one-time attempt after a short delay for content to render
-                setTimeout(() => {
-                    window.scrollTo({ top: savedScroll, behavior: 'instant' });
-                }, 50);
-            }
-        } else {
-            // New navigation: scroll to top
-            window.scrollTo({ top: 0, behavior: 'instant' });
-        }
+            const savedScroll = savedScrollStr ? parseInt(savedScrollStr, 10) : 0;
 
-        // Reset the flag
-        isBackNavigation.current = false;
-        prevPathname.current = pathname;
-    }, [pathname]);
+            // If we have a saved position (greater than 0)
+            if (savedScroll > 0) {
+                let attempts = 0;
+                // Try for approx 5 seconds (300 * 16ms approx) - increased for slow Community section
+                const maxAttempts = 300;
 
-    // Save scroll position per-page on scroll
-    useEffect(() => {
-        let ticking = false;
-        const onScroll = () => {
-            if (!ticking) {
-                window.requestAnimationFrame(() => {
-                    sessionStorage.setItem(`scroll_${pathname}`, window.scrollY.toString());
-                    ticking = false;
-                });
-                ticking = true;
+                const attemptScroll = () => {
+                    const docHeight = document.documentElement.scrollHeight;
+                    const winHeight = window.innerHeight;
+
+                    // We can only scroll to 'savedScroll' if the document is tall enough.
+                    // safely: docHeight must be >= savedScroll + winHeight (roughly)
+                    // If we try to scroll to 500px but doc is only 200px, browser forces it to 0 or max.
+                    if (docHeight >= savedScroll + winHeight - 50) { // -50 tolerance
+                        window.scrollTo({ top: savedScroll, behavior: 'instant' });
+                    } else if (attempts < maxAttempts) {
+                        attempts++;
+                        requestAnimationFrame(attemptScroll);
+                    }
+                };
+
+                requestAnimationFrame(attemptScroll);
             }
         };
 
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
+        restoreScroll();
+    }, [pathname]);
+
+    // 2. Save Scroll Logic
+    useEffect(() => {
+        const handleScroll = () => {
+            // Save current scroll position
+            sessionStorage.setItem(`scroll_${pathname}`, window.scrollY.toString());
+        };
+
+        // Passive listener for performance
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
     }, [pathname]);
 
     return null;

@@ -42,6 +42,16 @@ public class NovelRepository : INovelRepository
             .FirstOrDefaultAsync(n => n.Id == id);
     }
 
+    public async Task<Novel?> GetBySlugAsync(string slug)
+    {
+        return await _context.Novels
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(n => n.NovelTags)
+            .ThenInclude(nt => nt.Tag)
+            .FirstOrDefaultAsync(n => n.Slug == slug);
+    }
+
     public async Task<List<Tag>> GetAllTagsAsync()
     {
         return await _context.Tags

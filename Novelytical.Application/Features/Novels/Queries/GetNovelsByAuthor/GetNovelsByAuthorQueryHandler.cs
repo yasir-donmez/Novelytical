@@ -29,6 +29,7 @@ public class GetNovelsByAuthorQueryHandler : IRequestHandler<GetNovelsByAuthorQu
                 .Select(n => new NovelListDto
                 {
                     Id = n.Id,
+                    Slug = n.Slug, // Map Slug
                     Title = n.Title,
                     Author = n.Author ?? string.Empty,
                     Rating = n.Rating,

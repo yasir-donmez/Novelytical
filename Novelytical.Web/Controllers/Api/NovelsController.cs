@@ -78,14 +78,14 @@ public class NovelsController : ControllerBase
     }
 
     /// <summary>
-    /// Get novel details by ID
+    /// Get novel details by ID or Slug
     /// </summary>
-    /// <param name="id">Novel ID</param>
+    /// <param name="id">Novel ID or Slug</param>
     /// <returns>Novel details</returns>
-    [HttpGet("{id:int}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetNovel(int id)
+    public async Task<IActionResult> GetNovel(string id)
     {
         var result = await _mediator.Send(new GetNovelByIdQuery(id));
 

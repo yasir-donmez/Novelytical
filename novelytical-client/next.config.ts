@@ -54,7 +54,8 @@ export default withSentryConfig(nextConfig, {
   reactComponentAnnotation: {
     enabled: true,
   },
-  tunnelRoute: "/monitoring",
+  // tunnelRoute disabled - sending directly to Sentry
+  // tunnelRoute: "/monitoring",
   disableLogger: true,
   automaticVercelMonitors: true,
 });

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import NovelDetailClient from './novel-detail-client';
 import { getNovelById } from '@/lib/data/novels';
 import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
@@ -19,10 +20,9 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     // Await params for Next.js 15 compatibility
     const { id } = await params;
-    const novelId = parseInt(id);
 
     try {
-        const novel = await getNovelById(novelId);
+        const novel = await getNovelById(id);
 
         return {
             title: `${novel.title} - Oku & İncele | Novelytical`,
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
                 images: novel.coverUrl ? [novel.coverUrl] : [],
             },
             alternates: {
-                canonical: `/novel/${novelId}`,
+                canonical: `/novel/${novel.slug || novel.id}`,
             },
         };
     } catch (error) {
@@ -94,7 +94,6 @@ function SimilarNovelsFallback() {
 export default async function NovelDetailPage({ params }: PageProps) {
     // Await params for Next.js 15 compatibility
     const { id } = await params;
-    const novelId = parseInt(id);
 
     // Fetch main content on server (blocking for main detail)
     // We could invoke this inside a Suspense component too if we wanted the shell to be even faster,
@@ -106,10 +105,15 @@ export default async function NovelDetailPage({ params }: PageProps) {
     // We can fetch data here:
     let novel;
     try {
-        novel = await getNovelById(novelId);
+        novel = await getNovelById(id);
     } catch (e) {
         // If error (e.g. 404), Next.js error boundary handles it or we can return notFound() if we catch 404
         throw e; // Let error.tsx handle it
+    }
+
+    // 🚀 REDIRECT: If accessed via numeric ID, redirect to SEO Slug
+    if (/^\d+$/.test(id) && novel.slug) {
+        redirect(`/novel/${novel.slug}`);
     }
 
     const jsonLd = {
@@ -131,7 +135,7 @@ export default async function NovelDetailPage({ params }: PageProps) {
         datePublished: novel.year?.toString(),
         image: novel.coverUrl,
         genre: novel.category,
-        url: `https://novelytical.com/novel/${novelId}` // Assuming domain, optional but good
+        url: `https://novelytical.com/novel/${novel.slug || novel.id}`
     };
 
     return (
@@ -144,15 +148,15 @@ export default async function NovelDetailPage({ params }: PageProps) {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <Suspense fallback={<AuthorNovelsFallback />}>
-                    <AuthorNovelsServer author={novel.author} currentNovelId={novelId} />
+                    <AuthorNovelsServer author={novel.author} currentNovelId={novel.id} />
                 </Suspense>
 
                 <Suspense fallback={<SimilarNovelsFallback />}>
-                    <SimilarNovelsServer id={novelId} />
+                    <SimilarNovelsServer id={novel.id} />
                 </Suspense>
 
                 <div className="border-t border-gray-100 pb-12">
-                    <InteractionTabs novelId={novelId} coverImage={novel.coverUrl} chapterCount={novel.chapterCount} />
+                    <InteractionTabs novelId={novel.id} coverImage={novel.coverUrl} chapterCount={novel.chapterCount} />
                 </div>
             </div>
         </div>

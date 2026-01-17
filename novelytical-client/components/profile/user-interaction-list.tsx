@@ -15,26 +15,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface InteractionSummary {
     novelId: number;
     novel?: NovelListDto; // Will serve as detail container
-    userReview?: Review;
+    userReview?: Review;  // Restore userReview
+    slug?: string;        // Add slug
     commentCount: number;
     lastInteraction: Date;
 }
 
-export default function UserInteractionList() {
+export default function UserInteractionList({ userId }: { userId?: string }) {
     const { user } = useAuth();
     const [interactions, setInteractions] = useState<InteractionSummary[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const targetUserId = userId || user?.uid;
+
     useEffect(() => {
-        if (!user) return;
+        if (!targetUserId) return;
 
         const fetchData = async () => {
             setLoading(true);
             try {
                 // Parallel fetch
                 const [reviews, comments] = await Promise.all([
-                    getReviewsByUserId(user.uid),
-                    getCommentsByUserId(user.uid)
+                    getReviewsByUserId(targetUserId),
+                    getCommentsByUserId(targetUserId)
                 ]);
 
                 // Map to group by Novel ID
@@ -102,7 +105,7 @@ export default function UserInteractionList() {
         };
 
         fetchData();
-    }, [user]);
+    }, [targetUserId]);
 
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -193,7 +196,7 @@ export default function UserInteractionList() {
                 >
                     {items.map((item) => (
                         <Link
-                            href={`/novel/${item.novelId}`}
+                            href={`/novel/${item.novel?.slug || item.novelId}`}
                             key={item.novelId}
                             className={`group shrink-0 py-1 group-item ${isExpanded
                                 ? 'w-full sm:w-[calc((100%_-_2rem)_/_3)]'

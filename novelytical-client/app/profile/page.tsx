@@ -108,8 +108,7 @@ export default function ProfilePage() {
                 {/* Profile Header */}
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-lg relative overflow-hidden">
 
-                    {/* Background Glow */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
 
                     {/* Avatar with Frame */}
                     <div className="relative group shrink-0">

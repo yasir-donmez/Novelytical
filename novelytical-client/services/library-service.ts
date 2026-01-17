@@ -20,59 +20,73 @@ export interface LibraryItem {
     id: string; // usually composite userId_novelId or auto-id
     userId: string;
     novelId: number;
+    slug?: string; // Optional for backward compatibility
     status: ReadingStatus;
     currentChapter?: number;
     updatedAt: Timestamp;
 }
 
 import { LevelService, XP_RULES } from "./level-service";
+import { incrementLibraryCount, decrementLibraryCount } from "./novel-stats-service";
 
 const COLLECTION_NAME = "libraries";
 
 export const updateLibraryStatus = async (
     userId: string,
     novelId: number,
+    slug: string, // New required param for slug
     status: ReadingStatus | null,
     currentChapter?: number,
-    userInfo?: { displayName?: string; photoURL?: string } // Added userInfo
+    userInfo?: { displayName?: string; photoURL?: string }
 ) => {
     try {
         const docId = `${userId}_${novelId}`;
         const docRef = doc(db, COLLECTION_NAME, docId);
 
         if (status === null) {
+            // Check if existed before removing
+            const existingDoc = await getDoc(docRef);
+            const existed = existingDoc.exists();
+
             // Remove from library
             await deleteDoc(docRef);
+
+            // Decrement count only if it actually existed
+            if (existed) {
+                await decrementLibraryCount(novelId);
+            }
+
             return { success: true, action: 'removed' };
         } else {
             // Upsert
             const data: any = {
                 userId,
                 novelId,
+                slug, // Save slug
                 status,
                 updatedAt: serverTimestamp(),
-                ...userInfo // Merge user info
+                ...userInfo
             };
 
             if (currentChapter !== undefined) {
                 data.currentChapter = currentChapter;
             }
 
-            // Check if it's a new addition or update?
-            // For simplicity, let's award XP on any status update that isn't removal (assuming user doesn't spam switch)
-            // Ideally check if doc exists first to prevent spam, but getDoc adds latency.
-            // Let's assume adding to library is the intent.
-
-            // To prevent spamming +5 XP by toggling status, we should check if it existed?
-            // Or just award it. The user requested "add to library".
-            // Let's award it.
+            // Check if this is a new addition (for stats tracking)
+            const existingDoc = await getDoc(docRef);
+            const isNewAddition = !existingDoc.exists();
 
             await setDoc(docRef, data, { merge: true });
 
             // Award XP
             await LevelService.gainXp(userId, XP_RULES.LIBRARY_ADD);
 
-            return { success: true, action: 'updated' };
+            // Increment library count only for new additions
+            if (isNewAddition) {
+                await incrementLibraryCount(novelId);
+            }
+
+            return { success: true, action: isNewAddition ? 'added' : 'updated' };
         }
     } catch (error) {
         console.error("Error updating library status:", error);

@@ -1,6 +1,7 @@
 using MediatR;
 using Novelytical.Application.DTOs;
 using Novelytical.Application.Wrappers;
+using Novelytical.Data; // Fix: Add this
 using Novelytical.Data.Interfaces;
 
 namespace Novelytical.Application.Features.Novels.Queries.GetNovelById;
@@ -16,7 +17,17 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
 
     public async Task<Response<NovelDetailDto>> Handle(GetNovelByIdQuery request, CancellationToken cancellationToken)
     {
-        var novel = await _repository.GetByIdAsync(request.Id);
+        Novel? novel;
+
+        // Determine if input is ID (int) or Slug (string)
+        if (int.TryParse(request.IdOrSlug, out int id))
+        {
+            novel = await _repository.GetByIdAsync(id);
+        }
+        else
+        {
+            novel = await _repository.GetBySlugAsync(request.IdOrSlug);
+        }
 
         if (novel == null)
             return new Response<NovelDetailDto>("Novel not found");
@@ -25,6 +36,7 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
         var dto = new NovelDetailDto
         {
             Id = novel.Id,
+            Slug = novel.Slug, // Map Slug
             Title = novel.Title,
             Author = novel.Author ?? string.Empty,
             Description = novel.Description ?? string.Empty,
@@ -43,7 +55,7 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
         if (novel.ScrapedRating.HasValue && novel.ScrapedRating.Value > 0)
         {
             dto.AverageRating = (double)novel.ScrapedRating.Value;
-            dto.RatingCount = novel.ViewCount / 100; // Rough estimate of ratings based on views
+            dto.RatingCount = novel.ViewCount / 10000; // 10k views = 1 vote
         }
         else
         {

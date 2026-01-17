@@ -105,12 +105,12 @@ export default function UserProfilePage() {
             if (isFollowing) {
                 await FollowService.unfollowUser(currentUser.uid, targetUserId);
                 setIsFollowing(false);
-                setSocialStats(prev => ({ ...prev, followers: prev.followers - 1 }));
+                // Listener will update count
                 toast.success("Takipten çıkıldı.");
             } else {
                 await FollowService.followUser(currentUser.uid, targetUserId);
                 setIsFollowing(true);
-                setSocialStats(prev => ({ ...prev, followers: prev.followers + 1 }));
+                // Listener will update count
                 toast.success("Takip edildi.");
             }
             // Re-check mutual status
@@ -122,6 +122,13 @@ export default function UserProfilePage() {
         }
     };
 
+    // Check if viewing self - Redirect effect
+    useEffect(() => {
+        if (currentUser?.uid === targetUserId) {
+            router.replace("/profile");
+        }
+    }, [currentUser, targetUserId, router]);
+
     if (loading) {
         return (
             <div className="min-h-screen pt-24 pb-12 flex justify-center items-center">
@@ -130,13 +137,9 @@ export default function UserProfilePage() {
         );
     }
 
-    if (!targetUser) return null;
+    if (currentUser?.uid === targetUserId) return null;
 
-    // Check if viewing self
-    if (currentUser?.uid === targetUserId) {
-        router.push("/profile");
-        return null;
-    }
+    if (!targetUser) return null;
 
     const joinDate = targetUser.createdAt
         ? format(new Date(targetUser.createdAt.seconds * 1000), "d MMMM yyyy", { locale: tr })
@@ -148,14 +151,17 @@ export default function UserProfilePage() {
     // Visibility Logic
     const isPrivate = targetUser.privacySettings?.privateProfile ?? false;
     const isMutualRestricted = targetUser.privacySettings?.restrictContentToMutuals ?? false;
+    const isLibraryHidden = targetUser.privacySettings?.hideLibrary ?? false;
 
     // 1. Basic Privacy: If private, must follow.
     // 2. Mutual Restriction: If enabled, must be mutual follow.
-    // Note: Mutual restriction usually implies private logic too, but we treat it as an extra layer.
+    // 3. Library Hidden: If enabled, no one (except self, but self is redirected) sees.
 
     let contentVisible = true;
 
-    if (isPrivate && !isFollowing) {
+    if (isLibraryHidden) {
+        contentVisible = false;
+    } else if (isPrivate && !isFollowing) {
         contentVisible = false;
     } else if (isMutualRestricted && !isMutual) {
         contentVisible = false;
@@ -166,7 +172,6 @@ export default function UserProfilePage() {
             <div className="container mx-auto px-4 max-w-4xl">
                 {/* Profile Header */}
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-lg relative overflow-visible">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 overflow-hidden" />
 
                     <div className="relative group shrink-0 p-1">
                         <UserAvatar
@@ -239,7 +244,7 @@ export default function UserProfilePage() {
                                 {isFollowing ? <><UserMinus className="mr-2 h-4 w-4" /> Takipten Çık</> : <><UserPlus className="mr-2 h-4 w-4" /> Takip Et</>}
                             </Button>
 
-                            {isMutual && (
+                            {(isMutual || targetUser.privacySettings?.allowMessagesFromNonFollowers) && (
                                 <Button
                                     variant="outline"
                                     className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
@@ -257,53 +262,58 @@ export default function UserProfilePage() {
                     </div>
                 </div>
 
-                {/* Restricted Content */}
-                {contentVisible ? (
-                    <>
-                        <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <span className="bg-blue-500/20 p-2 rounded-lg text-blue-400">
-                                    <BookOpen size={20} />
-                                </span>
-                                Kütüphane
-                            </h2>
-                            {/* Note: UserLibraryList internally uses useAuth().user.uid, so it will show CURRENT user's library if we don't modify it. 
-                                 We need to pass userId prop to UserLibraryList or it needs to read from context/props.
-                                 Assume for now we need to update UserLibraryList to accept a userId prop. 
-                                 If it doesn't support it, this will show WRONG data.
-                                 Let's comment out for now or check UserLibraryList.
-                             */}
-                            <div className="text-center py-8 text-muted-foreground">
-                                {/* Placeholder until components connect to targetUserId */}
-                                (Kütüphane Bileşeni Entegrasyonu Gerekiyor)
+                {/* Content Sections - Always rendered, content varies by privacy */}
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span className="bg-blue-500/20 p-2 rounded-lg text-blue-400">
+                            <BookOpen size={20} />
+                        </span>
+                        Kütüphane
+                    </h2>
+                    {contentVisible ? (
+                        <UserLibraryList userId={targetUserId} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center space-y-4 bg-black/20 rounded-xl border border-white/5">
+                            <div className="bg-white/5 p-4 rounded-full ring-1 ring-white/10">
+                                <Lock className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Bu Kütüphane Gizli</h3>
+                                <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-1">
+                                    {isLibraryHidden
+                                        ? "Bu kullanıcı kütüphanesini gizli tutmayı tercih etti."
+                                        : "Detayları görmek için bu kullanıcıyı takip etmelisiniz."}
+                                </p>
                             </div>
                         </div>
+                    )}
+                </div>
 
-                        <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <span className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
-                                    <MessageSquare size={20} />
-                                </span>
-                                Son Etkileşimler
-                            </h2>
-                            <div className="text-center py-8 text-muted-foreground">
-                                (Etkileşim Bileşeni Entegrasyonu Gerekiyor)
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 shadow-lg">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
+                            <MessageSquare size={20} />
+                        </span>
+                        Son Etkileşimler
+                    </h2>
+                    {contentVisible ? (
+                        <UserInteractionList userId={targetUserId} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center space-y-4 bg-black/20 rounded-xl border border-white/5">
+                            <div className="bg-white/5 p-4 rounded-full ring-1 ring-white/10">
+                                <Lock className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Etkileşimler Gizli</h3>
+                                <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-1">
+                                    {isLibraryHidden
+                                        ? "Bu kullanıcı etkileşimlerini gizli tutmayı tercih etti."
+                                        : "Detayları görmek için bu kullanıcıyı takip etmelisiniz."}
+                                </p>
                             </div>
                         </div>
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-16 bg-white/5 border border-white/10 rounded-2xl text-center space-y-4">
-                        <div className="bg-white/10 p-4 rounded-full">
-                            <Lock className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-semibold">Gizli Profil</h3>
-                            <p className="text-muted-foreground max-w-sm mt-2">
-                                Bu kullanıcının kütüphanesini ve etkileşimlerini görmek için takip etmeniz gerekiyor.
-                            </p>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <FollowListDialog

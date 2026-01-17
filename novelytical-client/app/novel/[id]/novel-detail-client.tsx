@@ -35,8 +35,11 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     };
 
     const description = novel.description || 'Bu roman için henüz bir özet bulunmuyor.';
-    const shouldTruncate = description.length > 300;
-    const displayedDescription = isExpanded || !shouldTruncate ? description : description.slice(0, 300) + '...';
+    // Only truncate if remaining text after cutoff is more than 50 chars (margin)
+    const TRUNCATE_AT = 300;
+    const MARGIN = 50; // Don't truncate if only this many chars remain
+    const shouldTruncate = description.length > TRUNCATE_AT + MARGIN;
+    const displayedDescription = isExpanded || !shouldTruncate ? description : description.slice(0, TRUNCATE_AT) + '...';
 
     const [locationHref, setLocationHref] = useState('');
     const [criteria, setCriteria] = useState<{
@@ -54,23 +57,54 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
         // Fetch ratings for tooltip
         getReviewsByNovelId(novel.id)
             .then(reviews => {
+                // Calculate scraped votes: 10k views = 1 vote (for visible user impact)
+                const scrapedVotes = Math.floor((novel.viewCount || 0) / 10000);
+                const scrapedRating = novel.scrapedRating || 0;
+                const userVotes = reviews?.length || 0;
+
+                // Helper function for weighted average
+                const calculateWeightedAvg = (userAvg: number): number => {
+                    const totalVotes = scrapedVotes + userVotes;
+                    if (totalVotes === 0) return 0;
+                    return (scrapedRating * scrapedVotes + userAvg * userVotes) / totalVotes;
+                };
+
                 if (reviews && reviews.length > 0) {
-                    const averages = {
+                    // Calculate user averages for each criterion
+                    const userAverages = {
                         story: reviews.reduce((sum, r) => sum + r.ratings.story, 0) / reviews.length,
                         characters: reviews.reduce((sum, r) => sum + r.ratings.characters, 0) / reviews.length,
                         world: reviews.reduce((sum, r) => sum + r.ratings.world, 0) / reviews.length,
                         flow: reviews.reduce((sum, r) => sum + r.ratings.flow, 0) / reviews.length,
                         grammar: reviews.reduce((sum, r) => sum + r.ratings.grammar, 0) / reviews.length,
                     };
-                    setCriteria(averages);
+
+                    // Apply weighted average to each criterion
+                    setCriteria({
+                        story: calculateWeightedAvg(userAverages.story),
+                        characters: calculateWeightedAvg(userAverages.characters),
+                        world: calculateWeightedAvg(userAverages.world),
+                        flow: calculateWeightedAvg(userAverages.flow),
+                        grammar: calculateWeightedAvg(userAverages.grammar),
+                    });
+                } else if (scrapedVotes > 0 && scrapedRating > 0) {
+                    // No user reviews, but have scraped data
+                    setCriteria({
+                        story: scrapedRating,
+                        characters: scrapedRating,
+                        world: scrapedRating,
+                        flow: scrapedRating,
+                        grammar: scrapedRating,
+                    });
                 }
             })
             .catch(err => console.error('Error details ratings:', err))
             .finally(() => setRatingsLoading(false));
-    }, [novel.id]);
+    }, [novel.id, novel.viewCount, novel.scrapedRating]);
+
 
     return (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 space-y-8 overflow-x-hidden">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 space-y-8">
             {/* Navigation */}
             <Button
                 variant="ghost"
@@ -186,7 +220,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 Yazar: <span className="text-foreground font-medium">{novel.author}</span>
                             </div>
                             <div className="flex items-center gap-4">
-                                <LibraryAction novelId={novel.id} chapterCount={novel.chapterCount} />
+                                <LibraryAction novelId={novel.id} slug={novel.slug} chapterCount={novel.chapterCount} />
                                 <SocialShare
                                     title={`${novel.title} - Novelytical'da keşfet!`}
                                     url={locationHref}

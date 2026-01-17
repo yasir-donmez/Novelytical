@@ -17,10 +17,11 @@ import { Input } from "@/components/ui/input";
 
 interface LibraryActionProps {
     novelId: number;
+    slug: string; // Add Slug
     chapterCount?: number;
 }
 
-export default function LibraryAction({ novelId, chapterCount }: LibraryActionProps) {
+export default function LibraryAction({ novelId, slug, chapterCount }: LibraryActionProps) {
     const { user } = useAuth();
     const [status, setStatus] = useState<ReadingStatus | null>(null);
     const [currentChapter, setCurrentChapter] = useState<number>(0);
@@ -62,7 +63,7 @@ export default function LibraryAction({ novelId, chapterCount }: LibraryActionPr
             // When updating status, preserve currentChapter if exists, or init to 0 if reading
             const chapterToSave = newStatus === 'reading' ? (currentChapter || 0) : currentChapter;
 
-            await updateLibraryStatus(user.uid, novelId, newStatus, chapterToSave, {
+            await updateLibraryStatus(user.uid, novelId, slug, newStatus, chapterToSave, {
                 displayName: user.displayName || 'İsimsiz Okur',
                 photoURL: user.photoURL || ''
             });
@@ -127,6 +128,7 @@ export default function LibraryAction({ novelId, chapterCount }: LibraryActionPr
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.currentTarget.blur();
+            setIsOpen(false); // Close dropdown on Enter
         }
     };
 
@@ -139,7 +141,7 @@ export default function LibraryAction({ novelId, chapterCount }: LibraryActionPr
 
     const getStatusLabel = () => {
         switch (status) {
-            case 'reading': return `Okuyorum ${currentChapter > 0 ? `(${currentChapter}. Bölüm)` : ''}`;
+            case 'reading': return `Okuyorum${currentChapter > 0 ? ` ${currentChapter}` : ''}`;
             case 'completed': return 'Okudum';
             case 'plan_to_read': return 'Okuyacağım';
             default: return 'Listeye Ekle';

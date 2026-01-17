@@ -18,7 +18,8 @@ export default function ConnectionsForm() {
         allowMessagesFromNonFollowers: false,
         privateProfile: false,
         showOnlineStatus: true,
-        restrictContentToMutuals: false
+        restrictContentToMutuals: false,
+        hideLibrary: false
     });
 
     // Load real settings on mount
@@ -30,7 +31,8 @@ export default function ConnectionsForm() {
                 if (profile?.privacySettings) {
                     setPrivacy({
                         ...profile.privacySettings,
-                        restrictContentToMutuals: profile.privacySettings.restrictContentToMutuals || false
+                        restrictContentToMutuals: profile.privacySettings.restrictContentToMutuals || false,
+                        hideLibrary: profile.privacySettings.hideLibrary || false
                     });
                 }
             } catch (error) {
@@ -82,6 +84,20 @@ export default function ConnectionsForm() {
                                 id="privateProfile"
                                 checked={privacy.privateProfile}
                                 onCheckedChange={(c) => setPrivacy(p => ({ ...p, privateProfile: c }))}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="hideLibrary" className="flex flex-col gap-1">
+                                <span>Kütüphanemi Herkesten Gizle</span>
+                                <span className="font-normal text-xs text-muted-foreground">
+                                    Açık olduğunda, kütüphanenizi <b>kimse</b> (takipçileriniz dahil) göremez.
+                                </span>
+                            </Label>
+                            <Switch
+                                id="hideLibrary"
+                                checked={privacy.hideLibrary || false}
+                                onCheckedChange={(c) => setPrivacy(p => ({ ...p, hideLibrary: c }))}
                             />
                         </div>
 

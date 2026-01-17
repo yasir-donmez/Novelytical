@@ -1,6 +1,7 @@
 // Novel DTOs matching backend
 export interface NovelListDto {
     id: number;
+    slug: string; // Added Slug
     title: string;
     author: string;
     rating: number;

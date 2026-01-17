@@ -6,10 +6,10 @@ namespace Novelytical.Application.Features.Novels.Queries.GetNovelById;
 
 public class GetNovelByIdQuery : IRequest<Response<NovelDetailDto>>
 {
-    public int Id { get; set; }
+    public string IdOrSlug { get; set; }
 
-    public GetNovelByIdQuery(int id)
+    public GetNovelByIdQuery(string idOrSlug)
     {
-        Id = id;
+        IdOrSlug = idOrSlug;
     }
 }

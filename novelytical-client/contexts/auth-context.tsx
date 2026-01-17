@@ -32,9 +32,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
+    // Presence Tracking
+    useEffect(() => {
+        if (!user) return;
+
+        // Dynamic import to avoid SSR issues if any, though firebase.ts handles safe init
+        let cleanup: (() => void) | undefined;
+
+        import("@/services/presence-service").then(({ PresenceService }) => {
+            cleanup = PresenceService.trackPresence(user.uid);
+        });
+
+        return () => {
+            if (cleanup) cleanup();
+            // On hard unmount (logout), we might also want to force offline, but trackPresence's onDisconnect handles the tab close / network loss.
+            // Explicit logout handling usually happens in the logout function itself.
+            import("@/services/presence-service").then(({ PresenceService }) => {
+                PresenceService.setOffline(user.uid).catch(() => { });
+            });
+        };
+    }, [user]);
+
     return (
         <AuthContext.Provider value={{ user, loading }}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 }

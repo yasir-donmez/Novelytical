@@ -104,6 +104,11 @@ const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate
                             inputMode="numeric"
                             value={chapter}
                             onChange={handleChange}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleSave();
+                                }
+                            }}
                             className="h-8 text-center text-xs"
                             onClick={(e) => (e.target as HTMLInputElement).select()}
                         />
@@ -120,19 +125,23 @@ const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate
     );
 };
 
-export default function UserLibraryList() {
+export default function UserLibraryList({ userId }: { userId?: string }) {
     const { user } = useAuth();
     const [allItems, setAllItems] = useState<LibrarySummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
 
+    // Determine target user ID (prop takes precedence, then auth user)
+    const targetUserId = userId || user?.uid;
+    const isOwner = user?.uid === targetUserId;
+
     useEffect(() => {
-        if (!user) return;
+        if (!targetUserId) return;
 
         const fetchData = async () => {
             setLoading(true);
             try {
-                const libraryItems = await getUserLibrary(user.uid);
+                const libraryItems = await getUserLibrary(targetUserId);
 
                 const itemsWithNovels = await Promise.all(libraryItems.map(async (item) => {
                     try {
@@ -154,7 +163,7 @@ export default function UserLibraryList() {
         };
 
         fetchData();
-    }, [user]);
+    }, [targetUserId]);
 
     const filterItems = (status: ReadingStatus | 'all') => {
         if (status === 'all') return allItems;
@@ -263,7 +272,7 @@ export default function UserLibraryList() {
                 >
                     {items.map((item) => (
                         <Link
-                            href={`/novel/${item.novelId}`}
+                            href={`/novel/${item.slug || item.novelId}`}
                             key={item.novelId}
                             className={`group shrink-0 py-1 ${isExpanded
                                 ? 'w-full sm:w-[calc((100%_-_2rem)_/_3)]'
@@ -284,10 +293,17 @@ export default function UserLibraryList() {
                                     </div>
                                     <div className="flex justify-between items-end mt-auto">
                                         {item.status === 'reading' && (item.currentChapter || 0) > 0 && (
-                                            <ChapterEditPopover
-                                                item={item}
-                                                onUpdate={(newChapter) => handleProgressUpdate(item.novelId, newChapter)}
-                                            />
+                                            isOwner ? (
+                                                <ChapterEditPopover
+                                                    item={item}
+                                                    onUpdate={(newChapter) => handleProgressUpdate(item.novelId, newChapter)}
+                                                />
+                                            ) : (
+                                                <div className="text-[10px] font-medium text-blue-400 bg-blue-500/5 px-1.5 py-0.5 rounded border border-blue-500/10">
+                                                    {item.currentChapter || 0}
+                                                    {item.novel?.chapterCount ? <span className="text-muted-foreground/50"> / {item.novel.chapterCount}</span> : ''}
+                                                </div>
+                                            )
                                         )}
                                         <div className="text-[10px] text-muted-foreground ml-auto">
                                             {item.updatedAt?.toDate().toLocaleDateString('tr-TR')}

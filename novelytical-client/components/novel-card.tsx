@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NovelListDto } from '@/types/novel';
@@ -5,6 +8,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Bookmark, Star, MessageCircle } from 'lucide-react';
 import { getRelativeTimeString } from '@/lib/utils/date';
+import { getNovelStats, NovelStats } from '@/services/novel-stats-service';
 
 interface NovelCardProps {
     novel: NovelListDto;
@@ -14,6 +18,14 @@ interface NovelCardProps {
 }
 
 export function NovelCard({ novel, variant = 'default', aspect, className }: NovelCardProps) {
+    // State for novel stats
+    const [stats, setStats] = useState<NovelStats>({ reviewCount: 0, libraryCount: 0 });
+
+    // Fetch stats on mount
+    useEffect(() => {
+        getNovelStats(novel.id).then(setStats);
+    }, [novel.id]);
+
     // If aspect is provided, it overrides variant logic for simple aspect control
     // taking 'portrait' as default vertical look
     const computedVariant = aspect ? 'vertical' : variant;
@@ -35,7 +47,7 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
         <>
             {/* Mobile: Horizontal Layout */}
             <Link
-                href={`/novel/${novel.id}`}
+                href={`/novel/${novel.slug}`}
                 className={cn(
                     "group overflow-hidden bg-card/60 backdrop-blur-md border border-border/50 hover:shadow-lg transition-shadow cursor-pointer flex-row rounded-xl p-1.5 flex", // Ensure flex is applied for Link anchor
                     mobileLayoutClass,
@@ -114,7 +126,7 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                 )}
 
                 <Link
-                    href={`/novel/${novel.id}`}
+                    href={`/novel/${novel.slug}`}
                     className={cn(
                         "relative z-10 overflow-hidden bg-card/60 backdrop-blur-md border border-border/50 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:border-primary/20",
                         aspect === 'auto' ? "block w-full h-full rounded-xl p-3" : "flex-grow flex flex-col h-full rounded-xl"
@@ -145,6 +157,20 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                                 <span>{(novel.scrapedRating ?? novel.rating).toFixed(1)}</span>
                                                 <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                                             </div>
+                                            {/* Review Count - only show if > 0 */}
+                                            {stats.reviewCount > 0 && (
+                                                <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                                    <span>{stats.reviewCount}</span>
+                                                    <MessageCircle className="h-3.5 w-3.5 text-blue-400" />
+                                                </div>
+                                            )}
+                                            {/* Library Count - only show if > 0 */}
+                                            {stats.libraryCount > 0 && (
+                                                <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                                    <span>{stats.libraryCount}</span>
+                                                    <Bookmark className="h-3.5 w-3.5 text-green-400" />
+                                                </div>
+                                            )}
                                         </div>
                                         {/* Shine Effect */}
                                         <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent pointer-events-none z-20" />
@@ -194,6 +220,20 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                                 <span>{(novel.scrapedRating ?? novel.rating).toFixed(1)}</span>
                                                 <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                                             </div>
+                                            {/* Review Count - only show if > 0 */}
+                                            {stats.reviewCount > 0 && (
+                                                <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                                    <span>{stats.reviewCount}</span>
+                                                    <MessageCircle className="h-3.5 w-3.5 text-blue-400" />
+                                                </div>
+                                            )}
+                                            {/* Library Count - only show if > 0 */}
+                                            {stats.libraryCount > 0 && (
+                                                <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded-lg text-white text-xs font-medium shadow-sm">
+                                                    <span>{stats.libraryCount}</span>
+                                                    <Bookmark className="h-3.5 w-3.5 text-green-400" />
+                                                </div>
+                                            )}
                                         </div>
                                         {/* Shine Effect */}
                                         <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent pointer-events-none z-20" />

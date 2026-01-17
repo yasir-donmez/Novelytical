@@ -23,6 +23,8 @@ export interface UserProfile {
     frame?: string;
     notificationSettings?: NotificationSettings;
     privacySettings?: PrivacySettings;
+    followBanUntil?: any; // Timestamp
+    recentSpamAttempts?: number[]; // List of timestamps of "Quick Unfollows"
 }
 
 export interface PrivacySettings {
@@ -30,6 +32,7 @@ export interface PrivacySettings {
     allowMessagesFromNonFollowers: boolean;
     showOnlineStatus: boolean;
     restrictContentToMutuals?: boolean;
+    hideLibrary?: boolean;
 }
 
 export interface NotificationSettings {

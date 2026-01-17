@@ -9,6 +9,7 @@ interface UserAvatarProps {
     className?: string;
     fallbackClass?: string;
     size?: "sm" | "md" | "lg" | "xl";
+    children?: React.ReactNode;
 }
 
 export function UserAvatar({
@@ -17,7 +18,8 @@ export function UserAvatar({
     frameId,
     className,
     fallbackClass,
-    size = "md"
+    size = "md",
+    children
 }: UserAvatarProps) {
     const frame = LEVEL_FRAMES.find(f => f.id === frameId);
 
@@ -35,7 +37,7 @@ export function UserAvatar({
     // However, some frames might need the image to be slightly inset.
 
     return (
-        <div className={cn("relative shrink-0", className || sizeClasses[size])}>
+        <div className={cn("relative shrink-0 rounded-full", className || sizeClasses[size])}>
             {/* Frame Container */}
             {/* Frame Container */}
             <div className={cn(
@@ -50,6 +52,7 @@ export function UserAvatar({
                     {alt ? alt.charAt(0).toUpperCase() : "?"}
                 </AvatarFallback>
             </Avatar>
+            {children}
         </div>
     );
 }

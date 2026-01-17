@@ -31,7 +31,7 @@ export default function InteractionTabs({ novelId, coverImage, chapterCount }: I
                     <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-8 bg-black/40 backdrop-blur-md border border-white/10 p-1 h-auto mx-auto shadow-2xl">
                         <TabsTrigger value="journey" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                             <MapPin size={16} />
-                            Yolculuk
+                            Kule
                         </TabsTrigger>
                         <TabsTrigger value="reviews" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                             <Star size={16} />

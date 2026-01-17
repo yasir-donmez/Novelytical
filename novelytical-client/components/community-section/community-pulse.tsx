@@ -384,7 +384,15 @@ export function CommunityPulse() {
         }
     };
 
-    if (loading) return null;
+    if (loading) {
+        return (
+            <section className="w-full mt-32 py-20 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20 min-h-[800px]">
+                <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="w-full mt-32 py-20 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20">

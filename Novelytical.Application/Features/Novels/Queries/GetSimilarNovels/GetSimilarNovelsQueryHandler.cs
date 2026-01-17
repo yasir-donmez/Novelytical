@@ -60,6 +60,7 @@ public class GetSimilarNovelsQueryHandler : IRequestHandler<GetSimilarNovelsQuer
                     .Select(x => new NovelListDto
                     {
                         Id = x.Novel.Id,
+                        Slug = x.Novel.Slug, // Map Slug
                         Title = x.Novel.Title,
                         Author = x.Novel.Author ?? string.Empty,
                         Rating = x.Novel.Rating,
@@ -95,6 +96,7 @@ public class GetSimilarNovelsQueryHandler : IRequestHandler<GetSimilarNovelsQuer
                     .Select(x => new NovelListDto
                     {
                         Id = x.Novel.Id,
+                        Slug = x.Novel.Slug, // Map Slug
                         Title = x.Novel.Title,
                         Author = x.Novel.Author ?? string.Empty,
                         Rating = x.Novel.Rating,

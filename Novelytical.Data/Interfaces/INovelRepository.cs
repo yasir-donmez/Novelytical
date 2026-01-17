@@ -14,5 +14,6 @@ public interface INovelRepository
     
     Task<int> GetCountAsync();
     Task<Novel?> GetByIdAsync(int id);
+    Task<Novel?> GetBySlugAsync(string slug);
     Task<List<Tag>> GetAllTagsAsync();
 }

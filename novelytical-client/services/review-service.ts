@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { LevelService, XP_RULES } from "./level-service";
 import { createNotification } from "./notification-service";
+import { incrementReviewCount, decrementReviewCount } from "./novel-stats-service";
 
 export interface Ratings {
     story: number;     // Kurgu
@@ -89,6 +90,9 @@ export const addReview = async (
 
         // Award XP
         await LevelService.gainXp(userId, XP_RULES.REVIEW);
+
+        // Update novel stats
+        await incrementReviewCount(novelId);
 
         // Parse mentions and notify
         const mentionRegex = /@(\w+)/g;
@@ -292,9 +296,15 @@ export const getReviewsByUserId = async (userId: string): Promise<Review[]> => {
     }
 };
 
-export const deleteReview = async (reviewId: string) => {
+export const deleteReview = async (reviewId: string, novelId?: number) => {
     try {
         await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
+
+        // Update novel stats if novelId provided
+        if (novelId) {
+            await decrementReviewCount(novelId);
+        }
+
         return { success: true };
     } catch (error) {
         console.error("Error deleting review:", error);
