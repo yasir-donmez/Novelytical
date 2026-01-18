@@ -37,10 +37,13 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    // 🌐 Dynamic API URL for Docker/Production
+    const apiUrl = process.env.API_URL || 'http://localhost:5050';
+
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:5050/api/:path*', // Proxy to Backend
+        destination: `${apiUrl}/api/:path*`, // Proxy to Backend
       },
     ];
   },

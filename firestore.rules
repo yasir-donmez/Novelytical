@@ -97,11 +97,16 @@ service cloud.firestore {
     }
 
     // --- 7. Novel Stats (Herkes okuyabilir, viewCount herkes artırabilir, diğerleri auth gerektirir) ---
+    // --- 7. Novel Stats (Herkes okuyabilir, viewCount herkes artırabilir, diğerleri auth gerektirir) ---
     match /novel_stats/{novelId} {
       allow read: if true;
-      // Allow viewCount increment for everyone (including anonymous)
-      // Other fields require authentication
-      allow write: if true;
+      
+      // 🔒 GÜVENLİK AYARI (DÜZELTİLDİ):
+      // Herkes (anonim dahil) SADECE 'viewCount' değerini 1 artırabilir.
+      // Silerse, başka alanı değiştirirse veya 1'den fazla artırırsa REDDEDİLİR.
+      allow create: if true; // İlk oluşumda izin ver (cloud function yoksa)
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+                    && request.resource.data.viewCount == resource.data.viewCount + 1;
     }
 
     // --- 8. Social Graph (Follows) ---

@@ -266,6 +266,9 @@
 - [ ] **Önbellekleme (Caching)**: Redis entegrasyonu (Distributed Cache & Rate Limiting için).
 - [ ] **Yedekleme (Backup)**: Veritabanı ve Blob Storage otomatik yedekleme stratejisi.
 - [ ] **Frontend Deployment**: Next.js uygulamasını Dockerize et (Standalone Output).
+- [ ] **Reverse Proxy**: Nginx veya Traefik kurulumu (SSL Termination & Port Security için).
+- [ ] **CI/CD Pipeline**: GitHub Actions'a "CD" adımı ekle (Docker Build -> Push to Registry -> Deploy to Server).
+- [ ] **Migration Check**: `SiteViewCount` vb. kolonların migration dosyasının oluşturulduğundan emin ol (`dotnet ef migrations add CleanUpSchema`).
 
  Önemli Hatırlatma: Şu an appsettings.Production.json dosyasında izin verilen site olarak https://your-production-domain.com (yer tutucu) yazıyor.
 
