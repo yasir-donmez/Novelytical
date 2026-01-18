@@ -48,14 +48,16 @@ namespace Novelytical.Worker
         };
 
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache; // 🚀
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, IEmbedder embedder, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, IEmbedder embedder, IConfiguration configuration, IHttpClientFactory httpClientFactory, Microsoft.Extensions.Caching.Distributed.IDistributedCache cache)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _embedder = embedder;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _cache = cache;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -438,6 +440,14 @@ namespace Novelytical.Worker
             {
                 await dbContext.SaveChangesAsync();
                 _logger.LogInformation($"[{trackName}] {(isNew ? "🆕 NEW" : "💾 UPDATED")}: {dbNovel.Title}");
+
+                // 🧹 CACHE INVALIDATION (Redis)
+                // Roman değiştiği için önbelleği siliyoruz ki kullanıcılar eski veriyi görmesin.
+                await _cache.RemoveAsync($"novel_details_{dbNovel.Id}");
+                if (!string.IsNullOrEmpty(dbNovel.Slug))
+                {
+                    await _cache.RemoveAsync($"novel_details_{dbNovel.Slug.ToLower()}");
+                }
             }
             else
             {

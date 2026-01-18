@@ -19,7 +19,9 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.19.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.19.0" />
     <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

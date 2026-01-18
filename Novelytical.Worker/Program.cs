@@ -31,7 +31,15 @@ try
     builder.Services.AddApplicationLayer();
 
     // 2.5 HTTP Client Ekle
+    // 2.5 HTTP Client Ekle
     builder.Services.AddHttpClient();
+
+    // 🚀 Redis Cache Ekle (Worker için de gerekli)
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        options.InstanceName = "Novelytical_";
+    });
 
     // 3. Robotu (Worker) İşe Alıyoruz
     builder.Services.AddHostedService<Worker>();
