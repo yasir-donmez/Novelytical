@@ -681,3 +681,8 @@ $RECYCLE.BIN/
 
 # Firebase Admin SDK Key
 serviceAccountKey.json
+
+# Nginx / SSL
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/*.pem

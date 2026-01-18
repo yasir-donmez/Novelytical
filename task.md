@@ -267,7 +267,7 @@
 - [ ] **Yedekleme (Backup)**: Veritabanı ve Blob Storage otomatik yedekleme stratejisi.
 - [x] **Frontend Deployment**: Next.js uygulamasını Dockerize et (Standalone Output).
 - [x] **Reverse Proxy**: Nginx kurulumu tamamlandı (SSL Termination & Port Security).
-- [ ] **CI/CD Pipeline**: GitHub Actions'a "CD" adımı ekle (Docker Build -> Push to Registry -> Deploy to Server).
+- [x] **CI/CD Pipeline**: GitHub Actions ile Docker Build -> Push to GHCR tamamlandı.
 - [x] **Migration Check**: `SiteViewCount` vb. kolonların migration dosyasının oluşturulduğundan emin ol (`CleanUpSchema` oluşturuldu).
 
  Önemli Hatırlatma: Şu an appsettings.Production.json dosyasında izin verilen site olarak https://your-production-domain.com (yer tutucu) yazıyor.
