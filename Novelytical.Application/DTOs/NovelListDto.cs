@@ -18,6 +18,11 @@ public class NovelListDto
     public string? CoverUrl { get; set; }
     
     /// <summary>
+    /// Global rank position based on composite score (1 = highest ranked)
+    /// </summary>
+    public int? RankPosition { get; set; }
+
+    /// <summary>
     /// Tag names only (not full Tag entities) for performance
     /// </summary>
     public List<string> Tags { get; set; } = new();

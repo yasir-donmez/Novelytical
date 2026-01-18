@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from '@/components/rating-stars';
 import { SocialShare } from '@/components/social-share';
-import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info, TrendingUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LibraryAction from '@/components/novel/library-action';
 import { RatingCriteriaTooltip } from '@/components/rating-criteria-tooltip';
 import { getReviewsByNovelId } from '@/services/review-service';
+import { incrementViewCount, getNovelStats, calculateRank, type NovelStats } from '@/services/novel-stats-service';
 import type { NovelDetailDto } from '@/types/novel';
 import { cn } from '@/lib/utils';
 import { getRelativeTimeString } from '@/lib/utils/date';
@@ -50,9 +51,19 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
         grammar: number;
     } | null>(null);
     const [ratingsLoading, setRatingsLoading] = useState(true);
+    const [siteStats, setSiteStats] = useState<NovelStats | null>(null);
+    const [rankScore, setRankScore] = useState<number>(0);
 
     useEffect(() => {
         setLocationHref(window.location.href);
+
+        // Increment view count, THEN fetch stats to ensure we get the updated value
+        incrementViewCount(novel.id).then(() => {
+            getNovelStats(novel.id).then(stats => {
+                setSiteStats(stats);
+                setRankScore(calculateRank(novel.viewCount || 0, stats));
+            });
+        });
 
         // Fetch ratings for tooltip
         getReviewsByNovelId(novel.id)
@@ -160,11 +171,43 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-pink-500" /> Popülerlik
+                                </span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="font-semibold cursor-help bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                                                {rankScore.toLocaleString()}
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-zinc-950 border-white/10 text-zinc-100">
+                                            <div className="text-xs">Rank Puanı (yorum×20 + değerlendirme×50 + görüntülenme)</div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground flex items-center gap-2">
                                     <Eye className="h-4 w-4 text-purple-500" /> Okunma
                                 </span>
-                                <span className="font-semibold">
-                                    {novel.viewCount ? new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(novel.viewCount) : '0'}
-                                </span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="font-semibold cursor-help">
+                                                {(() => {
+                                                    const totalViews = (novel.viewCount || 0) + (siteStats?.viewCount || 0);
+                                                    return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(totalViews);
+                                                })()}
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="bg-zinc-950 border-white/10 text-zinc-100">
+                                            <div className="text-xs space-y-1">
+                                                <div>NovelFire: {new Intl.NumberFormat('tr-TR').format(novel.viewCount || 0)}</div>
+                                                <div>Novelytical: {new Intl.NumberFormat('tr-TR').format(siteStats?.viewCount || 0)}</div>
+                                            </div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground flex items-center gap-2">

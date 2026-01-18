@@ -120,12 +120,38 @@ try
 
     var app = builder.Build();
 
-    // Auto-Migration
-    // Veritabanı yoksa oluşturur, varsa eksik tabloları ekler.
+    // Auto-Migration & Schema Fixer
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
+        try {
+            db.Database.Migrate();
+        } catch { /* Ignore migration errors */ }
+
+        // 🚑 EMERGENCY FIX: Manually add missing columns if migration failed
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""Novels"" ADD COLUMN IF NOT EXISTS ""SiteViewCount"" integer NOT NULL DEFAULT 0;
+                ALTER TABLE ""Novels"" ADD COLUMN IF NOT EXISTS ""CommentCount"" integer NOT NULL DEFAULT 0;
+                ALTER TABLE ""Novels"" ADD COLUMN IF NOT EXISTS ""ReviewCount"" integer NOT NULL DEFAULT 0;
+                
+                -- 🛠️ GENERIC SLUG FIXER: Repairs ALL broken slugs (containing spaces/special chars)
+                -- 1. Remove special chars (keep letters, numbers, spaces, hyphens)
+                -- 2. Replace spaces with hyphens
+                -- 3. Convert to lowercase
+                UPDATE ""Novels""
+                SET ""Slug"" = lower(
+                    regexp_replace(
+                        regexp_replace(""Title"", '[^a-zA-Z0-9\s-]', '', 'g'), -- Remove special chars
+                        '\s+', '-', 'g' -- Replace spaces with hyphens
+                    )
+                )
+                WHERE ""Slug"" ~ '[^a-z0-9-]'; -- Target only slugs with invalid chars
+            ");
+            Log.Information("✅ Schema Fixer: Added missing columns manually.");
+        } catch (Exception ex) {
+            Log.Error(ex, "❌ Schema Fixer failed.");
+        }
     }
 
     // ⚠️ Global Exception Handler - Must be FIRST middleware

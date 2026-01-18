@@ -10,7 +10,7 @@ export function FilterControls({ totalRecords, searchString }: { totalRecords?: 
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const tagFilters = searchParams.getAll('tag');
-    const sortOrder = searchParams.get('sort') || 'rating_asc';
+    const sortOrder = searchParams.get('sort') || 'rank_desc';
 
     // Advanced filter params
     const minChapters = searchParams.get('minChapters') ? Number(searchParams.get('minChapters')) : null;

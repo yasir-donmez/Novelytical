@@ -1,5 +1,6 @@
 import { fetchNovels } from '@/lib/data/novels';
 import { NovelCard } from '@/components/novel-card';
+import { RankedNovelGrid } from '@/components/ranked-novel-grid';
 import { EmptyState } from '@/components/empty-state';
 import { FilterControls } from '@/components/filter-controls';
 import { PaginationClient } from '@/components/pagination-client';
@@ -86,14 +87,7 @@ export async function NovelGridServer({
         <>
             <FilterControls totalRecords={data.totalRecords} searchString={searchString} />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mt-6">
-                {data.data.map((novel: any) => (
-                    <NovelCard
-                        key={novel.id}
-                        novel={novel}
-                    />
-                ))}
-            </div>
+            <RankedNovelGrid novels={data.data} sortOrder={sortOrder} />
 
             <PaginationClient
                 totalPages={data.totalPages}

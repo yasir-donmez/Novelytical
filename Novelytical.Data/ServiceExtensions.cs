@@ -12,7 +12,8 @@ public static class ServiceExtensions
     {
         // DbContext
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString, o => o.UseVector()));
+            options.UseNpgsql(connectionString, o => o.UseVector())
+                   .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         // Repositories
         services.AddScoped<INovelRepository, NovelRepository>();

@@ -22,10 +22,10 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
                 </div>
             </SelectTrigger>
             <SelectContent position="popper" align="end" sideOffset={5}>
+                <SelectItem value="rank_desc">🔥 Popülerlik</SelectItem>
                 <SelectItem value="views_desc">En Çok Görüntülenenler</SelectItem>
-                <SelectItem value="rating_asc">En Yüksek Puan</SelectItem>
-                <SelectItem value="rating_desc">En Düşük Puan</SelectItem>
-                <SelectItem value="date_desc">Son Güncellenenler</SelectItem>
+                <SelectItem value="rating_desc">En Yüksek Puan</SelectItem>
+                <SelectItem value="date_desc">En Son Güncellenenler</SelectItem>
                 <SelectItem value="chapters_desc">En Çok Bölüm</SelectItem>
             </SelectContent>
         </Select>

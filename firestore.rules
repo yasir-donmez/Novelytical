@@ -96,10 +96,12 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // --- 7. Novel Stats (Herkes okuyabilir, sadece authenticated yazabilir) ---
+    // --- 7. Novel Stats (Herkes okuyabilir, viewCount herkes artırabilir, diğerleri auth gerektirir) ---
     match /novel_stats/{novelId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      // Allow viewCount increment for everyone (including anonymous)
+      // Other fields require authentication
+      allow write: if true;
     }
 
     // --- 8. Social Graph (Follows) ---

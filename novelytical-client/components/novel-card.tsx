@@ -8,23 +8,28 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Bookmark, Star, MessageCircle } from 'lucide-react';
 import { getRelativeTimeString } from '@/lib/utils/date';
-import { getNovelStats, NovelStats } from '@/services/novel-stats-service';
+import { getNovelStats, NovelStats, calculateRank } from '@/services/novel-stats-service';
+import { TrendingUp, Crown } from 'lucide-react';
 
 interface NovelCardProps {
     novel: NovelListDto;
     variant?: 'default' | 'vertical' | 'horizontal';
-    aspect?: 'portrait' | 'square' | 'landscape' | 'auto'; // Added for compatibility with Discovery Page
+    aspect?: 'portrait' | 'square' | 'landscape' | 'auto';
     className?: string;
 }
 
 export function NovelCard({ novel, variant = 'default', aspect, className }: NovelCardProps) {
     // State for novel stats
-    const [stats, setStats] = useState<NovelStats>({ reviewCount: 0, libraryCount: 0 });
+    const [stats, setStats] = useState<NovelStats>({ reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 });
+    const [rankScore, setRankScore] = useState<number>(0);
 
     // Fetch stats on mount
     useEffect(() => {
-        getNovelStats(novel.id).then(setStats);
-    }, [novel.id]);
+        getNovelStats(novel.id).then(fetchedStats => {
+            setStats(fetchedStats);
+            setRankScore(calculateRank(novel.viewCount || 0, fetchedStats));
+        });
+    }, [novel.id, novel.viewCount]);
 
     // If aspect is provided, it overrides variant logic for simple aspect control
     // taking 'portrait' as default vertical look
@@ -150,6 +155,26 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                                 <span>{novel.lastUpdated ? getRelativeTimeString(novel.lastUpdated) : '-'}</span>
                                             </div>
                                         </div>
+                                        {/* Rank Badge - Top Left on Hover */}
+                                        {novel.rankPosition && (
+                                            <div className="absolute top-12 left-2 z-30 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
+                                                {novel.rankPosition <= 3 ? (
+                                                    <div className={`flex items-center gap-1.5 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-sm font-bold shadow-lg border ${novel.rankPosition === 1
+                                                        ? 'bg-gradient-to-r from-yellow-500 to-amber-600 border-yellow-400/50'
+                                                        : novel.rankPosition === 2
+                                                            ? 'bg-gradient-to-r from-slate-400 to-slate-500 border-slate-300/50'
+                                                            : 'bg-gradient-to-r from-orange-600 to-orange-700 border-orange-500/50'
+                                                        }`}>
+                                                        <Crown className="h-4 w-4" />
+                                                        <span>{novel.rankPosition}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-sm font-medium shadow-lg border border-white/10">
+                                                        {novel.rankPosition}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         {/* Hover Stats Overlay */}
                                         <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-30">
                                             {/* Rating */}
@@ -213,6 +238,26 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                             alt={novel.title}
                                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110 block"
                                         />
+                                        {/* Rank Badge - Top Left on Hover */}
+                                        {novel.rankPosition && (
+                                            <div className="absolute top-2 left-2 z-30 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
+                                                {novel.rankPosition <= 3 ? (
+                                                    <div className={`flex items-center gap-1.5 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-sm font-bold shadow-lg border ${novel.rankPosition === 1
+                                                        ? 'bg-gradient-to-r from-yellow-500 to-amber-600 border-yellow-400/50'
+                                                        : novel.rankPosition === 2
+                                                            ? 'bg-gradient-to-r from-slate-400 to-slate-500 border-slate-300/50'
+                                                            : 'bg-gradient-to-r from-orange-600 to-orange-700 border-orange-500/50'
+                                                        }`}>
+                                                        <Crown className="h-4 w-4" />
+                                                        <span>{novel.rankPosition}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-sm font-medium shadow-lg border border-white/10">
+                                                        {novel.rankPosition}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         {/* Hover Stats Overlay */}
                                         <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-30">
                                             {/* Rating */}

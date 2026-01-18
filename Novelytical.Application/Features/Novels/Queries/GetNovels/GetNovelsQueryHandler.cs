@@ -63,6 +63,8 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         // Try cache first (skip if filters active)
         bool hasFilters = (request.Tags != null && request.Tags.Any()) || request.MinChapters.HasValue || request.MaxChapters.HasValue || request.MinRating.HasValue || request.MaxRating.HasValue;
 
+        // Cache check re-enabled per user request (Performance optimization)
+        
         if (!hasFilters &&
             _cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) &&
             cachedNovels != null)
@@ -70,6 +72,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             var totalCount = await _repository.GetCountAsync();
             return new PagedResponse<NovelListDto>(cachedNovels, request.PageNumber, request.PageSize, totalCount);
         }
+        
 
         List<NovelListDto> novels;
         int totalRecords;
@@ -114,11 +117,22 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
 
         query = request.SortOrder switch
         {
-            "rating_asc" => query.OrderBy(n => n.Rating).ThenBy(n => n.Id),
-            "rating_desc" => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id),
-            "views_desc" => query.OrderByDescending(n => n.ViewCount).ThenBy(n => n.Id),
+            "rating_asc" => query
+                .OrderBy(n => ((double)(n.ScrapedRating ?? 0) * (int)(n.ViewCount / 10000.0) + (double)n.Rating * n.ReviewCount) / ((int)(n.ViewCount / 10000.0) + n.ReviewCount + 0.00001))
+                .ThenBy(n => n.Id),
+            "rating_desc" => query
+                .OrderByDescending(n => ((double)(n.ScrapedRating ?? 0) * (int)(n.ViewCount / 10000.0) + (double)n.Rating * n.ReviewCount) / ((int)(n.ViewCount / 10000.0) + n.ReviewCount + 0.00001))
+                .ThenByDescending(n => (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50)) // Tie-breaker: Global Rank
+                .ThenBy(n => n.Id),
+            "views_desc" => query.OrderByDescending(n => n.ViewCount + n.SiteViewCount).ThenBy(n => n.Id),
             "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
             "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
+            // Rank: (viewCount/10000) + rating*10 - combines popularity and quality
+            // Rank: Consistent with Global Rank Formula + Rating tie-breaker
+            "rank_desc" => query
+                .OrderByDescending(n => (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50))
+                .ThenByDescending(n => n.ScrapedRating ?? n.Rating)
+                .ThenBy(n => n.Id),
             _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
         };
 
@@ -140,8 +154,34 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             ChapterCount = n.ChapterCount,
             LastUpdated = n.LastUpdated,
             CoverUrl = n.CoverUrl,
+            // Calculate RankScore for Debugging/Display
             Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
         }).ToList();
+
+        // Calculate global rank positions
+        var allNovelRanks = await _repository.GetOptimizedQuery()
+            .Select(n => new { 
+                n.Id, 
+                // Full formula: floor(scrapedViews/10000) + siteViews + ... matches frontend display
+                RankScore = (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50),
+                Rating = n.ScrapedRating ?? n.Rating
+            })
+            .OrderByDescending(x => x.RankScore)
+            .ThenByDescending(x => x.Rating)
+            .ThenBy(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var rankPositions = allNovelRanks
+            .Select((x, index) => new { x.Id, Position = index + 1 })
+            .ToDictionary(x => x.Id, x => x.Position);
+
+        foreach (var novel in novels)
+        {
+            if (rankPositions.TryGetValue(novel.Id, out var position))
+            {
+                novel.RankPosition = position;
+            }
+        }
 
         // Cache for 5 minutes if successful and not empty (optional, but good)
         // Original logic cached it.

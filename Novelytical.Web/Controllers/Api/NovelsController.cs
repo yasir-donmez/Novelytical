@@ -151,4 +151,43 @@ public class NovelsController : ControllerBase
     }
 
 
+    /// <summary>
+    /// Increment site-specific view count
+    /// </summary>
+    [HttpPost("{id}/view")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> IncrementView(int id)
+    {
+        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.IncrementSiteViewCommand { NovelId = id });
+        return Ok();
+    }
+
+    /// <summary>
+    /// Update comment count (sync from Firestore)
+    /// </summary>
+    [HttpPost("{id}/comment-count")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateCommentCount(int id, [FromBody] int count)
+    {
+        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.UpdateCommentCountCommand { NovelId = id, Count = count });
+        return Ok();
+    }
+
+    /// <summary>
+    /// Update review count and average rating (sync from Firestore)
+    /// </summary>
+    [HttpPost("{id}/review-count")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateReviewCount(int id, [FromBody] UpdateReviewStatsRequest request)
+    {
+        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.UpdateReviewCountCommand 
+        { 
+            NovelId = id, 
+            Count = request.Count,
+            AverageRating = request.AverageRating
+        });
+        return Ok();
+    }
 }
+
+public record UpdateReviewStatsRequest(int Count, double? AverageRating);

@@ -13,7 +13,7 @@ interface TrendingLaneProps {
 export async function TrendingLane({ title, icon }: TrendingLaneProps) {
     let novels = [];
     try {
-        const res = await fetchNovels({ pageSize: 10, sortOrder: 'views_desc' });
+        const res = await fetchNovels({ pageSize: 10, sortOrder: 'rank_desc' });
         novels = res.data || [];
     } catch (error) {
         console.error(`Failed to fetch Trending Lane:`, error);
@@ -29,7 +29,7 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
             hideBorder={true}
             headerAction={
                 <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 hover:text-primary" asChild>
-                    <Link href="/romanlar?sort=views_desc">
+                    <Link href="/romanlar?sort=rank_desc">
                         Tümünü Gör <ChevronRight className="h-4 w-4" />
                     </Link>
                 </Button>

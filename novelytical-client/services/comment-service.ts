@@ -21,6 +21,7 @@ import {
 import { LevelService, XP_RULES } from "./level-service";
 import { createNotification } from "./notification-service";
 import { UserService } from "./user-service";
+import { incrementCommentCount, decrementCommentCount } from "./novel-stats-service";
 
 export interface Comment {
     id: string;
@@ -73,6 +74,11 @@ export const addComment = async (
 
         // Award XP
         await LevelService.gainXp(userId, XP_RULES.COMMENT);
+
+        // Update novel stats (only for top-level comments, not replies)
+        if (!parentId) {
+            await incrementCommentCount(novelId);
+        }
 
         // Handle Mentions
         const mentionRegex = /@(\w+)/g;
@@ -180,9 +186,19 @@ export const getCommentsByUserId = async (userId: string): Promise<Comment[]> =>
     }
 };
 
-export const deleteComment = async (commentId: string) => {
+export const deleteComment = async (commentId: string, novelId?: number) => {
     try {
+        // Get comment to check if it's a top-level comment
+        const commentDoc = await getDoc(doc(db, COLLECTION_NAME, commentId));
+        const isTopLevel = commentDoc.exists() && !commentDoc.data().parentId;
+
         await deleteDoc(doc(db, COLLECTION_NAME, commentId));
+
+        // Decrement count only for top-level comments
+        if (novelId && isTopLevel) {
+            await decrementCommentCount(novelId);
+        }
+
         return { success: true };
     } catch (error) {
         console.error("Error deleting comment:", error);

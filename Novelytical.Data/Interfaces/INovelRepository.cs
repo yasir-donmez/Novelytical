@@ -16,4 +16,9 @@ public interface INovelRepository
     Task<Novel?> GetByIdAsync(int id);
     Task<Novel?> GetBySlugAsync(string slug);
     Task<List<Tag>> GetAllTagsAsync();
+
+    // Stats updates
+    Task IncrementSiteViewAsync(int id);
+    Task UpdateCommentCountAsync(int id, int count);
+    Task UpdateReviewStatsAsync(int id, int count, double? avgRating);
 }

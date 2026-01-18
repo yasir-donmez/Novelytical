@@ -60,4 +60,27 @@ public class NovelRepository : INovelRepository
             .ToListAsync();
     }
 
+    public async Task IncrementSiteViewAsync(int id)
+    {
+        // Execute direct SQL for atomic increment performance
+        await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"SiteViewCount\" = \"SiteViewCount\" + 1 WHERE \"Id\" = {id}");
+
+    }
+
+    public async Task UpdateCommentCountAsync(int id, int count)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"CommentCount\" = {count} WHERE \"Id\" = {id}");
+    }
+
+    public async Task UpdateReviewStatsAsync(int id, int count, double? avgRating)
+    {
+        if (avgRating.HasValue)
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"ReviewCount\" = {count}, \"Rating\" = {avgRating.Value} WHERE \"Id\" = {id}");
+        }
+        else
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"ReviewCount\" = {count} WHERE \"Id\" = {id}");
+        }
+    }
 }

@@ -23,6 +23,11 @@ namespace Novelytical.Data
         public int ChapterCount { get; set; }
         public DateTime LastUpdated { get; set; }
 
+        // --- Novelytical Stats ---
+        public int SiteViewCount { get; set; }
+        public int CommentCount { get; set; }
+        public int ReviewCount { get; set; }
+
         // --- VEKTÖR KUTUSU (Vector Search) ---
         // vector(384) -> Ücretsiz modeller için standart boyuttur.
         [Column(TypeName = "vector(384)")] 

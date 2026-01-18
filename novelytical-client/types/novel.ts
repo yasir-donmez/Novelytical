@@ -11,6 +11,7 @@ export interface NovelListDto {
     chapterCount: number;
     lastUpdated: string;
     coverUrl?: string;
+    rankPosition?: number; // Global rank position (1 = highest)
     tags: string[];
 }
 

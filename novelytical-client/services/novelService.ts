@@ -54,4 +54,21 @@ export const novelService = {
         const { data } = await api.get<{ data: string[] }>('/novels/tags');
         return data.data;
     },
+
+    // Sync stats
+    incrementSiteView: async (id: number): Promise<void> => {
+        await api.post(`/novels/${id}/view`);
+    },
+
+    updateCommentCount: async (id: number, count: number): Promise<void> => {
+        await api.post(`/novels/${id}/comment-count`, count, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
+
+    updateReviewCount: async (id: number, count: number, averageRating?: number): Promise<void> => {
+        await api.post(`/novels/${id}/review-count`, { count, averageRating }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    },
 };
