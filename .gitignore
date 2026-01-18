@@ -686,3 +686,7 @@ serviceAccountKey.json
 nginx/ssl/*.key
 nginx/ssl/*.crt
 nginx/ssl/*.pem
+
+# Log Files
+log_*.txt
+*.log
