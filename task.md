@@ -263,3 +263,10 @@
 - [ ] **Asenkron Mesajlaşma**: MassTransit (RabbitMQ) entegrasyonu.
 - [ ] **Gerçek Zamanlı İletişim**: SignalR Hub (Bildirimler/Sohbet için).
 - [ ] **İzleme (Monitoring)**: ELK Stack veya Prometheus + Grafana.
+- [ ] **Önbellekleme (Caching)**: Redis entegrasyonu (Distributed Cache & Rate Limiting için).
+- [ ] **Yedekleme (Backup)**: Veritabanı ve Blob Storage otomatik yedekleme stratejisi.
+- [ ] **Frontend Deployment**: Next.js uygulamasını Dockerize et (Standalone Output).
+
+ Önemli Hatırlatma: Şu an appsettings.Production.json dosyasında izin verilen site olarak https://your-production-domain.com (yer tutucu) yazıyor.
+
+Canlıya çıkmadan önce bu adresi kendi gerçek domaininizle (örn: https://novelytical.com) değiştirmeniz ŞART. Aksi takdirde siteniz backend'e istek atamaz ve "CORS Error" alırsınız. Bu bir güvenlik açığı değil, bir yapılandırma gerekliliğidir.

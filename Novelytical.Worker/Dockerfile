@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS base
+FROM mcr.microsoft.com/dotnet/runtime:9.0-noble-chiseled AS base
 USER app
 WORKDIR /app
 

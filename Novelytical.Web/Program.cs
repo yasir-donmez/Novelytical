@@ -4,6 +4,7 @@ using Novelytical.Data;          // 🚀 Data layer
 using Novelytical.Web.Middleware; // Global Exception Handler
 using Microsoft.AspNetCore.RateLimiting; // Rate Limiting
 using System.Threading.RateLimiting; // Rate Limiting
+using Microsoft.AspNetCore.HttpOverrides; // 🚀 Proxy Headers support
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -70,12 +71,16 @@ try
     });
 
     // ⚡ Rate Limiting - API koruma
+    var rateLimitDocs = builder.Configuration.GetSection("RateLimit");
+    var permitLimit = rateLimitDocs.GetValue<int>("PermitLimit", 100);
+    var windowMinutes = rateLimitDocs.GetValue<int>("WindowMinutes", 1);
+
     builder.Services.AddRateLimiter(options =>
     {
         options.AddFixedWindowLimiter("fixed", limiterOptions =>
         {
-            limiterOptions.PermitLimit = 100; // 100 requests
-            limiterOptions.Window = TimeSpan.FromMinutes(1); // per minute
+            limiterOptions.PermitLimit = permitLimit; // Configured limit
+            limiterOptions.Window = TimeSpan.FromMinutes(windowMinutes); // Configured window
             limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
             limiterOptions.QueueLimit = 5;
         });
@@ -171,7 +176,19 @@ try
         });
     }
 
-    // app.UseHttpsRedirection();
+    // 🔒 Security: HSTS & HTTPS Redirection
+    // Proxy (Docker/Nginx) Headers Support - CRITICAL for Containerized Apps
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts(); // 🔒 Force HTTPS in Production (Strict-Transport-Security)
+    }
+
+    app.UseHttpsRedirection(); // 🔒 Redirect HTTP to HTTPS
     
     // 🌐 CORS - Must be after UseHttpsRedirection and before UseRouting
     app.UseCors("AllowFrontend");

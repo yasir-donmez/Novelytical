@@ -1,0 +1,29 @@
+# Version Control
+.git
+.gitignore
+
+# IDE / Editor
+.vs
+.vscode
+.idea
+*.user
+*.suo
+*.swp
+
+# Build Output
+**/bin/
+**/obj/
+
+# Dependencies
+**/node_modules/
+
+# Files not needed in production image build
+README.md
+task.md
+*.md
+docker-compose.yml
+docker-compose.override.yml
+.env.example
+.env
+security_audit.md
+LICENSE
