@@ -36,7 +36,15 @@ try
     
     // Health Check servisi
     builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString!);
+        .AddNpgSql(connectionString!)
+        .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
+
+    // 🚀 Caching Strategy (Redis)
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        options.InstanceName = "Novelytical_";
+    });
 
     // Add services to the container.
     builder.Services.AddControllers();

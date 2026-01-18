@@ -29,6 +29,14 @@ services:
       - "127.0.0.1:8888:80" # 🔒 Localhost access only
     volumes:
       - seqdata:/data
+      - seqdata:/data
+    restart: always
+
+  novelytical-redis:
+    image: redis:alpine
+    container_name: novelytical-redis
+    ports:
+      - "127.0.0.1:6379:6379" # 🔒 Localhost access only
     restart: always
 
   novelytical-web:
@@ -38,6 +46,7 @@ services:
     container_name: novelytical-web
     environment:
       - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=${POSTGRES_DB:-NovelyticalDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Redis=novelytical-redis:6379
       - Seq__ServerUrl=${SEQ_SERVER_URL:-http://seq:5341}
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
@@ -58,6 +67,7 @@ services:
     container_name: novelytical-worker
     environment:
       - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=${POSTGRES_DB:-NovelyticalDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Redis=novelytical-redis:6379
       - Seq__ServerUrl=${SEQ_SERVER_URL:-http://seq:5341}
       - DOTNET_ENVIRONMENT=Development
     depends_on:
@@ -67,6 +77,22 @@ services:
         condition: service_started
     networks:
       - novelytical-network
+    restart: on-failure
+
+  novelytical-client:
+    build:
+      context: ./novelytical-client
+      dockerfile: Dockerfile
+    container_name: novelytical-client
+    environment:
+      - API_URL=http://novelytical-web:8080 # 🐳 Internal Docker Network
+      - NEXT_PUBLIC_API_URL=http://localhost:5050 # 🌍 Browser Access (Client Side)
+    ports:
+      - "3000:3000"
+    networks:
+      - novelytical-network
+    depends_on:
+      - novelytical-web
     restart: on-failure
 
 networks:

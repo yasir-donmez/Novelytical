@@ -263,12 +263,12 @@
 - [ ] **Asenkron Mesajlaşma**: MassTransit (RabbitMQ) entegrasyonu.
 - [ ] **Gerçek Zamanlı İletişim**: SignalR Hub (Bildirimler/Sohbet için).
 - [ ] **İzleme (Monitoring)**: ELK Stack veya Prometheus + Grafana.
-- [ ] **Önbellekleme (Caching)**: Redis entegrasyonu (Distributed Cache & Rate Limiting için).
+- [x] **Önbellekleme (Caching)**: Redis entegrasyonu (Distributed Cache & Rate Limiting için).
 - [ ] **Yedekleme (Backup)**: Veritabanı ve Blob Storage otomatik yedekleme stratejisi.
-- [ ] **Frontend Deployment**: Next.js uygulamasını Dockerize et (Standalone Output).
+- [x] **Frontend Deployment**: Next.js uygulamasını Dockerize et (Standalone Output).
 - [ ] **Reverse Proxy**: Nginx veya Traefik kurulumu (SSL Termination & Port Security için).
 - [ ] **CI/CD Pipeline**: GitHub Actions'a "CD" adımı ekle (Docker Build -> Push to Registry -> Deploy to Server).
-- [ ] **Migration Check**: `SiteViewCount` vb. kolonların migration dosyasının oluşturulduğundan emin ol (`dotnet ef migrations add CleanUpSchema`).
+- [x] **Migration Check**: `SiteViewCount` vb. kolonların migration dosyasının oluşturulduğundan emin ol (`CleanUpSchema` oluşturuldu).
 
  Önemli Hatırlatma: Şu an appsettings.Production.json dosyasında izin verilen site olarak https://your-production-domain.com (yer tutucu) yazıyor.
 
