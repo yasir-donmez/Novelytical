@@ -29,7 +29,6 @@ services:
       - "127.0.0.1:8888:80" # 🔒 Localhost access only
     volumes:
       - seqdata:/data
-      - seqdata:/data
     restart: always
 
   novelytical-redis:

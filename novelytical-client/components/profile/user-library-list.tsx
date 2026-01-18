@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { getUserLibrary, LibraryItem, ReadingStatus, updateLibraryProgress } from "@/services/library-service";
 import { novelService } from "@/services/novelService";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, BookOpen, Check, Calendar, Bookmark, Search, ChevronLeft, ChevronRight, Plus, Minus, Save } from "lucide-react";
+import { Loader2, BookOpen, Check, Calendar, Bookmark, Search, ChevronLeft, ChevronRight, Plus, Minus, Save, Link2, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { NovelListDto } from "@/types/novel";
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { parseChapterUrl, getSupportedSites } from "@/lib/chapter-url-parser";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface LibrarySummary extends LibraryItem {
     novel?: NovelListDto;
@@ -22,6 +24,8 @@ const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate
     const [chapter, setChapter] = useState<string | number>(item.currentChapter || 0);
     const [isOpen, setIsOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [mode, setMode] = useState<'manual' | 'url'>('manual');
+    const [urlInput, setUrlInput] = useState('');
 
     // Sync state when item changes
     useEffect(() => {
@@ -43,6 +47,24 @@ const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate
             toast.error("Kaydedilemedi");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleUrlParse = async () => {
+        if (!urlInput.trim()) {
+            toast.error("Lütfen bir URL girin");
+            return;
+        }
+
+        const result = parseChapterUrl(urlInput);
+
+        if (result.success && result.chapterNumber) {
+            setChapter(result.chapterNumber);
+            toast.success(`${result.siteName}'dan Bölüm ${result.chapterNumber} algılandı!`);
+            setMode('manual'); // Switch back to show the detected number
+            setUrlInput('');
+        } else {
+            toast.error(result.error || "URL'den bölüm algılanamadı");
         }
     };
 
@@ -92,30 +114,87 @@ const ChapterEditPopover = ({ item, onUpdate }: { item: LibrarySummary, onUpdate
                     {item.novel?.chapterCount ? <span className="text-muted-foreground/50"> / {item.novel.chapterCount}</span> : ''}
                 </div>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-3 z-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <PopoverContent className="w-64 p-3 z-50" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                 <div className="flex flex-col gap-2">
-                    <p className="text-xs font-medium text-muted-foreground">Şu anki Bölüm</p>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={saving}>
-                            <Minus className="h-3 w-3" />
+                    {/* Mode Toggle */}
+                    <div className="flex items-center gap-1 mb-1">
+                        <Button
+                            variant={mode === 'manual' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-6 text-[10px] flex-1"
+                            onClick={() => setMode('manual')}
+                        >
+                            Manuel
                         </Button>
-                        <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={chapter}
-                            onChange={handleChange}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleSave();
-                                }
-                            }}
-                            className="h-8 text-center text-xs"
-                            onClick={(e) => (e.target as HTMLInputElement).select()}
-                        />
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} disabled={saving}>
-                            <Plus className="h-3 w-3" />
+                        <Button
+                            variant={mode === 'url' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-6 text-[10px] flex-1 gap-1"
+                            onClick={() => setMode('url')}
+                        >
+                            <Link2 className="h-3 w-3" /> Link ile
                         </Button>
                     </div>
+
+                    {mode === 'manual' ? (
+                        <>
+                            <p className="text-xs font-medium text-muted-foreground">Şu anki Bölüm</p>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={saving}>
+                                    <Minus className="h-3 w-3" />
+                                </Button>
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={chapter}
+                                    onChange={handleChange}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSave();
+                                        }
+                                    }}
+                                    className="h-8 text-center text-xs"
+                                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                                />
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} disabled={saving}>
+                                    <Plus className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-1">
+                                <p className="text-xs font-medium text-muted-foreground">Bölüm Linkini Yapıştır</p>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-[200px] text-xs">
+                                            <p className="font-medium mb-1">Desteklenen Siteler:</p>
+                                            <p className="text-muted-foreground">{getSupportedSites().join(', ')}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                            <Input
+                                type="url"
+                                placeholder="https://novelfire.net/.../chapter-123"
+                                value={urlInput}
+                                onChange={(e) => setUrlInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleUrlParse();
+                                    }
+                                }}
+                                className="h-8 text-xs"
+                            />
+                            <Button size="sm" variant="secondary" className="w-full h-7 text-xs" onClick={handleUrlParse}>
+                                Algıla
+                            </Button>
+                        </>
+                    )}
+
                     <Button size="sm" className="w-full h-7 text-xs mt-1" onClick={handleSave} disabled={saving}>
                         {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Kaydet"}
                     </Button>
