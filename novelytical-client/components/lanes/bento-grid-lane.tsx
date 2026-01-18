@@ -47,6 +47,7 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
                             novel={novel}
                             aspect="auto"
                             className="h-full w-full"
+                            showLastUpdated={true}
                         />
                     </div>
                 ))}

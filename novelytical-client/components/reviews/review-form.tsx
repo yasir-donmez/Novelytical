@@ -197,6 +197,12 @@ export default function ReviewForm({ novelId, coverImage, onReviewAdded }: Revie
                                     placeholder="Bu roman hakkında ne düşünüyorsunuz? Güçlü ve zayıf yönleri neler?"
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSubmit(e as unknown as React.FormEvent);
+                                        }
+                                    }}
                                     className="resize-y bg-black/5 dark:bg-black/20 border-white/10 focus-visible:ring-purple-500/30 w-full break-words whitespace-pre-wrap placeholder:text-muted-foreground/50"
                                 />
                             </div>

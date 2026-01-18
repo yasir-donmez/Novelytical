@@ -1,0 +1,100 @@
+﻿                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfoInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfo.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.CoreCompileInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\EFCoreNpgsqlPgvector.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.sourcelink.json (TaskId:242)
+                   "FindUnderPath" gÃ¶revini yÃ¼rÃ¼tme tamamlandÄ±. (TaskId:242)
+                   Eklenen Ã–ÄŸeler: 
+                       _CleanCurrentFileWritesWithNoReferences=
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.AssemblyReference.cache
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.GeneratedMSBuildEditorConfig.editorconfig
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfoInputs.cache
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfo.cs
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.CoreCompileInputs.cache
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\EFCoreNpgsqlPgvector.cs
+                           C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.sourcelink.json
+                   "RemoveDuplicates" gÃ¶revi (TaskId:243)
+                     Ã‡Ä±kÄ±ÅŸ Ã–ÄŸeleri: 
+                         _CleanCurrentFileWrites=
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.AssemblyReference.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.GeneratedMSBuildEditorConfig.editorconfig
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfoInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfo.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.CoreCompileInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\EFCoreNpgsqlPgvector.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.sourcelink.json (TaskId:243)
+                   "RemoveDuplicates" gÃ¶revini yÃ¼rÃ¼tme tamamlandÄ±. (TaskId:243)
+16:45:57.598   1:7>"Novelytical.Application.csproj" projesinde "_CleanGetCurrentAndPriorFileWrites" hedefini oluÅŸturma tamamlandÄ±.: (TargetId:345)
+16:45:57.598   1:7>"C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj" projesinin "C:\Program Files\dotnet\sdk\9.0.306\Microsoft.Common.CurrentVersion.targets" dosyasÄ±ndaki "_CleanRecordFileWrites: (TargetId:346)" hedefi ("CoreBuild" hedefi buna baÄŸÄ±mlÄ±):
+                   "RemoveDuplicates" gÃ¶revi (TaskId:244)
+                     Ã‡Ä±kÄ±ÅŸ Ã–ÄŸeleri: 
+                         _CleanUniqueFileWrites=
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Resources\Embeddings\paraphrase-multilingual-MiniLM-L12-v2\model.onnx
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Resources\Embeddings\paraphrase-multilingual-MiniLM-L12-v2\tokenizer.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.deps.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Data.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Data.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.AssemblyReference.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.GeneratedMSBuildEditorConfig.editorconfig
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfoInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfo.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.CoreCompileInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\EFCoreNpgsqlPgvector.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.sourcelink.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelyti.A7B622E4.Up2Date
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\refint\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\ref\Novelytical.Application.dll (TaskId:244)
+                   "RemoveDuplicates" gÃ¶revini yÃ¼rÃ¼tme tamamlandÄ±. (TaskId:244)
+                   "MakeDir" gÃ¶revi (TaskId:245)
+                     GÃ¶rev Parametresi:Directories=obj\Debug\net9.0\ (TaskId:245)
+                   "MakeDir" gÃ¶revini yÃ¼rÃ¼tme tamamlandÄ±. (TaskId:245)
+                   "WriteLinesToFile" gÃ¶revi (TaskId:246)
+                     GÃ¶rev Parametresi:WriteOnlyWhenDifferent=True (TaskId:246)
+                     GÃ¶rev Parametresi:
+                         Lines=
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Resources\Embeddings\paraphrase-multilingual-MiniLM-L12-v2\model.onnx
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Resources\Embeddings\paraphrase-multilingual-MiniLM-L12-v2\tokenizer.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.deps.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Application.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Data.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\bin\Debug\net9.0\Novelytical.Data.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.AssemblyReference.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.GeneratedMSBuildEditorConfig.editorconfig
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfoInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.AssemblyInfo.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.csproj.CoreCompileInputs.cache
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\EFCoreNpgsqlPgvector.cs
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.sourcelink.json
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelyti.A7B622E4.Up2Date
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\refint\Novelytical.Application.dll
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\Novelytical.Application.pdb
+                             C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\obj\Debug\net9.0\ref\Novelytical.Application.dll (TaskId:246)
+                     GÃ¶rev Parametresi:Overwrite=True (TaskId:246)
+                     GÃ¶rev Parametresi:File=obj\Debug\net9.0\Novelytical.Application.csproj.FileListAbsolute.txt (TaskId:246)
+                     Ä°Ã§erik deÄŸiÅŸmeyeceÄŸinden "obj\Debug\net9.0\Novelytical.Application.csproj.FileListAbsolute.txt" dosyasÄ± Ã¼zerine yazma iÅŸlemi atlanacak. (TaskId:246)
+                   "WriteLinesToFile" gÃ¶revini yÃ¼rÃ¼tme tamamlandÄ±. (TaskId:246)
+16:45:57.599   1:7>"Novelytical.Application.csproj" projesinde "_CleanRecordFileWrites" hedefini oluÅŸturma tamamlandÄ±.: (TargetId:346)
+16:45:57.599   1:7>"C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj" Projesini OluÅŸturma Ä°ÅŸlemi TamamlandÄ± (varsayÄ±lan hedefler) -- BAÅARISIZ OLDU.
+
+OluÅŸturma BAÅARISIZ OLDU.
+
+                   "C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj" (varsayÄ±lan hedef) (1:7) ->
+                   (CoreCompile hedefi) -> 
+                     C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Features\Novels\Queries\GetNovels\GetNovelsQueryHandler.cs(410,13): warning CS8604: 'IEnumerable<(Novel x, int)> Enumerable.Select<Novel, (Novel x, int)>(IEnumerable<Novel> source, Func<Novel, int, (Novel x, int)> selector)' iÃ§indeki 'source' parametresi iÃ§in olasÄ± null baÅŸvuru baÄŸÄ±msÄ±z deÄŸiÅŸkeni. [C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj]
+
+
+                   "C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj" (varsayÄ±lan hedef) (1:7) ->
+                   (CoreCompile hedefi) -> 
+                     C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Services\Embeddings\OnnxEmbedder.cs(96,35): error CS1061: 'Tokenizer' bir 'Encode' tanÄ±mÄ± iÃ§ermiyor ve 'Tokenizer' tÃ¼rÃ¼nde bir ilk baÄŸÄ±msÄ±z deÄŸiÅŸken kabul eden hiÃ§bir eriÅŸilebilir 'Encode' geniÅŸletme yÃ¶ntemi bulunamadÄ± (bir kullanma yÃ¶nergeniz veya derleme baÅŸvurunuz eksik olabilir mi?) [C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj]
+                     C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Services\Embeddings\OnnxEmbedder.cs(139,67): error CS1503: 2 baÄŸÄ±msÄ±z deÄŸiÅŸkeni: 'int[]' Ã¶ÄŸesinden 'bool' Ã¶ÄŸesine dÃ¶nÃ¼ÅŸtÃ¼rÃ¼lemiyor [C:\Users\Yasir2.Prenses\Novelytical\Novelytical.Application\Novelytical.Application.csproj]
+
+    1 UyarÄ±
+    2 Hata
+
+GeÃ§en SÃ¼re 00:00:01.12

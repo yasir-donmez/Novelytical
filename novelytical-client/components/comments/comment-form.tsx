@@ -88,6 +88,12 @@ export default function CommentForm({ novelId, onCommentAdded }: CommentFormProp
                                 placeholder="Düşüncelerini paylaş..."
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSubmit(e as unknown as React.FormEvent);
+                                    }
+                                }}
                                 disabled={loading}
                                 className="resize-y bg-black/5 dark:bg-black/20 border-white/10 focus-visible:ring-purple-500/30 min-h-[80px] w-full break-words whitespace-pre-wrap"
                             />

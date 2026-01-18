@@ -14,13 +14,14 @@ export interface MentionUser {
 interface MentionInputProps {
     value: string;
     onChange: (value: string) => void;
+    onSubmit?: () => void;
     users: MentionUser[];
     placeholder?: string;
     className?: string;
     minHeight?: string;
 }
 
-export function MentionInput({ value, onChange, users, placeholder, className, minHeight = "100px" }: MentionInputProps) {
+export function MentionInput({ value, onChange, onSubmit, users, placeholder, className, minHeight = "100px" }: MentionInputProps) {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestionPosition, setSuggestionPosition] = useState({ top: 0, left: 0 });
     const [filterText, setFilterText] = useState('');
@@ -102,6 +103,12 @@ export function MentionInput({ value, onChange, users, placeholder, className, m
                 ref={textareaRef}
                 value={value}
                 onChange={handleInput}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && onSubmit) {
+                        e.preventDefault();
+                        onSubmit();
+                    }
+                }}
                 placeholder={placeholder}
                 className={cn("w-full resize-none bg-background/50 border-primary/20 focus:border-primary/50", className)}
                 style={{ minHeight }}

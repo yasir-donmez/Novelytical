@@ -95,6 +95,8 @@ export function CommunityPulse() {
     const [viewingPollId, setViewingPollId] = useState<string | null>(null);
     const [activeUsers, setActiveUsers] = useState(142); // Initial fake base
     const scrollRef = useRef<HTMLDivElement>(null);
+    const pollsScrollRef = useRef<HTMLDivElement>(null);
+    const reviewsScrollRef = useRef<HTMLDivElement>(null);
     const [userVotes, setUserVotes] = useState<Record<string, number>>({}); // Optimistic UI için
     const [isVoting, setIsVoting] = useState(false);
 
@@ -176,6 +178,20 @@ export function CommunityPulse() {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [posts]);
+
+    // Auto-scroll all tabs to bottom when tab changes or data loads
+    useEffect(() => {
+        // Use requestAnimationFrame for proper timing after render
+        requestAnimationFrame(() => {
+            if (activeTab === 'feed' && scrollRef.current) {
+                scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
+            } else if (activeTab === 'polls' && pollsScrollRef.current) {
+                pollsScrollRef.current.scrollTo({ top: pollsScrollRef.current.scrollHeight, behavior: 'instant' });
+            } else if (activeTab === 'reviews' && reviewsScrollRef.current) {
+                reviewsScrollRef.current.scrollTo({ top: reviewsScrollRef.current.scrollHeight, behavior: 'instant' });
+            }
+        });
+    }, [activeTab, posts, reviews]);
 
     const handleCreatePost = async () => {
         if (!user) {
@@ -828,6 +844,7 @@ export function CommunityPulse() {
                                                     <MentionInput
                                                         value={postContent}
                                                         onChange={setPostContent}
+                                                        onSubmit={handleCreatePost}
                                                         users={knownUsers}
                                                         placeholder={user ? "Düşüncelerini paylaş... (@etkileşim)" : "Giriş yap"}
                                                         className="min-h-[32px] max-h-[100px] bg-transparent border-0 focus-visible:ring-0 px-2 py-1.5 text-xs placeholder:text-muted-foreground/50 shadow-none"
@@ -850,13 +867,13 @@ export function CommunityPulse() {
 
                                 {/* POLLS TAB */}
                                 <TabsContent value="polls" className="flex-1 flex flex-col h-full mt-0 data-[state=inactive]:hidden">
-                                    <div className="space-y-2 pb-24 overflow-y-auto p-2 custom-scrollbar overscroll-y-contain">
+                                    <div ref={pollsScrollRef} className="space-y-2 pb-24 overflow-y-auto p-2 custom-scrollbar overscroll-y-contain">
                                         {posts.filter(p => p.type === 'poll').length === 0 ? (
                                             <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50 pt-12">
                                                 <BarChart2 size={40} className="text-primary/50" />
                                                 <p className="text-sm">Henüz anket yok</p>
                                             </div>
-                                        ) : posts.filter(p => p.type === 'poll').map((post) => (
+                                        ) : [...posts.filter(p => p.type === 'poll')].reverse().map((post) => (
                                             <div key={post.id} className="flex gap-4 w-full max-w-2xl mx-auto">
                                                 <UserHoverCard
                                                     userId={post.userId}
@@ -1009,11 +1026,11 @@ export function CommunityPulse() {
                                 </TabsContent>
 
                                 {/* REVIEWS TAB */}
-                                <TabsContent value="reviews" className="flex-1 overflow-y-auto p-3 space-y-3 mt-0 data-[state=inactive]:hidden custom-scrollbar overscroll-y-contain">
+                                <TabsContent value="reviews" ref={reviewsScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 mt-0 data-[state=inactive]:hidden custom-scrollbar overscroll-y-contain">
                                     {reviews.length === 0 ? (
                                         <p className="text-center text-muted-foreground py-8 text-sm">Henüz inceleme yok.</p>
                                     ) : (
-                                        reviews.map((review) => (
+                                        [...reviews].reverse().map((review) => (
                                             <div key={review.id} className="flex gap-4 w-full max-w-2xl mx-auto">
                                                 <UserHoverCard
                                                     userId={review.userId}

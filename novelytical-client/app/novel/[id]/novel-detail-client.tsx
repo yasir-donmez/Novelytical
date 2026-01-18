@@ -53,6 +53,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     const [ratingsLoading, setRatingsLoading] = useState(true);
     const [siteStats, setSiteStats] = useState<NovelStats | null>(null);
     const [rankScore, setRankScore] = useState<number>(0);
+    const [weightedRating, setWeightedRating] = useState<number | null>(null);
 
     useEffect(() => {
         setLocationHref(window.location.href);
@@ -91,13 +92,18 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                     };
 
                     // Apply weighted average to each criterion
-                    setCriteria({
+                    const weightedCriteria = {
                         story: calculateWeightedAvg(userAverages.story),
                         characters: calculateWeightedAvg(userAverages.characters),
                         world: calculateWeightedAvg(userAverages.world),
                         flow: calculateWeightedAvg(userAverages.flow),
                         grammar: calculateWeightedAvg(userAverages.grammar),
-                    });
+                    };
+                    setCriteria(weightedCriteria);
+
+                    // Calculate overall weighted rating as average of all criteria
+                    const avgCriteria = (weightedCriteria.story + weightedCriteria.characters + weightedCriteria.world + weightedCriteria.flow + weightedCriteria.grammar) / 5;
+                    setWeightedRating(parseFloat(avgCriteria.toFixed(1)));
                 } else if (scrapedVotes > 0 && scrapedRating > 0) {
                     // No user reviews, but have scraped data
                     setCriteria({
@@ -154,7 +160,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 </span>
                                 <div className="flex items-center gap-2">
                                     <RatingStars
-                                        rating={novel.scrapedRating ?? novel.rating}
+                                        rating={weightedRating ?? novel.scrapedRating ?? novel.rating}
                                         size="md"
                                     />
                                     <TooltipProvider>

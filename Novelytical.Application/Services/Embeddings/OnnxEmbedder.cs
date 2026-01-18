@@ -1,14 +1,13 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using Microsoft.ML.Tokenizers;
 using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Application.Services.Embeddings;
 
 /// <summary>
 /// ONNX-based text embedder with multilingual support
-/// Uses paraphrase-multilingual-MiniLM-L12-v2 model and Microsoft.ML.Tokenizers
+/// Uses paraphrase-multilingual-MiniLM-L12-v2 model with manual SentencePiece tokenization
 /// </summary>
 public class OnnxEmbedder : IEmbedder, IDisposable
 {
@@ -21,6 +20,7 @@ public class OnnxEmbedder : IEmbedder, IDisposable
     private int _sepTokenId;
     private int _padTokenId;
     private int _unkTokenId;
+    private bool _isSentencePiece;
 
     public OnnxEmbedder(string modelPath, string tokenizerPath, ILogger<OnnxEmbedder> logger)
     {
@@ -53,18 +53,15 @@ public class OnnxEmbedder : IEmbedder, IDisposable
             using var doc = System.Text.Json.JsonDocument.Parse(jsonContent);
             var root = doc.RootElement;
 
-            // Try to find vocab. Usually in model.vocab
             if (root.TryGetProperty("model", out var model) && model.TryGetProperty("vocab", out var vocabElement))
             {
                 _vocab = new Dictionary<string, int>();
                 
                 if (vocabElement.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
-                    // SentencePiece / Unigram style: Vocab is array of [token, score]
                     int index = 0;
                     foreach (var item in vocabElement.EnumerateArray())
                     {
-                        // item is usually [string, float]
                         if (item.ValueKind == System.Text.Json.JsonValueKind.Array && item.GetArrayLength() >= 1)
                         {
                             var token = item[0].GetString();
@@ -76,7 +73,6 @@ public class OnnxEmbedder : IEmbedder, IDisposable
                 }
                 else if (vocabElement.ValueKind == System.Text.Json.JsonValueKind.Object)
                 {
-                    // WordPiece / BERT style: Vocab is dictionary { token: id }
                     foreach (var property in vocabElement.EnumerateObject())
                     {
                         _vocab[property.Name] = property.Value.GetInt32();
@@ -88,19 +84,21 @@ public class OnnxEmbedder : IEmbedder, IDisposable
                 throw new Exception("Could not find 'model.vocab' in tokenizer.json");
             }
 
-            // Set special token IDs (defaults for BERT/MiniLM)
-            _clsTokenId = _vocab.GetValueOrDefault("[CLS]", 101); // fallback to bert defaults 
-            _sepTokenId = _vocab.GetValueOrDefault("[SEP]", 102);
-            _padTokenId = _vocab.GetValueOrDefault("[PAD]", 0);
-            _unkTokenId = _vocab.GetValueOrDefault("[UNK]", 100);
-            
-            // Check if model uses <s> </s> (XLM-R style) instead
-            if (!_vocab.ContainsKey("[CLS]") && _vocab.ContainsKey("<s>"))
+            _isSentencePiece = _vocab.Keys.Any(k => k.Contains("\u2581"));
+
+            if (_isSentencePiece)
             {
-                _clsTokenId = _vocab["<s>"];
-                _sepTokenId = _vocab["</s>"];
+                _clsTokenId = _vocab.GetValueOrDefault("<s>", 0);
+                _sepTokenId = _vocab.GetValueOrDefault("</s>", 2); 
                 _unkTokenId = _vocab.GetValueOrDefault("<unk>", 3);
                 _padTokenId = _vocab.GetValueOrDefault("<pad>", 1);
+            }
+            else
+            {
+                _clsTokenId = _vocab.GetValueOrDefault("[CLS]", 101); 
+                _sepTokenId = _vocab.GetValueOrDefault("[SEP]", 102);
+                _padTokenId = _vocab.GetValueOrDefault("[PAD]", 0);
+                _unkTokenId = _vocab.GetValueOrDefault("[UNK]", 100);
             }
         }
         catch (Exception ex)
@@ -133,22 +131,19 @@ public class OnnxEmbedder : IEmbedder, IDisposable
     {
         var tokens = Tokenize(text);
         
-        // Add special tokens
         var inputIds = new List<long> { _clsTokenId };
         inputIds.AddRange(tokens);
         inputIds.Add(_sepTokenId);
 
-        // Truncate
         if (inputIds.Count > MaxSequenceLength)
         {
             inputIds = inputIds.Take(MaxSequenceLength - 1).ToList();
-            inputIds.Add(_sepTokenId); // Ensure SEP is at end
+            inputIds.Add(_sepTokenId);
         }
 
-        // Pad
         int paddingLength = MaxSequenceLength - inputIds.Count;
         var attentionMask = Enumerable.Repeat(1L, inputIds.Count).ToList();
-        var tokenTypeIds = Enumerable.Repeat(0L, MaxSequenceLength).ToArray(); // Constant 0 for single sentence
+        var tokenTypeIds = Enumerable.Repeat(0L, MaxSequenceLength).ToArray(); 
 
         if (paddingLength > 0)
         {
@@ -159,11 +154,8 @@ public class OnnxEmbedder : IEmbedder, IDisposable
         var inputIdsArray = inputIds.ToArray();
         var attentionMaskArray = attentionMask.ToArray();
 
-        // Create Tensors with explicit dimensions
         var dimensions = new int[] { 1, MaxSequenceLength };
         
-        // DenseTensor constructor expects (Memory<T>, ReadOnlySpan<int> dimensions)
-        // We pass array (which implicitly converts to Memory) and array (implicitly to ReadOnlySpan)
         var inputIdsTensor = new DenseTensor<long>(inputIdsArray, dimensions);
         var attentionMaskTensor = new DenseTensor<long>(attentionMaskArray, dimensions);
         var tokenTypeIdsTensor = new DenseTensor<long>(tokenTypeIds, dimensions);
@@ -176,22 +168,17 @@ public class OnnxEmbedder : IEmbedder, IDisposable
         };
 
         using var results = _session.Run(inputs);
-        // Output shape: [1, SequenceLength, 384]
         var outputTensor = results.First().AsTensor<float>(); 
         
-        // Mean Pooling
         var embeddings = new float[EmbeddingDimension];
         int validCount = 0;
 
-        // Iterate over sequence length (second dimension)
-        // dimensions are [batch, seq, hidden]
         for (int i = 0; i < MaxSequenceLength; i++)
         {
             if (attentionMaskArray[i] == 1)
             {
                 for (int j = 0; j < EmbeddingDimension; j++)
                 {
-                    // Access tensor by indices [0, i, j]
                     embeddings[j] += outputTensor[0, i, j];
                 }
                 validCount++;
@@ -206,9 +193,8 @@ public class OnnxEmbedder : IEmbedder, IDisposable
             }
         }
 
-        // Normalize
         var norm = (float)Math.Sqrt(embeddings.Sum(x => x * x));
-        if (norm > 1e-9) // Determine epsilon
+        if (norm > 1e-9)
         {
             for (int i = 0; i < embeddings.Length; i++)
             {
@@ -222,57 +208,77 @@ public class OnnxEmbedder : IEmbedder, IDisposable
     private List<long> Tokenize(string text)
     {
         var ids = new List<long>();
-        // Normalize text (lowercase)
         text = text.ToLowerInvariant();
         
-        // Basic pre-tokenization: split by whitespace and punctuation
-        // Note: This is simplified. Real WordPiece handles punctuation splitting more robustly.
-        // We'll replace punctuation with " {punct} " to ensure splitting.
-        // For simplicity in this fix, we just split by whitespace after replacing some common punctuation.
-        foreach (var c in new[] { '.', ',', '!', '?', ';', ':', '"', '\'', '(', ')', '[', ']' })
+        if (_isSentencePiece)
         {
-            text = text.Replace(c.ToString(), $" {c} ");
-        }
-        
-        var words = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            text = text.Replace(" ", "\u2581");
+            
+            if (!text.StartsWith("\u2581"))
+                text = "\u2581" + text;
 
-        foreach (var word in words)
-        {
-            // WordPiece algorithm
-            int start = 0;
-            while (start < word.Length)
+            int i = 0;
+            while (i < text.Length)
             {
-                int end = word.Length;
-                string? subword = null;
-                bool found = false;
-
-                while (end > start)
+                bool matched = false;
+                for (int len = Math.Min(text.Length - i, 25); len > 0; len--)
                 {
-                    subword = word.Substring(start, end - start);
-                    if (start > 0)
-                    {
-                        subword = "##" + subword;
-                    }
-
-                    if (_vocab.TryGetValue(subword, out int id))
+                    var substr = text.Substring(i, len);
+                    if (_vocab.TryGetValue(substr, out int id))
                     {
                         ids.Add(id);
-                        start = end;
-                        found = true;
+                        i += len;
+                        matched = true;
                         break;
                     }
-                    end--;
                 }
-
-                if (!found)
+                
+                if (!matched)
                 {
                     ids.Add(_unkTokenId);
-                    // Skip the char that caused unknown or whole word? 
-                    // Usually we mark the whole remaining or just byte-fallback. 
-                    // Simple approach: skip one char and try again or break word
-                    start++; 
-                    // Break word effectively map rest to UNK
-                    break;
+                    i++;
+                }
+            }
+        }
+        else
+        {
+            foreach (var c in new[] { '.', ',', '!', '?', ';', ':', '"', '\'', '(', ')', '[', ']' })
+            {
+                text = text.Replace(c.ToString(), $" {c} ");
+            }
+            
+            var words = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var word in words)
+            {
+                int start = 0;
+                while (start < word.Length)
+                {
+                    int end = word.Length;
+                    string? subword = null;
+                    bool found = false;
+
+                    while (end > start)
+                    {
+                        subword = word.Substring(start, end - start);
+                        if (start > 0) subword = "##" + subword;
+
+                        if (_vocab.TryGetValue(subword, out int id))
+                        {
+                            ids.Add(id);
+                            start = end;
+                            found = true;
+                            break;
+                        }
+                        end--;
+                    }
+
+                    if (!found)
+                    {
+                        ids.Add(_unkTokenId);
+                        start++;
+                        break;
+                    }
                 }
             }
         }

@@ -16,9 +16,10 @@ interface NovelCardProps {
     variant?: 'default' | 'vertical' | 'horizontal';
     aspect?: 'portrait' | 'square' | 'landscape' | 'auto';
     className?: string;
+    showLastUpdated?: boolean;
 }
 
-export function NovelCard({ novel, variant = 'default', aspect, className }: NovelCardProps) {
+export function NovelCard({ novel, variant = 'default', aspect, className, showLastUpdated = true }: NovelCardProps) {
     // State for novel stats
     const [stats, setStats] = useState<NovelStats>({ reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 });
     const [rankScore, setRankScore] = useState<number>(0);
@@ -78,6 +79,14 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                 alt={novel.title}
                                 className="object-cover w-full h-full"
                             />
+                            {/* Last Updated Badge (Mobile/Horizontal) */}
+                            {showLastUpdated && novel.lastUpdated && (
+                                <div className="absolute top-1 left-1 z-30">
+                                    <div className="flex items-center gap-1 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded text-white text-[10px] font-medium border border-white/10">
+                                        <span>{getRelativeTimeString(novel.lastUpdated)}</span>
+                                    </div>
+                                </div>
+                            )}
                             {/* Shine Effect */}
                             <div className="absolute top-0 left-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/4 h-[300%] shine-effect pointer-events-none" />
                         </>
@@ -149,12 +158,14 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                             alt={novel.title}
                                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110 block"
                                         />
-                                        {/* Last Updated Badge - Top Left */}
-                                        <div className="absolute top-2 left-2 z-30">
-                                            <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-white text-xs font-medium shadow-lg border border-white/10">
-                                                <span>{novel.lastUpdated ? getRelativeTimeString(novel.lastUpdated) : '-'}</span>
+                                        {/* Last Updated Badge - Top Left (Conditional) */}
+                                        {showLastUpdated && (
+                                            <div className="absolute top-2 left-2 z-30">
+                                                <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-white text-xs font-medium shadow-lg border border-white/10">
+                                                    <span>{novel.lastUpdated ? getRelativeTimeString(novel.lastUpdated) : 'Tarih Yok'}</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                         {/* Rank Badge - Top Left on Hover */}
                                         {novel.rankPosition && (
                                             <div className="absolute top-12 left-2 z-30 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
@@ -238,9 +249,17 @@ export function NovelCard({ novel, variant = 'default', aspect, className }: Nov
                                             alt={novel.title}
                                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110 block"
                                         />
+                                        {/* Last Updated Badge - Top Left (Conditional) */}
+                                        {showLastUpdated && novel.lastUpdated && (
+                                            <div className="absolute top-2 left-2 z-30">
+                                                <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-white text-xs font-medium shadow-lg border border-white/10">
+                                                    <span>{getRelativeTimeString(novel.lastUpdated)}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         {/* Rank Badge - Top Left on Hover */}
                                         {novel.rankPosition && (
-                                            <div className="absolute top-2 left-2 z-30 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
+                                            <div className={`absolute ${showLastUpdated && novel.lastUpdated ? 'top-12' : 'top-2'} left-2 z-30 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out`}>
                                                 {novel.rankPosition <= 3 ? (
                                                     <div className={`flex items-center gap-1.5 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-sm font-bold shadow-lg border ${novel.rankPosition === 1
                                                         ? 'bg-gradient-to-r from-yellow-500 to-amber-600 border-yellow-400/50'

@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserHoverCard } from "@/components/ui/user-hover-card";
 import { cn } from "@/lib/utils";
 
 interface ReviewItemProps {
@@ -28,6 +30,7 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [showSpoiler, setShowSpoiler] = useState(false);
     const [userVote, setUserVote] = useState<'like' | 'unlike' | null>(null);
+    const [isVoting, setIsVoting] = useState(false);
 
     // Local state for optimistic updates
     const [likes, setLikes] = useState(Math.max(0, review.likes || 0));
@@ -59,6 +62,8 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
             toast.error("Etkileşim için giriş yapmalısınız.");
             return;
         }
+        if (isVoting) return; // Prevent rapid clicks
+        setIsVoting(true);
 
         const previousVote = userVote;
         const previousLikes = likes;
@@ -95,6 +100,8 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
             setLikes(previousLikes);
             setUnlikes(previousUnlikes);
             console.error(error);
+        } finally {
+            setIsVoting(false);
         }
     };
 
@@ -114,15 +121,31 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
         <div className="bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl p-5 shadow-sm transition-colors">
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9 ring-1 ring-white/20 dark:ring-white/10 shadow-sm">
-                        <AvatarImage src={review.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`} />
-                        <AvatarFallback className="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white font-bold text-xs">
-                            {review.userName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                    <UserHoverCard
+                        userId={review.userId}
+                        username={review.userName}
+                        image={review.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`}
+                        frame={review.userFrame}
+                        className="h-9 w-9 flex-shrink-0 shadow-sm"
+                    >
+                        <UserAvatar
+                            src={review.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`}
+                            alt={review.userName}
+                            frameId={review.userFrame}
+                            className="h-9 w-9 transition-transform hover:scale-105"
+                            fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-xs font-bold"
+                        />
+                    </UserHoverCard>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-foreground/95">{review.userName}</span>
+                            <UserHoverCard
+                                userId={review.userId}
+                                username={review.userName}
+                                image={review.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${review.userName}`}
+                                frame={review.userFrame}
+                            >
+                                <span className="font-semibold text-sm text-foreground/95 hover:underline decoration-primary transition-all cursor-pointer">{review.userName}</span>
+                            </UserHoverCard>
                             <span className="text-[10px] text-muted-foreground/80 uppercase tracking-wide">
                                 {review.createdAt ? formatDistanceToNow(review.createdAt.toDate(), { addSuffix: true, locale: tr }) : "Bilinmiyor"}
                             </span>

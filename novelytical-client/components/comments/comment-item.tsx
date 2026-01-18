@@ -53,6 +53,7 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
     const [isExpanded, setIsExpanded] = useState(false);
     const [showSpoiler, setShowSpoiler] = useState(false);
     const [userVote, setUserVote] = useState<'like' | 'dislike' | null>(null);
+    const [isVoting, setIsVoting] = useState(false);
 
     // Local state for optimistic updates
     const [likes, setLikes] = useState(Math.max(0, comment.likeCount || 0));
@@ -78,6 +79,8 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
             toast.error("Oy vermek için giriş yapmalısınız.");
             return;
         }
+        if (isVoting) return; // Prevent rapid clicks
+        setIsVoting(true);
 
         const previousVote = userVote;
         const previousLikes = likes;
@@ -117,6 +120,8 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
             setLikes(previousLikes);
             setDislikes(previousDislikes);
             toast.error("İşlem başarısız oldu.");
+        } finally {
+            setIsVoting(false);
         }
     };
 
@@ -326,6 +331,12 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                                 placeholder={`${displayName} kullanıcısına yanıt ver...`}
                                 value={replyContent}
                                 onChange={(e) => setReplyContent(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleReplySubmit(e as unknown as React.FormEvent);
+                                    }
+                                }}
                                 autoFocus
                             />
                             <div className="flex justify-end gap-2">
