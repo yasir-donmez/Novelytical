@@ -407,7 +407,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
 
         var fusedNovels = ApplyRRF(
             mergedTextResults.Select((x, i) => (x, i + 1)).ToList(),
-            vectorResults.Select((x, i) => (x, i + 1)).ToList(),
+            (vectorResults ?? new List<Novel>()).Select((x, i) => (x, i + 1)).ToList(),
             k: 60
         );
 

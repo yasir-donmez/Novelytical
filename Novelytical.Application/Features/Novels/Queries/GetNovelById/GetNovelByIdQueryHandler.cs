@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 using Novelytical.Application.DTOs;
 using Novelytical.Application.Wrappers;
 using Novelytical.Data; // Fix: Add this
