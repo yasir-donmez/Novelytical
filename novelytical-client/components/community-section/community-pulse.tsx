@@ -488,21 +488,21 @@ export function CommunityPulse() {
                                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-primary rounded-full px-4 py-2 border border-transparent data-[state=active]:border-primary/20 transition-all font-medium flex items-center gap-1.5"
                                     >
                                         <MessageSquare size={14} />
-                                        Canlı Akış
+                                        <span className="hidden sm:inline">Canlı Akış</span>
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="polls"
                                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-primary rounded-full px-4 py-2 border border-transparent data-[state=active]:border-primary/20 transition-all font-medium flex items-center gap-1.5"
                                     >
                                         <BarChart2 size={14} />
-                                        Anketler
+                                        <span className="hidden sm:inline">Anketler</span>
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="reviews"
                                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-primary rounded-full px-4 py-2 border border-transparent data-[state=active]:border-primary/20 transition-all font-medium flex items-center gap-1.5"
                                     >
                                         <Star size={14} />
-                                        Değerlendirmeler
+                                        <span className="hidden sm:inline">Değerlendirmeler</span>
                                     </TabsTrigger>
                                 </TabsList>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
@@ -533,8 +533,8 @@ export function CommunityPulse() {
                                             ) : [...posts].reverse().map((post) => {
                                                 const isOwner = user?.uid === post.userId;
                                                 return (
-                                                    <div key={post.id} className={`w-full flex mb-3 ${isOwner ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`flex gap-4 max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                    <div key={post.id} className={`w-full flex mb-2 sm:mb-3 ${isOwner ? 'justify-end' : 'justify-start'}`}>
+                                                        <div className={`flex gap-2 sm:gap-4 max-w-[95%] sm:max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
                                                             <UserHoverCard
                                                                 userId={post.userId}
                                                                 username={post.userName}
@@ -546,11 +546,11 @@ export function CommunityPulse() {
                                                                     src={post.userImage}
                                                                     alt={post.userName}
                                                                     frameId={post.userFrame}
-                                                                    className="h-8 w-8 transition-transform hover:scale-105"
+                                                                    className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
                                                                     fallbackClass="text-[10px] bg-primary/10 text-primary"
                                                                 />
                                                             </UserHoverCard>
-                                                            <div className={`relative min-w-0 flex-1 p-3 shadow-sm transition-all overflow-hidden
+                                                            <div className={`relative min-w-0 flex-1 p-2 sm:p-3 shadow-sm transition-all overflow-hidden
                                                             ${isOwner
                                                                     ? 'bg-primary/10 rounded-2xl rounded-tr-none border border-primary/20'
                                                                     : 'bg-muted/30 rounded-2xl rounded-tl-none border border-border/40'
@@ -593,7 +593,7 @@ export function CommunityPulse() {
 
                                                                 {/* Poll Display */}
                                                                 {post.type === 'poll' && post.pollOptions && (
-                                                                    <div className="mt-2 space-y-1.5 w-80">
+                                                                    <div className="mt-2 space-y-1.5 w-full sm:w-80">
 
                                                                         {post.pollOptions.map((opt, idx) => {
                                                                             const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
@@ -613,7 +613,7 @@ export function CommunityPulse() {
                                                                                     key={opt.id}
                                                                                     onClick={() => handleVote(post.id, opt.id)}
                                                                                     disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
-                                                                                    className={`w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                                    className={`w-full relative h-10 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
                                                                                         ? 'cursor-default opacity-60'
                                                                                         : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
                                                                                         }`}
@@ -637,7 +637,7 @@ export function CommunityPulse() {
                                                                                                     />
                                                                                                 </div>
                                                                                             )}
-                                                                                            <span className="font-medium truncate text-foreground text-sm max-w-[50%]">
+                                                                                            <span className="font-medium truncate text-foreground text-xs sm:text-sm max-w-[60%] sm:max-w-[50%]">
                                                                                                 {opt.novelTitle || opt.text}
                                                                                             </span>
                                                                                         </div>
@@ -886,7 +886,7 @@ export function CommunityPulse() {
                                                         src={post.userImage}
                                                         alt={post.userName}
                                                         frameId={post.userFrame}
-                                                        className="h-8 w-8 transition-transform hover:scale-105"
+                                                        className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
                                                         fallbackClass="text-[10px] bg-primary/10 text-primary"
                                                     />
                                                 </UserHoverCard>
@@ -906,10 +906,10 @@ export function CommunityPulse() {
                                                         <span className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</span>
                                                     </div>
 
-                                                    <div className={`relative px-4 py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800`}>
+                                                    <div className={`relative px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800`}>
 
                                                         {post.content && (
-                                                            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-3">
+                                                            <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3">
                                                                 {renderContentWithMentions(post.content)}
                                                             </div>
                                                         )}
@@ -934,7 +934,7 @@ export function CommunityPulse() {
                                                                             key={opt.id}
                                                                             onClick={() => handleVote(post.id, opt.id)}
                                                                             disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
-                                                                            className={`w-full relative h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                            className={`w-full relative h-10 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
                                                                                 ? 'cursor-not-allowed opacity-60'
                                                                                 : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
                                                                                 }`}
@@ -1043,7 +1043,7 @@ export function CommunityPulse() {
                                                         src={review.userImage}
                                                         alt={review.userName}
                                                         frameId={review.userFrame}
-                                                        className="h-8 w-8 transition-transform hover:scale-105"
+                                                        className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
                                                         fallbackClass="text-[10px] bg-primary/10 text-primary"
                                                     />
                                                 </UserHoverCard>
@@ -1063,7 +1063,7 @@ export function CommunityPulse() {
                                                         <span className="text-[10px] text-muted-foreground">{timeAgo(review.createdAt)}</span>
                                                     </div>
 
-                                                    <div className="relative px-4 py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800">
+                                                    <div className="relative px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800">
                                                         {/* Rating */}
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <TooltipProvider>
@@ -1092,7 +1092,7 @@ export function CommunityPulse() {
                                                         </div>
 
                                                         {/* Content */}
-                                                        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-3 font-serif italic text-foreground/80 pl-2 border-l-2 border-primary/20">
+                                                        <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3 font-serif italic text-foreground/80 pl-2 border-l-2 border-primary/20">
                                                             "{review.content}"
                                                         </div>
 

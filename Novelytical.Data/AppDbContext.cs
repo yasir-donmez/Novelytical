@@ -14,6 +14,7 @@ namespace Novelytical.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<NovelTag> NovelTags { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<ScraperState> ScraperStates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -21,6 +22,10 @@ namespace Novelytical.Data
             // Yani bir roman ve etiket çifti sadece bir kez eşleşebilir.
             modelBuilder.Entity<NovelTag>()
                 .HasKey(nt => new { nt.NovelId, nt.TagId });
+
+            // ScraperState için Key alanını primary key olarak tanımla
+            modelBuilder.Entity<ScraperState>()
+                .HasKey(s => s.Key);
 
             // 🧠 Vektör eklentisini aktif et (Pgvector)
             modelBuilder.HasPostgresExtension("vector");

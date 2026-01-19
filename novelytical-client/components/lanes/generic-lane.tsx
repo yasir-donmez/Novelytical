@@ -24,7 +24,7 @@ export async function GenericLane({ title, icon, params }: GenericLaneProps) {
         <ScrollableSection title={title} icon={icon}>
             {novels.map((novel: any) => (
                 <div key={novel.id} className="w-[160px] sm:w-[200px] flex-none">
-                    <NovelCard novel={novel} aspect="portrait" />
+                    <NovelCard novel={novel} aspect="portrait" showLastUpdated={false} />
                 </div>
             ))}
         </ScrollableSection>

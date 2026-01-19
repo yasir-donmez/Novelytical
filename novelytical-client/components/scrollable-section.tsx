@@ -11,11 +11,12 @@ interface ScrollableSectionProps {
     children: React.ReactNode;
     scrollStep?: 'half' | 'full';
     className?: string;
+    sectionClassName?: string;
     hideBorder?: boolean;
     headerAction?: React.ReactNode;
 }
 
-export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, hideBorder = false, headerAction }: ScrollableSectionProps) {
+export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, sectionClassName, hideBorder = false, headerAction }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [hasOverflow, setHasOverflow] = useState(false);
     const [isAtStart, setIsAtStart] = useState(true);
@@ -82,7 +83,8 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
     return (
         <section className={cn(
             "mt-12 pt-8 relative group/section select-none",
-            !hideBorder && "border-t"
+            !hideBorder && "border-t",
+            sectionClassName
         )}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4 select-none">
@@ -135,9 +137,6 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
             </div>
 
             <div className="relative">
-                {/* Mobile Top Mist Gradient */}
-                <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
-
                 {/* Scroll Container */}
                 <div
                     ref={scrollContainerRef}
@@ -156,9 +155,6 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
 
                 {/* Right Gradient Overlay (Desktop Only) - Always visible */}
                 <div className="hidden md:block absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
-
-                {/* Mobile Bottom Mist Gradient */}
-                <div className="md:hidden absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
             </div>
         </section>
     );

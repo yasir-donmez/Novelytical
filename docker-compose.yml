@@ -59,24 +59,29 @@ services:
       - novelytical-network
     restart: on-failure
 
-  novelytical-worker:
-    build:
-      context: .
-      dockerfile: Novelytical.Worker/Dockerfile
-    container_name: novelytical-worker
-    environment:
-      - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=${POSTGRES_DB:-NovelyticalDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
-      - ConnectionStrings__Redis=novelytical-redis:6379
-      - Seq__ServerUrl=${SEQ_SERVER_URL:-http://seq:5341}
-      - DOTNET_ENVIRONMENT=Development
-    depends_on:
-      novelytical-postgres:
-        condition: service_healthy
-      seq:
-        condition: service_started
-    networks:
-      - novelytical-network
-    restart: on-failure
+  # ⚠️ WORKER ARTIK GITHUB ACTIONS İLE ÇALIŞIYOR
+  # Production'da bu servis kullanılmıyor.
+  # Local geliştirme için aşağıdaki komutu kullanabilirsin:
+  #   docker-compose --profile local-worker up novelytical-worker
+  #
+  # novelytical-worker:
+  #   profiles: ["local-worker"]  # Sadece manuel çalıştırma için
+  #   build:
+  #     context: .
+  #     dockerfile: Novelytical.Worker/Dockerfile
+  #   container_name: novelytical-worker
+  #   environment:
+  #     - ConnectionStrings__DefaultConnection=Host=novelytical-postgres;Database=${POSTGRES_DB:-NovelyticalDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+  #     - ConnectionStrings__Redis=novelytical-redis:6379
+  #     - Seq__ServerUrl=${SEQ_SERVER_URL:-http://seq:5341}
+  #     - SCRAPE_MODE=full  # Local'de tüm romanları çekmek için
+  #   depends_on:
+  #     novelytical-postgres:
+  #       condition: service_healthy
+  #     seq:
+  #       condition: service_started
+  #   networks:
+  #     - novelytical-network
 
   novelytical-client:
     build:

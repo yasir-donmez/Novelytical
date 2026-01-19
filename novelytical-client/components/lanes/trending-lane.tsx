@@ -50,7 +50,7 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
 
                     {/* Novel Card */}
                     <div className="relative z-20 h-full flex flex-col pl-8 pr-4 transform transition-transform duration-500 ease-out md:group-hover/rank:translate-x-4 md:group-hover/rank:-translate-y-2">
-                        <NovelCard novel={novel} aspect="portrait" className="h-full" />
+                        <NovelCard novel={novel} aspect="portrait" className="h-full" showLastUpdated={false} />
                     </div>
                 </div>
             ))}

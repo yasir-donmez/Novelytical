@@ -28,7 +28,7 @@ public static class ServiceExtensions
         {
             var logger = sp.GetRequiredService<ILogger<Services.Embeddings.OnnxEmbedder>>();
             var modelPath = Path.Combine(embeddingsDir, "model.onnx");
-            var tokenizerPath = Path.Combine(embeddingsDir, "tokenizer.json");
+            var tokenizerPath = Path.Combine(embeddingsDir, "sentencepiece.bpe.model");
             
             return new Services.Embeddings.OnnxEmbedder(modelPath, tokenizerPath, logger);
         });

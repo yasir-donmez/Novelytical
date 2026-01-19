@@ -397,10 +397,63 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
         );
     };
 
+    // --- FAST UPDATE LOGIC ---
+    const [fastUpdateOpen, setFastUpdateOpen] = useState(false);
+    const [fastUpdateUrl, setFastUpdateUrl] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const handleFastUpdate = async () => {
+        if (!fastUpdateUrl.trim()) { toast.error("URL giriniz"); return; }
+
+        setIsUpdating(true);
+        try {
+            const result = parseChapterUrl(fastUpdateUrl);
+            if (!result.success) {
+                toast.error(result.error);
+                return;
+            }
+            if (!result.novelSlug) {
+                toast.error("Kitap bilgisi URL'den okunamadı.");
+                return;
+            }
+            if (!result.chapterNumber) {
+                toast.error("Bölüm numarası URL'den okunamadı.");
+                return;
+            }
+
+            // Find novel in the loaded library
+            // We match fuzzy: slug includes result.slug or vice versa
+            const match = allItems.find(item =>
+                item.slug?.includes(result.novelSlug!) ||
+                item.novel?.slug?.includes(result.novelSlug!) ||
+                result.novelSlug!.includes(item.slug || '')
+            );
+
+            if (!match) {
+                toast.error(`Kütüphanenizde '${result.novelSlug}' ile eşleşen kitap bulunamadı.`);
+                return;
+            }
+
+            // Update
+            if (targetUserId) {
+                await updateLibraryProgress(targetUserId, match.novelId, result.chapterNumber);
+                handleProgressUpdate(match.novelId, result.chapterNumber);
+                toast.success(`${match.novel?.title || 'Kitap'} güncellendi: Bölüm ${result.chapterNumber}`);
+                setFastUpdateOpen(false);
+                setFastUpdateUrl('');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Bir hata oluştu");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     return (
         <Tabs defaultValue="all" className="w-full">
-            <div className="flex items-center gap-4 mb-4">
-                <div className="overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4 justify-between">
+                <div className="overflow-x-auto pb-2 scrollbar-hide flex-1">
                     <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
                         <TabsTrigger value="all" className="flex-none px-4">Hepsi {loading ? '' : allItems.length}</TabsTrigger>
                         <TabsTrigger value="reading" className="gap-2 flex-none px-4"><BookOpen className="w-4 h-4" /> Okuyorum {loading ? '' : filterItems('reading').length}</TabsTrigger>
@@ -408,16 +461,48 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
                         <TabsTrigger value="plan_to_read" className="gap-2 flex-none px-4"><Calendar className="w-4 h-4" /> Okuyacağım {loading ? '' : filterItems('plan_to_read').length}</TabsTrigger>
                     </TabsList>
                 </div>
-                {!loading && allItems.length > 3 && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-xs text-muted-foreground hover:text-foreground hidden md:flex shrink-0 -mt-2"
-                    >
-                        {isExpanded ? "Daralt" : "Tümünü Gör"}
-                    </Button>
-                )}
+
+                <div className="flex items-center gap-2">
+                    {/* FAST UPDATE BUTTON */}
+                    {isOwner && (
+                        <Popover open={fastUpdateOpen} onOpenChange={setFastUpdateOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2 h-9 border-dashed border-primary/40 text-primary hover:bg-primary/5">
+                                    <Link2 className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Hızlı Güncelle</span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-3" align="end">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Link ile İlerleme Güncelle</h4>
+                                    <p className="text-xs text-muted-foreground">Okuduğunuz bölümün linkini yapıştırın, kütüphanenizdeki kitabı otomatik bulup güncelleyelim.</p>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="https://.../chapter-123"
+                                            value={fastUpdateUrl}
+                                            onChange={(e) => setFastUpdateUrl(e.target.value)}
+                                            className="h-8 text-xs"
+                                        />
+                                        <Button size="sm" className="h-8 px-3" onClick={handleFastUpdate} disabled={isUpdating}>
+                                            {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    )}
+
+                    {!loading && allItems.length > 3 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                        >
+                            {isExpanded ? "Daralt" : "Tümünü Gör"}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {loading ? (

@@ -1,0 +1,121 @@
+name: Novel Scraper
+# Web scraping işlemleri için zamanlı görevler
+# FastTrack: Her 30 dakikada en son güncellenenler (5 sayfa)
+# SlowTrack: Her gece 02:00 UTC'de tüm liste (100 sayfa batch)
+
+on:
+  schedule:
+    # FastTrack: Her 30 dakikada bir (UTC)
+    - cron: '*/30 * * * *'
+    # SlowTrack: Her gece 02:00 UTC (Türkiye: 05:00)
+    - cron: '0 2 * * *'
+  
+  # Manuel tetikleme için
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Scrape mode'
+        required: true
+        default: 'fast'
+        type: choice
+        options:
+          - fast
+          - slow
+          - index
+
+jobs:
+  # ===========================
+  # FAST TRACK - Her 30 dakika
+  # ===========================
+  fast-track:
+    name: FastTrack Scraper
+    runs-on: ubuntu-latest
+    # Sadece FastTrack cron'u veya manuel tetikleme (fast mode)
+    if: |
+      github.event.schedule == '*/30 * * * *' || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'fast')
+    
+    env:
+      SCRAPE_MODE: fast
+      ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
+      ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_URL }}
+      Seq__ServerUrl: ${{ secrets.SEQ_SERVER_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Novelytical.Worker
+
+      - name: Run FastTrack Scraper
+        run: dotnet run --project Novelytical.Worker --no-restore
+        timeout-minutes: 30
+
+  # ===========================
+  # SLOW TRACK - Her gece 02:00 UTC
+  # ===========================
+  slow-track:
+    name: SlowTrack Scraper
+    runs-on: ubuntu-latest
+    # Sadece SlowTrack cron'u veya manuel tetikleme (slow mode)
+    if: |
+      github.event.schedule == '0 2 * * *' || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'slow')
+    
+    env:
+      SCRAPE_MODE: slow
+      ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
+      ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_URL }}
+      Seq__ServerUrl: ${{ secrets.SEQ_SERVER_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Novelytical.Worker
+
+      - name: Run SlowTrack Scraper
+        run: dotnet run --project Novelytical.Worker --no-restore
+        timeout-minutes: 180  # 3 saat (100 sayfa için yeterli olmalı)
+
+  # ===========================
+  # INDEX - manuel tetikleme
+  # ===========================
+  index-vectors:
+    name: Index Missing Vectors
+    runs-on: ubuntu-latest
+    # Sadece manuel tetikleme ile
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'index'
+    
+    env:
+      SCRAPE_MODE: index
+      ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
+      ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Novelytical.Worker
+
+      - name: Run Vector Indexer
+        run: dotnet run --project Novelytical.Worker --no-restore
+        timeout-minutes: 60

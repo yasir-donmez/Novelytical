@@ -1,6 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Novelytical.Application.DTOs;
@@ -12,6 +12,7 @@ using Pgvector.EntityFrameworkCore;
 using Polly;
 using Polly.Timeout;
 using GTranslate.Translators;
+using System.Text.Json;
 
 namespace Novelytical.Application.Features.Novels.Queries.GetNovels;
 
@@ -19,7 +20,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
 {
     private readonly INovelRepository _repository;
     private readonly IEmbedder _embedder;
-    private readonly IMemoryCache _cache;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<GetNovelsQueryHandler> _logger;
     private readonly ResiliencePipeline _embeddingPipeline;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -28,7 +29,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
     public GetNovelsQueryHandler(
         INovelRepository repository,
         IEmbedder embedder,
-        IMemoryCache cache,
+        IDistributedCache cache,
         ILogger<GetNovelsQueryHandler> logger,
         IServiceScopeFactory scopeFactory)
     {
@@ -70,12 +71,18 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         try
         {
             // Cache check re-enabled per user request (Performance optimization)
-            if (!hasFilters &&
-                _cache.TryGetValue(cacheKey, out List<NovelListDto>? cachedNovels) &&
-                cachedNovels != null)
+            if (!hasFilters)
             {
-                var totalCount = await _repository.GetCountAsync();
-                return new PagedResponse<NovelListDto>(cachedNovels, request.PageNumber, request.PageSize, totalCount);
+                var cachedJson = await _cache.GetStringAsync(cacheKey);
+                if (!string.IsNullOrEmpty(cachedJson))
+                {
+                    var cachedNovels = JsonSerializer.Deserialize<List<NovelListDto>>(cachedJson);
+                    if (cachedNovels != null)
+                    {
+                        var totalCount = await _repository.GetCountAsync();
+                        return new PagedResponse<NovelListDto>(cachedNovels, request.PageNumber, request.PageSize, totalCount);
+                    }
+                }
             }
 
             List<NovelListDto> novels;
@@ -174,21 +181,8 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             // Calculate global rank positions (omitted for brevity in replacement constraint, assuming identical logic)
             // ... Actually I must include it or I break it. I will keep it.
             
-            // Calculate global rank positions
-            var allNovelRanks = await _repository.GetOptimizedQuery()
-                .Select(n => new { 
-                    n.Id, 
-                    RankScore = (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50),
-                    Rating = n.ScrapedRating ?? n.Rating
-                })
-                .OrderByDescending(x => x.RankScore)
-                .ThenByDescending(x => x.Rating)
-                .ThenBy(x => x.Id)
-                .ToListAsync(cancellationToken);
-
-            var rankPositions = allNovelRanks
-                .Select((x, index) => new { x.Id, Position = index + 1 })
-                .ToDictionary(x => x.Id, x => x.Position);
+            // Calculate global rank positions (CACHED for performance)
+            var rankPositions = await GetCachedRankPositionsAsync();
 
             foreach (var novel in novels)
             {
@@ -198,7 +192,10 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 }
             }
 
-            _cache.Set(cacheKey, novels, TimeSpan.FromMinutes(5));
+            await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(novels), new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+            });
 
             return new PagedResponse<NovelListDto>(novels, request.PageNumber, request.PageSize, totalRecords);
         }
@@ -291,110 +288,18 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
              .Take(10)
              .ToListAsync();
 
-        // Task D: Semantic Tag Boosting (Run in Background)
-        // Find tags that mean the same as the query (e.g. "Ant" -> "Non-Human")
-        var tagTask = Task.Run(async () =>
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<INovelRepository>();
-                var scopedEmbedder = scope.ServiceProvider.GetRequiredService<IEmbedder>(); // Scoped Instance
-
-                // 1. Ensure Tag Embeddings are Cached
-                if (!_cache.TryGetValue("AllTagVectors", out Dictionary<string, float[]>? tagEmbeddings))
-                {
-                    var allTags = await repo.GetAllTagsAsync();
-
-                    tagEmbeddings = new Dictionary<string, float[]>();
-                    foreach (var tag in allTags)
-                    {
-                        // Embed tag name using scoped embedder
-                        var vec = await _embeddingPipeline.ExecuteAsync(async ct => await scopedEmbedder.EmbedAsync(tag.Name));
-                        tagEmbeddings[tag.Name] = vec;
-                    }
-                    
-                    // Cache for 1 hour
-                    _cache.Set("AllTagVectors", tagEmbeddings, TimeSpan.FromHours(1));
-                    _logger.LogInformation("Cached {Count} tag embeddings.", tagEmbeddings.Count);
-                }
-
-                // 2. Embed Query to compare with Tags
-                var queryVector = await _embeddingPipeline.ExecuteAsync(async ct => await scopedEmbedder.EmbedAsync(expandedQuery));
-                
-                // --- DOMAIN KNOWLEDGE INJECTION ---
-                // Help the AI with specific domain knowledge it might miss
-                var domainKnowledge = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
-                {
-                    { "ant", new() { "Insects", "Non-humanoid Protagonist", "Reincarnated as a Monster", "Monster" } },
-                    { "spider", new() { "Insects", "Non-humanoid Protagonist", "Reincarnated as a Monster" } },
-                    { "slime", new() { "Non-humanoid Protagonist", "Reincarnated as a Monster", "Slime" } },
-                    { "goblin", new() { "Non-humanoid Protagonist", "Reincarnated as a Monster", "Green Skin" } },
-                    { "dragon", new() { "Dragons", "Non-humanoid Protagonist" } }
-                };
-
-                var relevantTags = new List<string>();
-
-                foreach (var key in domainKnowledge.Keys)
-                {
-                    if (expandedQuery.Contains(key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var boostedTags = domainKnowledge[key];
-                        relevantTags.AddRange(boostedTags);
-                    }
-                }
-                // ----------------------------------
-
-                // 3. Find Matching Tags (Distance < 0.35)
-                if (tagEmbeddings != null)
-                {
-                    foreach (var kvp in tagEmbeddings)
-                    {
-                        var distance = ComputeCosineDistance(queryVector, kvp.Value);
-                        
-                        // DEBUG LOG: See what tags are close
-                        if (distance < 0.45) // Threshold
-                        {
-                            if (!relevantTags.Contains(kvp.Key))
-                                relevantTags.Add(kvp.Key);
-                        }
-                    }
-                }
-
-                if (!relevantTags.Any()) 
-                {
-                    _logger.LogInformation("No Semantic Tags found for query: {Query}", expandedQuery);
-                    return new List<Novel>();
-                }
-                
-                // 4. Fetch Novels with these tags
-                var results = await repo.GetOptimizedQuery()
-                    .Where(n => n.NovelTags.Any(nt => relevantTags.Contains(nt.Tag.Name)))
-                    .OrderByDescending(n => n.Rating) // Boost high rated ones
-                    .Take(15) // Limit injection
-                    .ToListAsync();
-                    
-                _logger.LogInformation("Semantic Tag Boost found {Count} novels.", results.Count);
-                return results;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Semantic Tag Boosting failed.");
-                return new List<Novel>();
-            }
-        });
+        // NOTE: Tag Boosting removed - Worker now embeds tags directly into novel descriptions
+        // Vector search will find semantically matching novels including tag-based matching
 
         // 3️⃣ EXECUTE / AWAIT RESULTS
         // Vector and Tag tasks are already running in background (scoped).
         // Main context queries (FullText, Simple) are already awaited above sequentially.
         
         var vectorResults = await vectorTask;
-        var tagResults = await tagTask;
 
         // Merge Simple Search results into Full Text results (High Priority)
-        // Order: Simple > TagBoost > FullText > Vector
+        // Order: Simple > FullText > Vector
         var mergedTextResults = simpleResults
-            .Concat(tagResults) // Tag Boosts are high relevance recommendations
             .Concat(fullTextResults)
             .DistinctBy(n => n.Id)
             .ToList();
@@ -445,7 +350,31 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             })
             .ToList();
 
-        // Calculate global rank positions
+        // Calculate global rank positions (CACHED for performance)
+        var rankPositions = await GetCachedRankPositionsAsync();
+
+        foreach (var novel in pagedNovels)
+        {
+            if (rankPositions.TryGetValue(novel.Id, out var position))
+            {
+                novel.RankPosition = position;
+            }
+        }
+
+        return (pagedNovels, processedList?.Count() ?? 0);
+    }
+
+    private async Task<Dictionary<int, int>> GetCachedRankPositionsAsync()
+    {
+        const string cacheKey = "GlobalNovelRanks_v1";
+
+        var cachedJson = await _cache.GetStringAsync(cacheKey);
+        if (!string.IsNullOrEmpty(cachedJson))
+        {
+            var cached = JsonSerializer.Deserialize<Dictionary<int, int>>(cachedJson);
+            if (cached != null) return cached;
+        }
+
         var allNovelRanks = await _repository.GetOptimizedQuery()
             .Select(n => new { 
                 n.Id, 
@@ -461,15 +390,11 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             .Select((x, index) => new { x.Id, Position = index + 1 })
             .ToDictionary(x => x.Id, x => x.Position);
 
-        foreach (var novel in pagedNovels)
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(rankPositions), new DistributedCacheEntryOptions
         {
-            if (rankPositions.TryGetValue(novel.Id, out var position))
-            {
-                novel.RankPosition = position;
-            }
-        }
-
-        return (pagedNovels, processedList?.Count() ?? 0);
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+        });
+        return rankPositions;
     }
 
     private static double ComputeCosineDistance(float[] v1, float[] v2)
@@ -528,14 +453,34 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
 
         try
         {
+            // 0. Pre-translation Normalization (Glossary)
+            // Ensures common terms are standardized for better Vector Search performance
+            var glossary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "canavar", "monster" },
+                { "karınca", "ant" },
+                { "örümcek", "spider" },
+                { "ejderha", "dragon" },
+                { "büyü", "magic" },
+                { "zindan", "dungeon" },
+                { "seviye", "level" },
+                { "sistem", "system" },
+                { "evrim", "evolution" }
+            };
+
+            if (glossary.TryGetValue(query, out var normalizedTerm))
+            {
+                 // If we have a direct glossary match, prioritize it as the "translation"
+                 // This is faster and more reliable than external service
+                 return normalizedTerm;
+            }
+
             // Translate Turkish to English
             // Using AggregateTranslator to try Google, Bing, Yandex automatically
             var translationResult = await _translator.TranslateAsync(query, "en");
             
             if (translationResult != null && !string.Equals(translationResult.Translation, query, StringComparison.OrdinalIgnoreCase))
             {
-                // User Feedback: Dataset is English, so always search with English term ONLY.
-                // This ensures "Köle" -> "Slave" gives exact same results/ranking as "Slave".
                 return translationResult.Translation;
             }
         }

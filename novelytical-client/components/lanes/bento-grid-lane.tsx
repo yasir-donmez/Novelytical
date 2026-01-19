@@ -34,13 +34,19 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-2 h-[650px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 h-auto lg:h-[650px]">
                 {novels.map((novel: any, i: number) => (
                     <div
                         key={novel.id}
                         className={cn(
                             "relative group rounded-xl overflow-hidden",
-                            i === 0 ? "col-span-2 row-span-2" : "col-span-1 row-span-1"
+                            // Mobile: First item 2-col wide (full width)
+                            // Tablet (sm): First item 1-col (regular) OR keep as featured? Let's keep it featured but adapt
+                            // Desktop (lg): First item 2x2 featured
+
+                            i === 0
+                                ? "col-span-2 row-span-2 aspect-[16/9] sm:aspect-auto sm:col-span-1 lg:col-span-2 lg:row-span-2 lg:aspect-auto"
+                                : "col-span-1 row-span-1 aspect-[2/3] sm:aspect-auto"
                         )}
                     >
                         <NovelCard

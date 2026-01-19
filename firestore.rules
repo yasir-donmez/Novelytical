@@ -76,8 +76,12 @@ service cloud.firestore {
     match /community_posts/{postId} {
       allow read: if true;
       allow create: if isAuthenticated();
-      // Basitlik için güncellemeye izin verelim, daha sıkı kural gerekirse diff eklenebilir
-      allow update: if isAuthenticated(); 
+      // UPDATE: Owner can update everything. Others can ONLY update 'pollOptions' (for voting).
+      allow update: if isAuthenticated() && (
+        isOwnerByData('userId') || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pollOptions'])
+      );
+
       allow delete: if isAuthenticated() && isOwnerByData('userId');
       
       match /votes/{voteId} {
@@ -86,64 +90,68 @@ service cloud.firestore {
       }
     }
     
+    // WARNING: Top-level votes collection needs strict validation or removal if unused.
+    // Assuming this is used for some feature, restricting to auth user but verifying owner is hard without exact ID schema.
+    // Ideally, voteId should be userId_postId. If likely random, we just ensure auth. 
+    // BETTER: Allow create if auth, update/delete if owner (if vote doc has userId).
+    // Safest fallback for now:
     match /post_votes/{voteId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      // Require the vote document to contain 'userId' matching auth user for create/update/delete
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && isOwnerByData('userId');
     }
 
     // --- 6. Libraries ---
     match /libraries/{libId} {
-      allow read, write: if isAuthenticated();
+      // Allow read for everyone (Public Profiles)
+      allow read: if true;
+      // Allow write ONLY if userId matches auth.uid
+      // Create: Check new data
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Update/Delete: Check existing data (owner)
+      allow update, delete: if isAuthenticated() && isOwnerByData('userId');
     }
 
-    // --- 7. Novel Stats (Herkes okuyabilir, viewCount herkes artırabilir, diğerleri auth gerektirir) ---
-    // --- 7. Novel Stats (Herkes okuyabilir, viewCount herkes artırabilir, diğerleri auth gerektirir) ---
+    // --- 7. Novel Stats ---
     match /novel_stats/{novelId} {
       allow read: if true;
-      
-      // 🔒 GÜVENLİK AYARI (DÜZELTİLDİ):
-      // Herkes (anonim dahil) SADECE 'viewCount' değerini 1 artırabilir.
-      // Silerse, başka alanı değiştirirse veya 1'den fazla artırırsa REDDEDİLİR.
-      allow create: if true; // İlk oluşumda izin ver (cloud function yoksa)
+      allow create: if true; 
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
                     && request.resource.data.viewCount == resource.data.viewCount + 1;
     }
 
     // --- 8. Social Graph (Follows) ---
-    // --- 8. Social Graph (Follows) ---
     match /follows/{followId} {
-      allow read: if true; // Public read needed for profile stats
-      // Only allow creation if followerId matches auth.uid
+      allow read: if true;
       allow create: if isAuthenticated() && request.resource.data.followerId == request.auth.uid;
-      // Allow delete if user is the follower OR the one being followed (remove follower)
       allow delete: if isAuthenticated() && (resource.data.followerId == request.auth.uid || resource.data.followingId == request.auth.uid);
     }
 
     // --- 9. Chats & Messages ---
     match /chats/{chatId} {
-      // Allow read if authenticated - simplified to fix list/get queries
-      // The query itself filters by participant so this is safe enough for MVP
-      allow read: if isAuthenticated();
-      // Allow create if authenticated
+      // SECURED: Only participants can read
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants);
       allow create: if isAuthenticated();
-      // Allow update if user is a participant
       allow update: if isAuthenticated() && (request.auth.uid in resource.data.participants);
-      // Allow delete if user is a participant
       allow delete: if isAuthenticated() && (request.auth.uid in resource.data.participants);
       
       match /messages/{messageId} {
-        // Read if authenticated
-        allow read: if isAuthenticated();
-        // Create if auth matches senderId
+        // SECURED: Only participants (parent chat check implicit for subcollection? No, need to check parent or rely on query)
+        // Firestore rules cascade: parent 'match' variables are available, but parent 'allow' rules DO NOT cascade.
+        // However, we can access parent data via 'get'. But easier: Participants check on chat is key.
+        // Actually, for subcollections, we often need to fetch parent.
+        // BUT, simplified: if I can read chat, I can read messages? 
+        // Standard pattern:
+        allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
+        
         allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
         
-        // Update: Sender can update everything (e.g. edit text), others can ONLY mark as read
         allow update: if isAuthenticated() && (
           request.auth.uid == resource.data.senderId || 
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
         );
         
-        // Delete: Only sender can delete
         allow delete: if isAuthenticated() && request.auth.uid == resource.data.senderId;
       }
     }

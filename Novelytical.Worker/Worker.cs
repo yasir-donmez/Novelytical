@@ -16,6 +16,7 @@ namespace Novelytical.Worker
         private readonly IServiceProvider _serviceProvider;
         private readonly IEmbedder _embedder;
         private readonly IConfiguration _configuration;
+        private readonly IHostApplicationLifetime _lifetime;
 
         // XPath Constants
         private static class XPaths
@@ -37,6 +38,14 @@ namespace Novelytical.Worker
             public const string DetailLastUpdated = "//a[contains(@class, 'chapter-latest-container')]//p[contains(@class, 'update')]";
         }
 
+        // ScraperState Keys
+        private static class StateKeys
+        {
+            public const string SlowTrackPage = "slow_track_current_page";
+            public const string SlowTrackTotalPages = "slow_track_total_pages";
+            public const string LastFastTrackRun = "last_fast_track_run";
+        }
+
         // User Agents Rotation
         private readonly string[] _userAgents = new[]
         {
@@ -48,9 +57,16 @@ namespace Novelytical.Worker
         };
 
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache; // 🚀
+        private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, IEmbedder embedder, IConfiguration configuration, IHttpClientFactory httpClientFactory, Microsoft.Extensions.Caching.Distributed.IDistributedCache cache)
+        public Worker(
+            ILogger<Worker> logger, 
+            IServiceProvider serviceProvider, 
+            IEmbedder embedder, 
+            IConfiguration configuration, 
+            IHttpClientFactory httpClientFactory, 
+            Microsoft.Extensions.Caching.Distributed.IDistributedCache cache,
+            IHostApplicationLifetime lifetime)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -58,69 +74,135 @@ namespace Novelytical.Worker
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
             _cache = cache;
+            _lifetime = lifetime;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // 🚀 EKSİK VEKTÖRLERİ TAMAMLA (Arka Planda)
-            // Ana akışı bloklamadan arka planda çalışsın
-            _ = Task.Run(() => IndexMissingNovels(stoppingToken), stoppingToken);
+            // 🎯 GitHub Actions Mode: SCRAPE_MODE environment variable ile kontrol
+            var mode = Environment.GetEnvironmentVariable("SCRAPE_MODE")?.ToLower() ?? "fast";
+            
+            _logger.LogInformation("🚀 Worker başlatılıyor. Mode: {Mode}", mode);
 
-            // Start Concurrent Tasks
-            var fastTrack = RunFastTrack(stoppingToken);
-            var slowTrack = RunSlowTrack(stoppingToken);
+            try
+            {
+                switch (mode)
+                {
+                    case "fast":
+                        await RunFastTrackOnce(stoppingToken);
+                        break;
+                    
+                    case "slow":
+                        await RunSlowTrackBatch(stoppingToken);
+                        break;
+                    
+                    case "full":
+                        // İlk büyük tarama için (local'de kullanılacak)
+                        await RunFullScrape(stoppingToken);
+                        break;
+                    
+                    case "index":
+                        // Eksik vektörleri tamamla
+                        await IndexMissingNovels(stoppingToken);
+                        break;
+                    
+                    default:
+                        _logger.LogWarning("⚠️ Bilinmeyen mode: {Mode}. 'fast' kullanılıyor.", mode);
+                        await RunFastTrackOnce(stoppingToken);
+                        break;
+                }
 
-            await Task.WhenAll(fastTrack, slowTrack);
+                _logger.LogInformation("✅ Worker tamamlandı. Mode: {Mode}", mode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Worker hatası!");
+            }
+            finally
+            {
+                // GitHub Actions için: İş bitti, uygulamayı kapat
+                _lifetime.StopApplication();
+            }
         }
 
-        private async Task RunFastTrack(CancellationToken stoppingToken)
+        /// <summary>
+        /// FastTrack: En son güncellenenler sayfasından 5-10 sayfa tarar.
+        /// Her 30 dakikada bir GitHub Actions tarafından çalıştırılır.
+        /// </summary>
+        private async Task RunFastTrackOnce(CancellationToken stoppingToken)
         {
             string url = _configuration["NovelFire:BaseUrlLatest"] ?? "https://novelfire.net/latest-release-novels";
-            _logger.LogInformation($"🚀 HIZLI TAKİP Başlatılıyor... ({url})");
+            int pagesToScrape = int.Parse(_configuration["Scraper:FastTrackPages"] ?? "5");
             
-            // Create a dedicated client for this track if needed, or use factory per request
-            // Typically scraping sessions might benefit from cookie persistence, but for simple fetching factory is fine.
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await ScrapePages(url, 5, "FastTrack", stoppingToken);
-                    _logger.LogInformation("💤 HIZLI TAKİP: Bitti. 30 dakika mola...");
-                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ HIZLI TAKİP Hatası!");
-                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
-                }
-            }
+            _logger.LogInformation("🚀 FastTrack başlatılıyor. URL: {Url}, Sayfa: {Pages}", url, pagesToScrape);
+            
+            await ScrapePages(url, pagesToScrape, "FastTrack", stoppingToken);
+            
+            // Son çalışma zamanını kaydet
+            await SetScraperState(StateKeys.LastFastTrackRun, DateTime.UtcNow.ToString("O"));
+            
+            _logger.LogInformation("✅ FastTrack tamamlandı. {Pages} sayfa tarandı.", pagesToScrape);
         }
 
-        private async Task RunSlowTrack(CancellationToken stoppingToken)
+        /// <summary>
+        /// SlowTrack: Tüm romanları tarar ama batch'ler halinde (her çalışmada 100 sayfa).
+        /// State veritabanında tutulur, kaldığı yerden devam eder.
+        /// </summary>
+        private async Task RunSlowTrackBatch(CancellationToken stoppingToken)
         {
             string url = _configuration["NovelFire:BaseUrlPopular"] ?? "https://novelfire.net/genre-all/sort-popular/status-all/all-novel";
-            _logger.LogInformation($"🐢 YAVAŞ TAKİP Başlatılıyor... ({url})");
-
-            while (!stoppingToken.IsCancellationRequested)
+            int batchSize = int.Parse(_configuration["Scraper:SlowTrackBatchSize"] ?? "100");
+            
+            // State'den son kaldığımız sayfayı oku
+            int currentPage = await GetScraperStateInt(StateKeys.SlowTrackPage, 1);
+            int totalPages = await GetScraperStateInt(StateKeys.SlowTrackTotalPages, 0);
+            
+            // Toplam sayfa sayısını güncelle (ilk çalışmada veya periyodik olarak)
+            if (totalPages == 0 || currentPage == 1)
             {
-                try
-                {
-                    // Pass client to GetTotalPages
-                    int totalPages = await GetTotalPages(url);
-                    _logger.LogInformation($"📚 YAVAŞ TAKİP: Toplam {totalPages} sayfa taranacak...");
-                    
-                    await ScrapePages(url, totalPages, "SlowTrack", stoppingToken);
-                    
-                    _logger.LogInformation("💤 YAVAŞ TAKİP: Tüm liste bitti. 24 saat mola...");
-                    await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ YAVAŞ TAKİP Hatası!");
-                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
-                }
+                totalPages = await GetTotalPages(url);
+                await SetScraperState(StateKeys.SlowTrackTotalPages, totalPages.ToString());
             }
+
+            _logger.LogInformation("🐢 SlowTrack başlatılıyor. Sayfa: {Current}/{Total}, Batch: {Batch}", 
+                currentPage, totalPages, batchSize);
+            
+            int endPage = Math.Min(currentPage + batchSize - 1, totalPages);
+            
+            // Sayfaları tara
+            await ScrapePagesRange(url, currentPage, endPage, "SlowTrack", stoppingToken);
+            
+            // State'i güncelle
+            int nextPage = endPage + 1;
+            if (nextPage > totalPages)
+            {
+                // Tüm liste tarandı, başa dön
+                nextPage = 1;
+                _logger.LogInformation("🔄 SlowTrack tamamlandı! Bir sonraki çalışmada baştan başlayacak.");
+            }
+            
+            await SetScraperState(StateKeys.SlowTrackPage, nextPage.ToString());
+            
+            _logger.LogInformation("✅ SlowTrack batch tamamlandı. Sayfa {Start}-{End} tarandı. Sonraki: {Next}", 
+                currentPage, endPage, nextPage);
+        }
+
+        /// <summary>
+        /// Tüm listeyi baştan sona tarar. Local'de ilk kurulum için kullanılır.
+        /// </summary>
+        private async Task RunFullScrape(CancellationToken stoppingToken)
+        {
+            string url = _configuration["NovelFire:BaseUrlPopular"] ?? "https://novelfire.net/genre-all/sort-popular/status-all/all-novel";
+            
+            int totalPages = await GetTotalPages(url);
+            _logger.LogInformation("📚 FULL SCRAPE başlatılıyor. Toplam {Total} sayfa taranacak...", totalPages);
+            
+            await ScrapePages(url, totalPages, "FullScrape", stoppingToken);
+            
+            // State'i sıfırla
+            await SetScraperState(StateKeys.SlowTrackPage, "1");
+            
+            _logger.LogInformation("✅ FULL SCRAPE tamamlandı!");
         }
 
         private async Task<int> GetTotalPages(string baseUrl)
@@ -143,29 +225,34 @@ namespace Novelytical.Worker
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"⚠️ Sayfa sayısı alınamadı: {ex.Message}");
+                _logger.LogWarning("⚠️ Sayfa sayısı alınamadı: {Message}", ex.Message);
             }
             return 100; // Default fallback
         }
 
         private async Task ScrapePages(string baseUrl, int maxPages, string trackName, CancellationToken stoppingToken)
         {
-            for (int page = 1; page <= maxPages; page++)
+            await ScrapePagesRange(baseUrl, 1, maxPages, trackName, stoppingToken);
+        }
+
+        private async Task ScrapePagesRange(string baseUrl, int startPage, int endPage, string trackName, CancellationToken stoppingToken)
+        {
+            for (int page = startPage; page <= endPage; page++)
             {
                 if (stoppingToken.IsCancellationRequested) break;
 
-                // Stealth Mode: Random Jitter
-                if (page > 1 && page % 10 == 0)
+                // Stealth Mode: Random Jitter (her 10 sayfada mola)
+                if (page > startPage && (page - startPage) % 10 == 0)
                 {
-                    int delay = Random.Shared.Next(45, 75); // 45-75 seconds
-                    _logger.LogInformation($"[{trackName}] ☕ Mola ({delay}sn)...");
+                    int delay = Random.Shared.Next(45, 75);
+                    _logger.LogInformation("[{Track}] ☕ Mola ({Delay}sn)...", trackName, delay);
                     await Task.Delay(TimeSpan.FromSeconds(delay), stoppingToken);
                 }
 
                 string separator = baseUrl.Contains("?") ? "&" : "?";
                 string pageUrl = $"{baseUrl}{separator}page={page}";
                 
-                _logger.LogInformation($"[{trackName}] 📄 Sayfa {page}/{maxPages}");
+                _logger.LogInformation("[{Track}] 📄 Sayfa {Page}/{End}", trackName, page, endPage);
 
                 try 
                 {
@@ -177,7 +264,6 @@ namespace Novelytical.Worker
                         using (var scope = _serviceProvider.CreateScope())
                         {
                             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                            // İşlem sırasında ID çakışmalarını önlemek için sıralı işle
                             foreach (var node in novelNodes)
                             {
                                 if (stoppingToken.IsCancellationRequested) break;
@@ -188,7 +274,7 @@ namespace Novelytical.Worker
                 }
                 catch (Exception ex)
                 {
-                     _logger.LogError($"Skip page {page}: {ex.Message}");
+                     _logger.LogError("Skip page {Page}: {Message}", page, ex.Message);
                 }
             }
         }
@@ -219,7 +305,7 @@ namespace Novelytical.Worker
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"[{trackName}] Hata ({title}): {ex.Message}");
+                _logger.LogWarning("[{Track}] Hata ({Title}): {Message}", trackName, title, ex.Message);
             }
         }
 
@@ -227,7 +313,7 @@ namespace Novelytical.Worker
         private async Task<HtmlDocument> FetchWithRetry(string url)
         {
             int maxRetries = 3;
-            int delay = 2000; // Başlangıç bekleme süresi (2 saniye)
+            int delay = 2000;
 
             for (int i = 0; i < maxRetries; i++)
             {
@@ -248,19 +334,18 @@ namespace Novelytical.Worker
                     }
                     else if (response.StatusCode == HttpStatusCode.TooManyRequests || response.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        _logger.LogWarning($"⚠️ {response.StatusCode} Hatası. {delay/1000}sn bekleniyor...");
+                        _logger.LogWarning("⚠️ {Status} Hatası. {Delay}sn bekleniyor...", response.StatusCode, delay/1000);
                         await Task.Delay(delay);
-                        delay *= 2; // Bekleme süresini katla (Exponential Backoff)
+                        delay *= 2;
                     }
                     else
                     {
-                        // Diğer hatalar (500, 404 vs.) için normal retry
                         response.EnsureSuccessStatusCode(); 
                     }
                 }
                 catch (Exception ex) when (i < maxRetries - 1)
                 {
-                     _logger.LogWarning($"⚠️ İstek Hatası: {ex.Message}. Tekrar deneniyor...");
+                     _logger.LogWarning("⚠️ İstek Hatası: {Message}. Tekrar deneniyor...", ex.Message);
                      await Task.Delay(delay);
                 }
             }
@@ -312,19 +397,21 @@ namespace Novelytical.Worker
                 ScrapedRating = rating,
                 CoverUrl = coverUrl,
                 LastUpdated = lastUpdated,
-                // Etiketleri geçici taşımak için string listesi olarak tutabiliriz 
-                // ya da NovelTags içine 'yeni' olduklarını belirterek koyarız.
-                // Burada NovelTags'i doldurup SaveOrUpdateNovel'da işleyeceğiz.
                 NovelTags = allTags.Select(t => new NovelTag { Tag = new Tag { Name = t } }).ToList()
             };
         }
 
         private async Task SaveOrUpdateNovel(AppDbContext dbContext, Novel scrapedData, string trackName)
         {
+            // Extract slug from SourceUrl (e.g., /book/shadow-slave -> shadow-slave)
+            var slug = scrapedData.SourceUrl?.Split('/').LastOrDefault() ?? "";
+            
             var dbNovel = await dbContext.Novels
                 .Include(n => n.NovelTags)
                     .ThenInclude(nt => nt.Tag)
-                .FirstOrDefaultAsync(n => n.SourceUrl == scrapedData.SourceUrl || n.Title == scrapedData.Title);
+                .FirstOrDefaultAsync(n => n.SourceUrl == scrapedData.SourceUrl 
+                                       || n.Title == scrapedData.Title 
+                                       || n.Slug == slug);
 
             bool isNew = dbNovel == null;
             bool hasChanges = false;
@@ -336,6 +423,7 @@ namespace Novelytical.Worker
                     Title = scrapedData.Title,
                     SourceUrl = scrapedData.SourceUrl,
                     Author = scrapedData.Author,
+                    Slug = slug, // Slug'ı SourceUrl'den çıkarılmış haliyle set et
                     NovelTags = new List<NovelTag>()
                 };
                 dbContext.Novels.Add(dbNovel);
@@ -365,9 +453,15 @@ namespace Novelytical.Worker
                 {
                     try 
                     {
-                        var newVector = await _embedder.EmbedAsync(scrapedData.Description);
+                        // Semantic Enrichment: Tags + Title + Summary
+                        string tagString = scrapedData.NovelTags?.Any() == true 
+                            ? string.Join(", ", scrapedData.NovelTags.Select(nt => nt.Tag.Name)) 
+                            : "";
+                        string enhancedText = $"Tags: {tagString}. Title: {scrapedData.Title}. Summary: {scrapedData.Description}";
+                        
+                        var newVector = await _embedder.EmbedAsync(enhancedText);
                         dbNovel.DescriptionEmbedding = new Vector(newVector);
-                        _logger.LogInformation($"✨ Vector updated: {dbNovel.Title}");
+                        _logger.LogInformation("✨ Vector updated with Enrichment: {Title}", dbNovel.Title);
                     }
                     catch (Exception ex)
                     {
@@ -379,7 +473,13 @@ namespace Novelytical.Worker
             {
                  try 
                  {
-                    var newVector = await _embedder.EmbedAsync(scrapedData.Description);
+                    // Semantic Enrichment for New Novels
+                    string tagString = scrapedData.NovelTags?.Any() == true 
+                        ? string.Join(", ", scrapedData.NovelTags.Select(nt => nt.Tag.Name)) 
+                        : "";
+                    string enhancedText = $"Tags: {tagString}. Title: {scrapedData.Title}. Summary: {scrapedData.Description}";
+
+                    var newVector = await _embedder.EmbedAsync(enhancedText);
                     dbNovel.DescriptionEmbedding = new Vector(newVector);
                  } catch {}
             }
@@ -389,12 +489,12 @@ namespace Novelytical.Worker
             {
                 var inputTagNames = scrapedData.NovelTags.Select(nt => nt.Tag.Name).Distinct().ToList();
                 
-                // 1. Mevcut tagleri veritabanından topluca çek
-                var existingDbTags = await dbContext.Tags
+                var existingDbTags = (await dbContext.Tags
                     .Where(t => inputTagNames.Contains(t.Name))
-                    .ToDictionaryAsync(t => t.Name, t => t);
+                    .ToListAsync())
+                    .GroupBy(t => t.Name)
+                    .ToDictionary(g => g.Key, g => g.First());
 
-                // 2. Olmayan tagleri bul ve oluştur (Hafızada)
                 var newTags = new List<Tag>();
                 foreach (var tagName in inputTagNames)
                 {
@@ -402,30 +502,20 @@ namespace Novelytical.Worker
                     {
                         var newTag = new Tag { Name = tagName };
                         newTags.Add(newTag);
-                        existingDbTags[tagName] = newTag; // İleriki adımlar için sözlüğe de ekle
+                        existingDbTags[tagName] = newTag;
                     }
                 }
 
-                // 3. Yeni tagleri DB'ye ekle
                 if (newTags.Any())
                 {
-                    dbContext.Tags.AddRange(newTags); // Batch insert
-                    // Not: SaveChanges henüz çağırmıyoruz, en sonda çağıracağız.
-                    // Ancak EF Core navigation fixup sayesinde ID oluşmasa bile ilişki kurulabilir.
+                    dbContext.Tags.AddRange(newTags);
                 }
 
-                // 4. Romanın tag listesini güncelle
                 var currentTagIds = dbNovel.NovelTags.Select(nt => nt.TagId).ToHashSet();
                 
                 foreach (var tagName in inputTagNames)
                 {
                     var tagEntity = existingDbTags[tagName];
-                    
-                    // Eğer bu ilişki zaten yoksa ekle
-                    // Not: Yeni eklenen taglerin ID'si 0 olabilir ama Entity referansı var.
-                    // EF Core duplicated ilişkiyi, hem NovelTags koleksiyonunda hem de ChangeTracker'da kontrol edersek daha güvenli olur.
-                    
-                    // Basit kontrol: dbNovel.NovelTags içinde bu Tag entity'sine sahip bir kayıt var mı?
                     bool alreadyLinked = dbNovel.NovelTags.Any(nt => nt.Tag == tagEntity || (nt.TagId != 0 && nt.TagId == tagEntity.Id));
 
                     if (!alreadyLinked)
@@ -438,26 +528,37 @@ namespace Novelytical.Worker
 
             if (isNew || hasChanges)
             {
-                await dbContext.SaveChangesAsync();
-                _logger.LogInformation($"[{trackName}] {(isNew ? "🆕 NEW" : "💾 UPDATED")}: {dbNovel.Title}");
-
-                // 🧹 CACHE INVALIDATION (Redis)
-                // Roman değiştiği için önbelleği siliyoruz ki kullanıcılar eski veriyi görmesin.
-                await _cache.RemoveAsync($"novel_details_{dbNovel.Id}");
-                if (!string.IsNullOrEmpty(dbNovel.Slug))
+                try 
                 {
-                    await _cache.RemoveAsync($"novel_details_{dbNovel.Slug.ToLower()}");
+                    await dbContext.SaveChangesAsync();
+                    _logger.LogInformation("[{Track}] {Status}: {Title}", trackName, isNew ? "🆕 NEW" : "💾 UPDATED", dbNovel.Title);
+
+                    // 🧹 CACHE INVALIDATION (Redis)
+                    await _cache.RemoveAsync($"novel_details_{dbNovel.Id}");
+                    if (!string.IsNullOrEmpty(dbNovel.Slug))
+                    {
+                        await _cache.RemoveAsync($"novel_details_{dbNovel.Slug.ToLower()}");
+                    }
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23505")
+                {
+                    // Duplicate key - novel already exists with this slug
+                    // Detach and skip
+                    _logger.LogWarning("[{Track}] ⏭️ DUPLICATE: {Title} (zaten mevcut, atlanıyor)", trackName, dbNovel.Title);
+                    dbContext.Entry(dbNovel).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 }
             }
             else
             {
-                _logger.LogInformation($"[{trackName}] ⏩ SKIP: {dbNovel.Title}");
+                _logger.LogInformation("[{Track}] ⏩ SKIP: {Title}", trackName, dbNovel.Title);
             }
         }
 
         private async Task IndexMissingNovels(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("🔄 MIGRATION: Checking missing vectors...");
+            _logger.LogInformation("🔄 INDEX: Eksik vektörler kontrol ediliyor...");
+            
+            int totalProcessed = 0;
             
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -465,19 +566,20 @@ namespace Novelytical.Worker
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                     
-                    // Batch processing: Load 100 at a time to prevent OOM
                     var novels = await dbContext.Novels
+                        .Include(n => n.NovelTags)
+                            .ThenInclude(nt => nt.Tag)
                         .Where(n => !string.IsNullOrEmpty(n.Description) && n.DescriptionEmbedding == null)
                         .Take(100)
                         .ToListAsync(stoppingToken);
 
                     if (novels.Count == 0)
                     {
-                        _logger.LogInformation("✅ Tüm romanların vektörleri tam.");
-                        break; // All done
+                        _logger.LogInformation("✅ Tüm romanların vektörleri tam. Toplam işlenen: {Count}", totalProcessed);
+                        break;
                     }
 
-                    _logger.LogInformation($"⚠️ Processing batch of {novels.Count} missing vectors...");
+                    _logger.LogInformation("⚠️ {Count} eksik vektör işleniyor...", novels.Count);
 
                     var parallelOptions = new ParallelOptions 
                     { 
@@ -491,7 +593,13 @@ namespace Novelytical.Worker
                     {
                         try 
                         {
-                            var vector = await _embedder.EmbedAsync(novel.Description!);
+                            // Semantic Enrichment for Indexing
+                            string tagString = novel.NovelTags?.Any() == true 
+                                ? string.Join(", ", novel.NovelTags.Select(nt => nt.Tag.Name)) 
+                                : "";
+                            string enhancedText = $"Tags: {tagString}. Title: {novel.Title}. Summary: {novel.Description}";
+
+                            var vector = await _embedder.EmbedAsync(enhancedText);
                             embeddingResults.Add((novel, new Vector(vector)));
                         }
                         catch (Exception ex)
@@ -500,7 +608,6 @@ namespace Novelytical.Worker
                         }
                     });
 
-                    // Save batch
                     foreach(var result in embeddingResults)
                     {
                         var novel = result.Novel;
@@ -509,17 +616,58 @@ namespace Novelytical.Worker
                     }
                     
                     await dbContext.SaveChangesAsync(stoppingToken);
-                    _logger.LogInformation($"💾 Saved batch of {embeddingResults.Count}");
+                    totalProcessed += embeddingResults.Count;
+                    _logger.LogInformation("💾 Batch kaydedildi: {Count}", embeddingResults.Count);
                 }
             }
         }
+
+        #region State Yönetimi
+
+        private async Task<string?> GetScraperState(string key)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+            var state = await dbContext.ScraperStates.FindAsync(key);
+            return state?.Value;
+        }
+
+        private async Task<int> GetScraperStateInt(string key, int defaultValue)
+        {
+            var value = await GetScraperState(key);
+            return int.TryParse(value, out int result) ? result : defaultValue;
+        }
+
+        private async Task SetScraperState(string key, string value)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+            var state = await dbContext.ScraperStates.FindAsync(key);
+            
+            if (state == null)
+            {
+                state = new ScraperState { Key = key, Value = value, UpdatedAt = DateTime.UtcNow };
+                dbContext.ScraperStates.Add(state);
+            }
+            else
+            {
+                state.Value = value;
+                state.UpdatedAt = DateTime.UtcNow;
+            }
+            
+            await dbContext.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region Helpers
 
         private string GetRandomUserAgent()
         {
             return _userAgents[Random.Shared.Next(_userAgents.Length)];
         }
-
-        // --- Helpers ---
 
         private string CleanText(string? text)
         {
@@ -576,5 +724,7 @@ namespace Novelytical.Worker
 
             return DateTime.UtcNow;
         }
+
+        #endregion
     }
 }

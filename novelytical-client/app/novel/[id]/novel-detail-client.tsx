@@ -266,7 +266,7 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                         </h1>
                         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                             <div className="text-lg text-muted-foreground">
-                                Yazar: <span className="text-foreground font-medium">{novel.author}</span>
+                                Yazar: <Link href={`/yazarlar/${encodeURIComponent(novel.author)}`} className="text-foreground font-medium hover:underline hover:text-primary transition-colors">{novel.author}</Link>
                             </div>
                             <div className="flex items-center gap-4">
                                 <LibraryAction novelId={novel.id} slug={novel.slug} chapterCount={novel.chapterCount} />

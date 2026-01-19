@@ -176,42 +176,37 @@ export function ChatFloatingDialog() {
     };
 
     return (
-        <div
-            className="fixed bottom-4 z-50 transition-[left] duration-200"
-            style={positionStyle}
-        >
-            {!isOpen && (
-                <Button
-                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform hover:scale-105 relative"
-                    onClick={() => setIsOpen(true)}
-                >
-                    <MessageCircle className="h-6 w-6 text-white" />
-                    {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-                            {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                    )}
-                </Button>
-            )}
-
+        <div className={cn(
+            "fixed z-50 flex flex-col items-end gap-4 pointer-events-none",
+            isOpen ? "inset-0 md:inset-auto md:bottom-4 md:right-4 w-full md:w-auto h-full md:h-auto" : "bottom-4 right-4 w-auto"
+        )}>
             {isOpen && (
-                <div className="bg-background border border-border shadow-2xl rounded-2xl w-[350px] h-[500px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200">
+                <div className="pointer-events-auto bg-background md:bg-background/80 md:backdrop-blur-xl border-0 md:border md:border-white/20 dark:md:border-white/10 shadow-none md:shadow-2xl md:shadow-primary/10 rounded-none md:rounded-3xl w-full md:w-[380px] h-full md:h-[600px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 zoom-in-95 fade-in duration-300 ease-out origin-bottom-right">
                     {/* Header */}
-                    <div className="p-3 border-b flex items-center justify-between bg-muted/50">
+                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-muted/30 backdrop-blur-md">
                         {activeChat ? (
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveChat(null)}>
+                            <div className="flex items-center gap-3">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={() => setActiveChat(null)}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <span className="font-semibold text-sm truncate max-w-[150px]">
-                                    {activeChat.participantProfiles?.[0]?.username || "Sohbet"}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <UserAvatar
+                                        src={activeChat?.participantProfiles?.[0]?.photoURL}
+                                        alt={activeChat?.participantProfiles?.[0]?.username}
+                                        frameId={activeChat?.participantProfiles?.[0]?.frame}
+                                        size="sm"
+                                        className="h-8 w-8"
+                                    />
+                                    <span className="font-semibold text-sm truncate max-w-[120px]">
+                                        {activeChat?.participantProfiles?.[0]?.username || "Sohbet"}
+                                    </span>
+                                </div>
                             </div>
                         ) : (
-                            <span className="font-semibold ml-2">Mesajlar</span>
+                            <span className="font-semibold ml-2 text-lg tracking-tight">Mesajlar</span>
                         )}
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsOpen(false)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={() => setIsOpen(false)}>
                                 <Minimize2 className="h-4 w-4" />
                             </Button>
                         </div>
@@ -223,7 +218,7 @@ export function ChatFloatingDialog() {
                             // Chat View
                             <div className="flex flex-col h-full relative">
                                 {isLoadingMessages && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 transition-opacity duration-200">
+                                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-opacity duration-200">
                                         <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                     </div>
                                 )}
@@ -231,40 +226,59 @@ export function ChatFloatingDialog() {
                                     ref={scrollRef}
                                     style={{ scrollBehavior: 'auto' }}
                                     className={cn(
-                                        "flex-1 p-4 overscroll-contain scale-y-[-1] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40",
+                                        "flex-1 p-4 overscroll-contain scale-y-[-1] custom-scrollbar",
                                         isLoadingMessages ? "overflow-hidden opacity-0" : "overflow-y-auto"
                                     )}
                                 >
-                                    <div className="space-y-1 min-h-full">
+                                    <div className="space-y-2 min-h-full pb-2">
                                         {messages.length === 0 && (
-                                            <div className="text-center text-xs text-muted-foreground mt-4 scale-y-[-1]">
-                                                Mesajlaşmaya başlayın.
+                                            <div className="text-center flex flex-col items-center justify-center h-full scale-y-[-1] text-muted-foreground/60 gap-2">
+                                                <MessageCircle className="h-8 w-8 opacity-20" />
+                                                <span className="text-sm">Sohbeti başlatın</span>
                                             </div>
                                         )}
-                                        {[...messages].reverse().map((msg) => {
-                                            const isMe = msg.senderId === user.uid;
+                                        {[...messages].reverse().map((msg, index, arr) => {
+                                            const isMe = msg.senderId === user?.uid;
+                                            const prevMsg = arr[index + 1];
+                                            const isSequence = prevMsg && prevMsg.senderId === msg.senderId;
+
                                             return (
-                                                <div key={msg.id} className={cn("flex group items-center gap-1 scale-y-[-1]", isMe ? "justify-end" : "justify-start")}>
-                                                    {isMe && (
-                                                        <button
-                                                            onClick={() => ChatService.deleteMessage(activeChat.id, msg.id)}
-                                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-                                                            title="Mesajı sil"
-                                                        >
-                                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                                        </button>
+                                                <div key={msg.id} className={cn("flex group items-end gap-2 scale-y-[-1]", isMe ? "justify-end" : "justify-start")}>
+                                                    {!isMe && !isSequence && (
+                                                        <UserAvatar
+                                                            src={activeChat.participantProfiles?.[0]?.photoURL}
+                                                            alt="User"
+                                                            size="sm"
+                                                            className="h-6 w-6 mb-1"
+                                                            frameId={activeChat?.participantProfiles?.[0]?.frame}
+                                                        />
                                                     )}
-                                                    <div className={cn(
-                                                        "px-3 py-2 rounded-2xl text-sm max-w-[75%] relative min-w-[60px]",
-                                                        isMe ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
-                                                    )}>
-                                                        <span className="break-words">{msg.content}</span>
+                                                    {!isMe && isSequence && <div className="w-6" />} {/* Placeholder for alignment */}
+
+                                                    <div className={cn("flex flex-col max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                                                        {isMe && (
+                                                            <button
+                                                                onClick={() => ChatService.deleteMessage(activeChat!.id, msg.id)}
+                                                                className="opacity-0 group-hover:opacity-100 transition-all absolute -top-4 right-0 p-1 hover:text-destructive"
+                                                                title="Mesajı sil"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        )}
                                                         <div className={cn(
-                                                            "text-[10px] mt-1 text-right opacity-70",
-                                                            isMe ? "text-primary-foreground/80" : "text-muted-foreground"
+                                                            "px-4 py-2.5 text-sm shadow-sm relative",
+                                                            isMe
+                                                                ? "bg-purple-600 text-white rounded-2xl rounded-br-sm"
+                                                                : "bg-muted/80 backdrop-blur-md rounded-2xl rounded-bl-sm border border-white/5"
+                                                        )}>
+                                                            <span className="break-words leading-relaxed">{msg.content}</span>
+                                                        </div>
+                                                        <span className={cn(
+                                                            "text-[10px] mt-1 px-1 opacity-50 select-none",
+                                                            isMe ? "text-right" : "text-left"
                                                         )}>
                                                             {msg.createdAt ? msg.createdAt.toDate().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '...'}
-                                                        </div>
+                                                        </span>
                                                     </div>
                                                 </div>
                                             );
@@ -272,15 +286,15 @@ export function ChatFloatingDialog() {
                                     </div>
                                 </div>
 
-                                {/* Scroll to bottom button - only show when not at bottom */}
+                                {/* Scroll to bottom button */}
                                 {showScrollButton && (
                                     <Button
                                         variant="secondary"
                                         size="icon"
-                                        className="absolute bottom-16 right-4 h-8 w-8 rounded-full shadow-lg"
+                                        className="absolute bottom-20 right-4 h-8 w-8 rounded-full shadow-lg bg-background/80 backdrop-blur border"
                                         onClick={() => {
                                             if (scrollRef.current) {
-                                                scrollRef.current.scrollTop = 0; // 0 is visually bottom in reverse mode
+                                                scrollRef.current.scrollTop = 0;
                                             }
                                         }}
                                     >
@@ -290,7 +304,7 @@ export function ChatFloatingDialog() {
 
                                 <form
                                     onSubmit={(e) => { e.preventDefault(); handleSendMessage(e); }}
-                                    className="p-3 border-t bg-background flex gap-2 items-end"
+                                    className="p-3 border-t border-white/10 bg-muted/20 backdrop-blur-md flex gap-2 items-end"
                                 >
                                     <div className="flex-1 relative">
                                         <Textarea
@@ -298,7 +312,6 @@ export function ChatFloatingDialog() {
                                             value={newMessage}
                                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                                                 setNewMessage(e.target.value);
-                                                // Auto-resize
                                                 e.target.style.height = 'auto';
                                                 e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                                             }}
@@ -309,72 +322,84 @@ export function ChatFloatingDialog() {
                                                 }
                                             }}
                                             placeholder="Mesaj yaz..."
-                                            className="min-h-[40px] max-h-[120px] rounded-2xl px-4 py-3 resize-none scrollbar-hide break-all"
+                                            className="min-h-[44px] max-h-[120px] rounded-3xl px-4 py-3 resize-none scrollbar-hide break-all bg-background/50 border-white/10 focus:border-primary/50 focus:bg-background transition-colors"
                                             rows={1}
                                         />
                                     </div>
                                     <Button
                                         type="submit"
                                         size="icon"
-                                        className="h-10 w-10 rounded-full shrink-0 mb-0.5"
+                                        className={cn(
+                                            "h-11 w-11 rounded-full shrink-0 transition-all duration-300",
+                                            newMessage.trim() ? "bg-purple-600 hover:bg-purple-700 scale-100" : "bg-muted translate-x-2 opacity-0 w-0 px-0"
+                                        )}
                                         disabled={!newMessage.trim()}
                                     >
-                                        <Send className="h-4 w-4" />
+                                        <Send className="h-5 w-5 ml-0.5" />
                                     </Button>
                                 </form>
                             </div>
                         ) : (
                             // Chat List
-                            <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40">
+                            <div className="h-full overflow-y-auto custom-scrollbar">
                                 {chats.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground p-4 text-center">
-                                        <MessageCircle className="h-10 w-10 mb-2 opacity-20" />
-                                        <p className="text-sm">Henüz mesajınız yok.</p>
-                                        <p className="text-xs mt-1">Takipleştiğiniz kişilerin profiline giderek mesaj atabilirsiniz.</p>
+                                    <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground p-6 text-center">
+                                        <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                                            <MessageCircle className="h-8 w-8 opacity-40" />
+                                        </div>
+                                        <p className="text-base font-medium text-foreground">Henüz mesajınız yok</p>
+                                        <p className="text-sm mt-2 opacity-70">Takipleştiğiniz kişilerin profiline giderek sohbet başlatabilirsiniz.</p>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col p-2">
+                                    <div className="flex flex-col p-2 gap-1.5">
                                         {chats.map(chat => {
                                             const otherUser = chat.participantProfiles?.[0];
-                                            if (!otherUser) return null; // Loading or error
+                                            if (!otherUser) return null;
                                             return (
                                                 <button
                                                     key={chat.id}
-                                                    className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-xl transition-colors text-left"
+                                                    className="group flex items-center gap-3 p-3 hover:bg-muted/60 active:bg-muted/80 rounded-2xl transition-all duration-200 text-left border border-transparent hover:border-white/5"
                                                     onClick={() => setActiveChat(chat)}
                                                 >
-                                                    <UserAvatar
-                                                        src={otherUser.photoURL}
-                                                        alt={otherUser.username}
-                                                        frameId={otherUser.frame}
-                                                        size="lg"
-                                                        className="h-10 w-10" // Explicit override if needed, though size="lg" is 10
-                                                    >
-                                                        <UserPresenceIndicator
-                                                            userId={otherUser.uid}
-                                                            showOnlineStatus={otherUser.privacySettings?.showOnlineStatus ?? true}
-                                                            className="h-3 w-3 right-0 bottom-0 border-[2px] z-50"
-                                                        />
-                                                    </UserAvatar>
-                                                    <div className="flex-1 overflow-hidden">
-                                                        <div className="flex justify-between items-center">
+                                                    <div className="relative">
+                                                        <UserAvatar
+                                                            src={otherUser.photoURL}
+                                                            alt={otherUser.username}
+                                                            frameId={otherUser.frame}
+                                                            size="lg"
+                                                            className="h-12 w-12 transition-transform group-hover:scale-105"
+                                                        >
+                                                            <UserPresenceIndicator
+                                                                userId={otherUser.uid}
+                                                                showOnlineStatus={otherUser.privacySettings?.showOnlineStatus ?? true}
+                                                                className="h-3.5 w-3.5 right-0 bottom-0 border-[3px] border-background z-50"
+                                                            />
+                                                        </UserAvatar>
+                                                    </div>
+                                                    <div className="flex-1 overflow-hidden min-w-0">
+                                                        <div className="flex justify-between items-center mb-0.5">
                                                             <div className="flex items-center gap-2 overflow-hidden">
-                                                                <span className="font-medium text-sm truncate">{otherUser.username}</span>
-                                                                {chat.unseenCount && chat.unseenCount > 0 ? (
-                                                                    <span className="bg-red-500 text-white rounded-full text-[10px] min-w-[20px] h-5 flex items-center justify-center px-1 font-bold shrink-0 animate-in zoom-in-50 duration-200">
-                                                                        {chat.unseenCount > 9 ? '9+' : chat.unseenCount}
-                                                                    </span>
-                                                                ) : null}
+                                                                <span className="font-semibold text-sm truncate">{otherUser.username}</span>
                                                             </div>
                                                             {chat.lastMessageTime && (
-                                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
+                                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2 opacity-70">
                                                                     {formatDistanceToNow(chat.lastMessageTime.toDate(), { addSuffix: false, locale: tr })}
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground truncate opacity-80">
-                                                            {chat.lastMessage || "Resim gönderildi"}
-                                                        </p>
+                                                        <div className="flex justify-between items-center">
+                                                            <p className={cn(
+                                                                "text-xs truncate max-w-[180px]",
+                                                                chat.unseenCount && chat.unseenCount > 0 ? "text-foreground font-medium" : "text-muted-foreground opacity-80"
+                                                            )}>
+                                                                {chat.lastMessage || "Resim gönderildi"}
+                                                            </p>
+                                                            {chat.unseenCount && chat.unseenCount > 0 ? (
+                                                                <span className="bg-purple-600 text-white rounded-full text-[10px] min-w-[20px] h-5 flex items-center justify-center px-1.5 font-bold shrink-0 animate-in zoom-in-50 duration-200 shadow-md shadow-purple-900/20">
+                                                                    {chat.unseenCount > 9 ? '9+' : chat.unseenCount}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
                                                     </div>
                                                 </button>
                                             )
@@ -385,6 +410,32 @@ export function ChatFloatingDialog() {
                         )}
                     </div>
                 </div>
+            )}
+
+            <Button
+                className={cn(
+                    "pointer-events-auto h-14 w-14 rounded-full shadow-xl bg-purple-600 hover:bg-purple-700 transition-all duration-300 relative group overflow-hidden",
+                    isOpen ? "rotate-90 scale-0 opacity-0 absolute bottom-0 right-0" : "scale-100 opacity-100 hover:scale-110"
+                )}
+                onClick={() => setIsOpen(true)}
+            >
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <MessageCircle className="h-6 w-6 text-primary-foreground relative z-10" />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse border-2 border-background">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                )}
+            </Button>
+
+            {/* Invisible closer for the button position when open, or just let minimize handle it */}
+            {isOpen && (
+                <Button
+                    className="pointer-events-auto h-14 w-14 rounded-full shadow-lg bg-muted hover:bg-destructive/10 hover:text-destructive transition-all duration-300"
+                    onClick={() => setIsOpen(false)}
+                >
+                    <X className="h-6 w-6" />
+                </Button>
             )}
         </div>
     );

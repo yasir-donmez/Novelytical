@@ -30,6 +30,7 @@ export async function SimilarNovelsServer({ id }: { id: number | string }) {
                         <NovelCard
                             novel={novel}
                             className="flex-grow h-full"
+                            showLastUpdated={false}
                         />
                     </div>
                 ))}

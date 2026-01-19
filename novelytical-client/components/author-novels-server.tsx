@@ -22,6 +22,7 @@ export async function AuthorNovelsServer({ author, currentNovelId }: { author: s
                     <NovelCard
                         novel={novel}
                         className="flex-grow h-full"
+                        showLastUpdated={false}
                     />
                 </div>
             ))}

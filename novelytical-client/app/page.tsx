@@ -22,7 +22,7 @@ export default async function DiscoveryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 w-full overflow-x-hidden">
       {/* Hero Section - Static/Server Fetched Immediately */}
       {featuredNovel ? (
         <HeroSection novel={featuredNovel} />
