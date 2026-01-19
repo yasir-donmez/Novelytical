@@ -33,6 +33,7 @@ export default function AuthorDetailPage() {
 
     const [novels, setNovels] = useState<NovelListDto[]>([]);
     const [recommended, setRecommended] = useState<NovelListDto[]>([]);
+    const [topNovels, setTopNovels] = useState<{ coverUrl: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<AuthorStats>({
         totalNovels: 0,
@@ -49,6 +50,48 @@ export default function AuthorDetailPage() {
     } | null>(null);
     const [totalRankScore, setTotalRankScore] = useState(0);
 
+    const renderAvatar = (novels: { coverUrl: string }[]) => {
+        if (!novels || novels.length === 0) {
+            return (
+                <span className="text-5xl font-bold text-primary">{authorName.charAt(0).toUpperCase()}</span>
+            );
+        }
+
+        if (novels.length === 1) {
+            return <img src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
+        }
+
+        if (novels.length === 2) {
+            return (
+                <div className="w-full h-full flex">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
+                        <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-1/2 h-full overflow-hidden">
+                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    </div>
+                </div>
+            );
+        }
+
+        // 3+ Novels (T-split)
+        return (
+            <div className="w-full h-full flex flex-col">
+                <div className="h-1/2 w-full overflow-hidden border-b border-white/10">
+                    <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                </div>
+                <div className="h-1/2 w-full flex">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
+                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-1/2 h-full overflow-hidden">
+                        <img src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
@@ -62,6 +105,14 @@ export default function AuthorDetailPage() {
                 }
 
                 setNovels(authorNovels);
+
+                // Extract top novels for avatar (sort by views, take top 3 with covers)
+                const novelsWithCovers = authorNovels
+                    .filter((n: any) => n.coverUrl)
+                    .sort((a: any, b: any) => (b.viewCount || 0) - (a.viewCount || 0))
+                    .slice(0, 3)
+                    .map((n: any) => ({ coverUrl: n.coverUrl }));
+                setTopNovels(novelsWithCovers);
 
                 // 2. Fetch Live Stats for accurate aggregation (Views, etc.)
                 const liveStats = await Promise.all(
@@ -175,8 +226,8 @@ export default function AuthorDetailPage() {
                 <div className="space-y-6">
                     {/* User Profile Card */}
                     <div className="flex flex-col items-center text-center space-y-4">
-                        <div className="h-32 w-32 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center border-4 border-background shadow-xl shrink-0">
-                            <span className="text-5xl font-bold text-primary">{authorName.charAt(0).toUpperCase()}</span>
+                        <div className="h-32 w-32 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center border-4 border-background shadow-xl shrink-0">
+                            {renderAvatar(topNovels)}
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold break-words">{authorName}</h1>
