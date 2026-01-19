@@ -108,6 +108,7 @@ export default function RootLayout({
               <ScrollManager />
               {children}
               <Footer />
+              <div className="h-16 md:hidden w-full flex-shrink-0" aria-hidden="true" />
               <ChatFloatingDialog />
             </ThemeProvider>
           </QueryProvider>

@@ -33,21 +33,30 @@ async function getTopAuthors() {
         );
 
         // Aggregate per author
-        const authorStats: Record<string, { count: number; totalChapters: number; totalRankScore: number }> = {};
+        const authorStats: Record<string, { count: number; totalChapters: number; totalRankScore: number; topNovels: { coverUrl: string; rankScore: number }[] }> = {};
 
         novelsWithStats.forEach((novel: any) => {
             const author = novel.author || "Bilinmeyen";
             if (!authorStats[author]) {
-                authorStats[author] = { count: 0, totalChapters: 0, totalRankScore: 0 };
+                authorStats[author] = { count: 0, totalChapters: 0, totalRankScore: 0, topNovels: [] };
             }
             authorStats[author].count++;
             authorStats[author].totalChapters += novel.chapterCount || 0;
             authorStats[author].totalRankScore += novel.rankScore;
+
+            // Collect novel info for avatar
+            if (novel.coverUrl) {
+                authorStats[author].topNovels.push({ coverUrl: novel.coverUrl, rankScore: novel.rankScore });
+            }
         });
 
-        // Sort by Total Rank Score
+        // Sort by Total Rank Score and process top novels
         return Object.entries(authorStats)
-            .map(([name, stats]) => ({ name, ...stats }))
+            .map(([name, stats]) => {
+                // Sort top novels by rank score desc and take top 3
+                const sortedTopNovels = stats.topNovels.sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
+                return { name, ...stats, topNovels: sortedTopNovels };
+            })
             .sort((a, b) => b.totalRankScore - a.totalRankScore)
             .slice(0, 50);
 
@@ -97,6 +106,50 @@ export default async function YazarlarPage() {
         }
     };
 
+    const renderAvatar = (novels: { coverUrl: string }[]) => {
+        if (!novels || novels.length === 0) {
+            return (
+                <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 opacity-20" />
+                </div>
+            );
+        }
+
+        if (novels.length === 1) {
+            return <img src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
+        }
+
+        if (novels.length === 2) {
+            return (
+                <div className="w-full h-full flex">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
+                        <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-1/2 h-full overflow-hidden">
+                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    </div>
+                </div>
+            );
+        }
+
+        // 3+ Novels (T-split / Mercedes ish)
+        return (
+            <div className="w-full h-full flex flex-col">
+                <div className="h-1/2 w-full overflow-hidden border-b border-white/10">
+                    <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                </div>
+                <div className="h-1/2 w-full flex">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
+                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="w-1/2 h-full overflow-hidden">
+                        <img src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <main className="container px-4 py-8 md:py-12 min-h-screen">
             <div className="max-w-6xl mx-auto">
@@ -131,8 +184,15 @@ export default async function YazarlarPage() {
                                         </div>
 
                                         <div className="flex items-center gap-4 z-10 relative">
-                                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-lg border shadow-inner shrink-0 ${styles.badge}`}>
-                                                {index + 1}
+                                            {/* Dynamic Avatar */}
+                                            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden relative border shadow-inner shrink-0 ${styles.border}`}>
+                                                {renderAvatar(author.topNovels)}
+                                                {/* Rank Badge Overlay */}
+                                                <div className={`absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]`}>
+                                                    <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-bold shadow-md ${styles.badge}`}>
+                                                        {index + 1}
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div className="flex-1 min-w-0">

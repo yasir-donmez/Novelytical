@@ -9,6 +9,7 @@ import NotificationBell from "@/components/notifications/notification-bell";
 
 import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowRight } from "lucide-react";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 export function SiteHeader() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -77,14 +78,7 @@ export function SiteHeader() {
                     <div className="flex md:hidden items-center gap-2">
                         <NotificationBell />
                         <UserNav />
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="relative z-50"
-                        >
-                            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                        </Button>
+                        {/* Hamburger hidden, moved to bottom nav */}
                     </div>
                 </div>
             </div>
@@ -97,13 +91,13 @@ export function SiteHeader() {
                 />
             )}
 
-            {/* Mobile Compact Dropdown Menu */}
+            {/* Mobile Compact Dropdown Menu (Bottom Aligned) */}
             <div
                 className={cn(
-                    "fixed top-[4.5rem] right-4 z-50 w-56 transform transition-all duration-200 ease-out origin-top-right md:hidden",
+                    "fixed bottom-20 right-4 z-50 w-56 transform transition-all duration-200 ease-out origin-bottom-right md:hidden",
                     mobileMenuOpen
                         ? "scale-100 opacity-100 translate-y-0"
-                        : "scale-95 opacity-0 -translate-y-2 pointer-events-none"
+                        : "scale-95 opacity-0 translate-y-2 pointer-events-none"
                 )}
             >
                 <div className="bg-popover/95 backdrop-blur-xl border border-border shadow-2xl rounded-xl overflow-hidden">
@@ -134,6 +128,8 @@ export function SiteHeader() {
                     </div>
                 </div>
             </div>
+
+            <MobileBottomNav onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
 
         </header >
