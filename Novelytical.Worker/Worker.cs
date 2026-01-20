@@ -7,6 +7,7 @@ using Novelytical.Application.DTOs;
 using System.Globalization;
 using Novelytical.Application.Interfaces;
 using Pgvector;
+using Novelytical.Services;
 
 namespace Novelytical.Worker
 {
@@ -429,9 +430,15 @@ namespace Novelytical.Worker
                 dbContext.Novels.Add(dbNovel);
             }
 
+            bool isNewChapter = false;
             // Map simple fields
             if (dbNovel!.ViewCount != scrapedData.ViewCount) { dbNovel.ViewCount = scrapedData.ViewCount; hasChanges = true; }
-            if (dbNovel.ChapterCount != scrapedData.ChapterCount) { dbNovel.ChapterCount = scrapedData.ChapterCount; hasChanges = true; }
+            if (dbNovel.ChapterCount != scrapedData.ChapterCount) 
+            { 
+                if (scrapedData.ChapterCount > dbNovel.ChapterCount) isNewChapter = true;
+                dbNovel.ChapterCount = scrapedData.ChapterCount; 
+                hasChanges = true; 
+            }
             if (dbNovel.ScrapedRating != scrapedData.ScrapedRating && scrapedData.ScrapedRating > 0) { dbNovel.ScrapedRating = scrapedData.ScrapedRating; hasChanges = true; }
             if (dbNovel.Status != scrapedData.Status) { dbNovel.Status = scrapedData.Status; hasChanges = true; }
             if (dbNovel.Author != scrapedData.Author) { dbNovel.Author = scrapedData.Author; hasChanges = true; }
@@ -533,6 +540,34 @@ namespace Novelytical.Worker
                     await dbContext.SaveChangesAsync();
                     _logger.LogInformation("[{Track}] {Status}: {Title}", trackName, isNew ? "🆕 NEW" : "💾 UPDATED", dbNovel.Title);
 
+                    // 🔔 NOTIFICATIONS
+                    if (isNew || isNewChapter) 
+                    {
+                        try 
+                        {
+                            var notifService = _serviceProvider.GetService<Novelytical.Services.FirebaseNotificationService>();
+                            if (notifService != null)
+                            {
+                                string type = isNew ? "new_novel" : "new_chapter";
+                                // Fire and forget notification to not block scraper
+                                _ = notifService.NotifyNovelUpdateAsync(
+                                    dbNovel.Author, 
+                                    dbNovel.Title, 
+                                    dbNovel.Id.ToString(), 
+                                    dbNovel.CoverUrl, 
+                                    type
+                                ).ContinueWith(t => 
+                                {
+                                    if (t.IsFaulted) _logger.LogError(t.Exception, "Notification failed for {Title}", dbNovel.Title);
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error initiating notification");
+                        }
+                    }
+
                     // 🧹 CACHE INVALIDATION (Redis)
                     await _cache.RemoveAsync($"novel_details_{dbNovel.Id}");
                     if (!string.IsNullOrEmpty(dbNovel.Slug))
@@ -550,7 +585,7 @@ namespace Novelytical.Worker
             }
             else
             {
-                _logger.LogInformation("[{Track}] ⏩ SKIP: {Title}", trackName, dbNovel.Title);
+                // _logger.LogInformation("[{Track}] ⏩ SKIP: {Title}", trackName, dbNovel.Title);
             }
         }
 

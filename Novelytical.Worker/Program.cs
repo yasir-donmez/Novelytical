@@ -1,7 +1,7 @@
 using Novelytical.Data;
 using Novelytical.Worker;
 using Novelytical.Application;
-using Novelytical.Worker.Services;
+using Novelytical.Services;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
