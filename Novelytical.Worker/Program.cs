@@ -21,6 +21,38 @@ try
     // 1. Veritabanı Bağlantısını Yapılandırıyoruz
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+    // Neon URL formatını Npgsql formatına çevir
+    // postgresql://user:password@host/db?sslmode=require -> Host=...;Database=...;Username=...;Password=...;SSL Mode=Require
+    if (connectionString?.StartsWith("postgresql://") == true || connectionString?.StartsWith("postgres://") == true)
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        var username = userInfo.Length > 0 ? userInfo[0] : "";
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        var database = uri.AbsolutePath.TrimStart('/');
+        var pgHost = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        
+        // Query string'den sslmode'u al (manuel parsing)
+        var queryParams = uri.Query.TrimStart('?').Split('&')
+            .Select(p => p.Split('='))
+            .Where(p => p.Length == 2)
+            .ToDictionary(p => p[0], p => p[1], StringComparer.OrdinalIgnoreCase);
+        var sslMode = queryParams.GetValueOrDefault("sslmode", "require");
+        var sslModeNpgsql = sslMode.ToLower() switch
+        {
+            "require" => "Require",
+            "verify-full" => "VerifyFull",
+            "verify-ca" => "VerifyCA",
+            "prefer" => "Prefer",
+            "disable" => "Disable",
+            _ => "Require"
+        };
+        
+        connectionString = $"Host={pgHost};Port={port};Database={database};Username={username};Password={password};SSL Mode={sslModeNpgsql}";
+        Log.Information("📦 PostgreSQL URL formatı Npgsql formatına çevrildi. Host: {Host}", pgHost);
+    }
+
     // 2. Veritabanı ve Repository'leri Ekliyoruz (Data Layer)
     builder.Services.AddDataLayer(connectionString!);
 
@@ -52,7 +84,26 @@ try
         options.InstanceName = "Novelytical_";
     });
 
-    // 6. Worker'ı İşe Al
+    // 6. Firebase & Notification Service
+    var serviceAccountPath = builder.Configuration["Firebase:ServiceAccountPath"] 
+        ?? Path.Combine(builder.Environment.ContentRootPath, "serviceAccountKey.json");
+    
+    if (File.Exists(serviceAccountPath))
+    {
+        FirebaseAdmin.FirebaseApp.Create(new FirebaseAdmin.AppOptions()
+        {
+            Credential = Google.Apis.Auth.OAuth2.GoogleCredential.FromFile(serviceAccountPath),
+            ProjectId = builder.Configuration["Firebase:ProjectId"] ?? "novelytical"
+        });
+        
+        builder.Services.AddSingleton<Novelytical.Worker.Services.FirebaseNotificationService>();
+    }
+    else
+    {
+        Log.Warning("⚠️ serviceAccountKey.json not found! Notifications disabled.");
+    }
+
+    // 7. Worker'ı İşe Al
     builder.Services.AddHostedService<Worker>();
 
     var host = builder.Build();
