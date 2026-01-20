@@ -421,7 +421,7 @@ namespace Novelytical.Worker
                 dbNovel = new Novel
                 {
                     Title = scrapedData.Title,
-                    SourceUrl = scrapedData.SourceUrl,
+                    SourceUrl = scrapedData.SourceUrl!,
                     Author = scrapedData.Author,
                     Slug = slug, // Slug'ı SourceUrl'den çıkarılmış haliyle set et
                     NovelTags = new List<NovelTag>()
