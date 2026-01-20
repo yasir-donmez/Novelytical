@@ -50,6 +50,7 @@ const nextConfig: NextConfig = {
   },
 };
 
+/*
 export default withSentryConfig(nextConfig, {
   org: "yasir-donmez",
   project: "novelytical",
@@ -63,3 +64,6 @@ export default withSentryConfig(nextConfig, {
   disableLogger: true,
   automaticVercelMonitors: true,
 });
+*/
+
+export default nextConfig;
