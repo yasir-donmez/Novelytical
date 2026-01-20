@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: novelytical-api
+    env: docker
+    region: frankfurt # Türkiye'ye en yakın bölge
+    plan: free
+    dockerfilePath: ./Novelytical.Web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false # Render Dashboard'dan girilecek
+      - key: ConnectionStrings__Redis
+        sync: false # Render Dashboard'dan girilecek
+      - key: Seq__ServerUrl
+        sync: false # Render Dashboard'dan girilecek
+      - key: Firebase__ProjectId
+        value: novelytical
+      - key: ASPNETCORE_ALLOWEDORIGINS
+        sync: false # Vercel URL'i buraya girilecek
