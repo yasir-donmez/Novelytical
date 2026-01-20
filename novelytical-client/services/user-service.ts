@@ -14,6 +14,11 @@ import {
 
 const USERS_COLLECTION = "users";
 
+// Simple in-memory cache
+// Key: uid, Value: { data: UserProfile, timestamp: number }
+const userProfileCache = new Map<string, { data: UserProfile, timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 Minutes
+
 export interface UserProfile {
     uid: string;
     username: string;
@@ -142,14 +147,24 @@ export const UserService = {
 
     /**
      * Fetches the full user profile from Firestore.
+     * Uses in-memory caching to prevent excessive reads (5 minute TTL).
      */
     async getUserProfile(uid: string): Promise<UserProfile | null> {
+        // 1. Check Cache
+        const cached = userProfileCache.get(uid);
+        const now = Date.now();
+        if (cached && (now - cached.timestamp < CACHE_TTL)) {
+            // console.log(`[UserService] Serving ${uid} from cache`);
+            return cached.data;
+        }
+
         try {
+            // console.log(`[UserService] Fetching ${uid} from Firestore`);
             const docRef = doc(db, USERS_COLLECTION, uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                return {
+                const profile: UserProfile = {
                     uid,
                     username: data.username,
                     email: data.email,
@@ -159,6 +174,14 @@ export const UserService = {
                     privacySettings: data.privacySettings,
                     notificationSettings: data.notificationSettings
                 };
+
+                // 2. Set Cache
+                userProfileCache.set(uid, {
+                    data: profile,
+                    timestamp: now
+                });
+
+                return profile;
             }
         } catch (error) {
             console.error("Error fetching user profile:", error);

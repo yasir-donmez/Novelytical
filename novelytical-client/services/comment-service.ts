@@ -141,6 +141,53 @@ export const addComment = async (
     }
 };
 
+
+export const getCommentsPaginated = async (
+    novelId: number,
+    sortBy: string = 'newest',
+    limitCount: number = 10,
+    lastDoc: any = null
+): Promise<{ comments: Comment[], lastVisible: any }> => {
+    try {
+        let q = query(
+            collection(db, COLLECTION_NAME),
+            where("novelId", "==", novelId)
+        );
+
+        if (sortBy === 'newest') {
+            q = query(q, orderBy("createdAt", "desc"));
+        } else if (sortBy === 'oldest') {
+            q = query(q, orderBy("createdAt", "asc"));
+        } else if (sortBy === 'likes_desc') {
+            q = query(q, orderBy("likes", "desc"));
+        } else if (sortBy === 'dislikes_desc') {
+            q = query(q, orderBy("unlikes", "desc"));
+        } else {
+            q = query(q, orderBy("createdAt", "desc"));
+        }
+
+        if (lastDoc) {
+            const { startAfter } = await import("firebase/firestore");
+            q = query(q, startAfter(lastDoc));
+        }
+
+        q = query(q, limit(limitCount));
+
+        const querySnapshot = await getDocs(q);
+        const comments = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Comment));
+
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        return { comments, lastVisible };
+    } catch (error) {
+        console.error("Error fetching paginated comments:", error);
+        return { comments: [], lastVisible: null };
+    }
+};
+
 export const getCommentsByNovelId = async (novelId: number, sortBy: string = 'newest'): Promise<Comment[]> => {
     try {
         let q = query(

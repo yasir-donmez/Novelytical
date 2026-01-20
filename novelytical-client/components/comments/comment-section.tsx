@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { deleteComment, Comment } from "@/services/comment-service";
+import { useState, useEffect } from "react";
+import { deleteComment, Comment, getCommentsPaginated } from "@/services/comment-service";
 import CommentForm from "./comment-form";
 import CommentList from "./comment-list";
 import { useAuth } from "@/contexts/auth-context";
@@ -14,9 +14,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy } from "firebase/firestore";
 
 interface CommentSectionProps {
     novelId: number;
@@ -26,48 +26,64 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortOption, setSortOption] = useState("newest");
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const { user } = useAuth();
 
+    // Initial Fetch
     useEffect(() => {
-        setLoading(true);
-        const commentsRef = collection(db, "comments");
-
-        let q = query(commentsRef, where("novelId", "==", novelId));
-
-        if (sortOption === "newest") {
-            q = query(q, orderBy("createdAt", "desc"));
-        } else if (sortOption === "oldest") {
-            q = query(q, orderBy("createdAt", "asc"));
-        } else if (sortOption === "likes_desc") {
-            q = query(q, orderBy("likes", "desc"));
-        } else if (sortOption === "dislikes_desc") {
-            q = query(q, orderBy("unlikes", "desc"));
-        } else {
-            q = query(q, orderBy("createdAt", "desc"));
-        }
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const commentsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as Comment));
-            setComments(commentsData);
+        const fetchInitial = async () => {
+            setLoading(true);
+            const { comments: newComments, lastVisible } = await getCommentsPaginated(novelId, sortOption, 10, null);
+            setComments(newComments);
+            setLastDoc(lastVisible);
+            setHasMore(newComments.length === 10);
             setLoading(false);
-        }, (error) => {
-            console.error("Error fetching comments realtime:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        };
+        fetchInitial();
     }, [novelId, sortOption]);
+
+    // Load More
+    const loadMore = async () => {
+        if (loadingMore || !hasMore || !lastDoc) return;
+        setLoadingMore(true);
+        const { comments: newComments, lastVisible } = await getCommentsPaginated(novelId, sortOption, 10, lastDoc);
+
+        if (newComments.length > 0) {
+            setComments(prev => [...prev, ...newComments]);
+            setLastDoc(lastVisible);
+            setHasMore(newComments.length === 10);
+        } else {
+            setHasMore(false);
+        }
+        setLoadingMore(false);
+    };
+
+    // Infinite Scroll Observer
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const sentinel = document.getElementById("comment-sentinel");
+        if (sentinel) observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [loading, loadingMore, hasMore, lastDoc]);
 
     const handleDelete = async (commentId: string) => {
         if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;
 
         try {
             await deleteComment(commentId);
+            setComments(prev => prev.filter(c => c.id !== commentId));
             toast.success("Yorum silindi.");
-            // onSnapshot updates automatically
         } catch (error) {
             console.error(error);
             toast.error("Silme işlemi başarısız.");
@@ -106,7 +122,14 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 </div>
             ) : (
-                <CommentList comments={comments} onDelete={handleDelete} onReplyAdded={() => { }} />
+                <>
+                    <CommentList comments={comments} onDelete={handleDelete} onReplyAdded={() => { }} />
+
+                    {/* Sentinel for Infinite Scroll */}
+                    <div id="comment-sentinel" className="h-4 w-full flex justify-center mt-4">
+                        {loadingMore && <Loader2 className="animate-spin h-4 w-4 text-muted-foreground" />}
+                    </div>
+                </>
             )}
         </div>
     );

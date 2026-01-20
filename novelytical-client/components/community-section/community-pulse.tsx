@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { getLatestReviews, Review } from '@/services/review-service';
 import { novelService } from '@/services/novelService';
-import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes, subscribeToLatestPosts } from '@/services/feed-service';
+import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes, getPostsPaginated, subscribeToLatestPosts } from '@/services/feed-service';
 import { createNotification } from '@/services/notification-service';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -83,6 +83,11 @@ export function CommunityPulse() {
     const [loading, setLoading] = useState(true);
     const [levelData, setLevelData] = useState<UserLevelData | null>(null);
 
+    // Infinite Scroll State
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+
     // New Post State
     const [postContent, setPostContent] = useState('');
     const [isPoll, setIsPoll] = useState(false);
@@ -141,57 +146,108 @@ export function CommunityPulse() {
                 getUserPollVotes(user.uid).then(setUserVotes);
                 LevelService.getUserLevelData(user.uid).then(setLevelData);
             }
-
-            // Extract unique users for mentions (from initial data mostly, real-time might need updates but this is okay for now)
-            // ...
         } catch (error) {
             console.error("Error fetching initial data", error);
         }
-        // Don't disable loading here, let subscription do it for posts
     };
 
+    // Real-time Posts Subscription
     useEffect(() => {
         fetchData();
+        setLoading(true);
 
-        // Realtime Subscription for Posts
-        const unsubscribe = subscribeToLatestPosts(20, (newPosts) => {
-            setPosts(newPosts);
+        const unsubscribe = subscribeToLatestPosts(20, (realtimePosts, lastVisible) => {
+            setPosts(prev => {
+                // If initial load or clean slate
+                if (prev.length === 0) {
+                    setHasMore(realtimePosts.length === 20);
+                    setLastDoc(lastVisible); // Set cursor for infinite scroll
+                    return realtimePosts;
+                }
+
+                // MERGE LOGIC (Similar to Chat)
+                const msgMap = new Map(prev.map(p => [p.id, p]));
+
+                // Update/Add new posts
+                realtimePosts.forEach(p => msgMap.set(p.id, p));
+
+                // Convert back and sort DESC (Newest First)
+                const merged = Array.from(msgMap.values()).sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+
+                return merged;
+            });
             setLoading(false);
 
-            // Allow mentioning users from these posts
+            // Process known users
+            const usersMap = new Map();
+            realtimePosts.forEach(post => {
+                if (post.userId && post.userName) {
+                    usersMap.set(post.userName, { id: post.userId, username: post.userName, image: post.userImage });
+                }
+            });
+            setKnownUsers(prev => {
+                const newUsers = Array.from(usersMap.values());
+                return [...prev, ...newUsers.filter(u => !prev.some(p => p.username === u.username))];
+            });
+
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [user]);
+
+    // Load More Function
+    const loadMore = async () => {
+        if (loadingMore || !hasMore || !lastDoc) return;
+        setLoadingMore(true);
+        const { posts: newPosts, lastVisible } = await getPostsPaginated(10, lastDoc);
+
+        if (newPosts.length > 0) {
+            setPosts(prev => [...prev, ...newPosts]);
+            setLastDoc(lastVisible);
+            setHasMore(newPosts.length === 10);
+
+            // Process known users for mentions
             const usersMap = new Map();
             newPosts.forEach(post => {
                 if (post.userId && post.userName) {
                     usersMap.set(post.userName, { id: post.userId, username: post.userName, image: post.userImage });
                 }
             });
-            setKnownUsers(Array.from(usersMap.values()));
-        });
-
-        return () => unsubscribe();
-    }, [user]);
-
-
-    // Auto-scroll to bottom when posts change (WhatsApp style)
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            setKnownUsers(prev => {
+                const newUsers = Array.from(usersMap.values());
+                // Simple merge, could be optimized
+                return [...prev, ...newUsers.filter(u => !prev.some(p => p.username === u.username))];
+            });
+        } else {
+            setHasMore(false);
         }
-    }, [posts]);
+        setLoadingMore(false);
+    };
 
-    // Auto-scroll all tabs to bottom when tab changes or data loads
+    // Infinite Scroll Observer
     useEffect(() => {
-        // Use requestAnimationFrame for proper timing after render
-        requestAnimationFrame(() => {
-            if (activeTab === 'feed' && scrollRef.current) {
-                scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'instant' });
-            } else if (activeTab === 'polls' && pollsScrollRef.current) {
-                pollsScrollRef.current.scrollTo({ top: pollsScrollRef.current.scrollHeight, behavior: 'instant' });
-            } else if (activeTab === 'reviews' && reviewsScrollRef.current) {
-                reviewsScrollRef.current.scrollTo({ top: reviewsScrollRef.current.scrollHeight, behavior: 'instant' });
-            }
-        });
-    }, [activeTab, posts, reviews]);
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const sentinel = document.getElementById("seed-sentinel");
+        if (sentinel) observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [loading, loadingMore, hasMore, lastDoc]);
+
+
+    // Auto-scroll removed for infinite feed experience
+    useEffect(() => {
+        // Optional: restore scroll position if navigating back
+    }, []);
 
     const handleCreatePost = async () => {
         if (!user) {
@@ -259,8 +315,8 @@ export function CommunityPulse() {
         if (!confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) return;
         try {
             await deletePost(postId);
+            setPosts(prev => prev.filter(p => p.id !== postId));
             toast.success("Gönderi silindi.");
-            fetchData();
         } catch (error) {
             toast.error("Silme işlemi başarısız.");
         }
@@ -524,196 +580,204 @@ export function CommunityPulse() {
 
 
 
-                                        <div ref={scrollRef} className="absolute inset-x-0 top-3 bottom-3 px-3 overflow-y-auto space-y-4 custom-scrollbar overscroll-y-contain">
+                                        <div ref={scrollRef} className="absolute inset-x-0 top-3 bottom-3 px-3 overflow-y-auto space-y-4 custom-scrollbar overscroll-y-contain scale-y-[-1]">
                                             {posts.length === 0 ? (
-                                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50">
+                                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50 scale-y-[-1]">
                                                     <MessageSquare size={48} />
                                                     <p>Henüz gönderi yok. İlk sen ol!</p>
                                                 </div>
-                                            ) : [...posts].reverse().map((post) => {
-                                                const isOwner = user?.uid === post.userId;
-                                                return (
-                                                    <div key={post.id} className={`w-full flex mb-2 sm:mb-3 ${isOwner ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`flex gap-2 sm:gap-4 max-w-[95%] sm:max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            <UserHoverCard
-                                                                userId={post.userId}
-                                                                username={post.userName}
-                                                                image={post.userImage}
-                                                                frame={post.userFrame}
-                                                                className="shrink-0 self-start"
-                                                            >
-                                                                <UserAvatar
-                                                                    src={post.userImage}
-                                                                    alt={post.userName}
-                                                                    frameId={post.userFrame}
-                                                                    className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
-                                                                    fallbackClass="text-[10px] bg-primary/10 text-primary"
-                                                                />
-                                                            </UserHoverCard>
-                                                            <div className={`relative min-w-0 flex-1 p-2 sm:p-3 shadow-sm transition-all overflow-hidden
+                                            ) : (
+                                                <>
+                                                    {posts.map((post) => {
+                                                        const isOwner = user?.uid === post.userId;
+                                                        return (
+                                                            <div key={post.id} className={`w-full flex mb-2 sm:mb-3 ${isOwner ? 'justify-end' : 'justify-start'} scale-y-[-1]`}>
+                                                                <div className={`flex gap-2 sm:gap-4 max-w-[95%] sm:max-w-[85%] min-w-0 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                                    <UserHoverCard
+                                                                        userId={post.userId}
+                                                                        username={post.userName}
+                                                                        image={post.userImage}
+                                                                        frame={post.userFrame}
+                                                                        className="shrink-0 self-start"
+                                                                    >
+                                                                        <UserAvatar
+                                                                            src={post.userImage}
+                                                                            alt={post.userName}
+                                                                            frameId={post.userFrame}
+                                                                            className="h-6 w-6 sm:h-8 sm:w-8 transition-transform hover:scale-105"
+                                                                            fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                                        />
+                                                                    </UserHoverCard>
+                                                                    <div className={`relative min-w-0 flex-1 p-2 sm:p-3 shadow-sm transition-all overflow-hidden
                                                             ${isOwner
-                                                                    ? 'bg-primary/10 rounded-2xl rounded-tr-none border border-primary/20'
-                                                                    : 'bg-muted/30 rounded-2xl rounded-tl-none border border-border/40'
-                                                                }
+                                                                            ? 'bg-primary/10 rounded-xl sm:rounded-2xl rounded-tr-none border border-primary/20'
+                                                                            : 'bg-muted/30 rounded-xl sm:rounded-2xl rounded-tl-none border border-border/40'
+                                                                        }
                                                         `}>
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <UserHoverCard
-                                                                            userId={post.userId}
-                                                                            username={post.userName}
-                                                                            image={post.userImage}
-                                                                            frame={post.userFrame}
-                                                                        >
-                                                                            <span className="font-semibold text-xs text-foreground/90 hover:underline decoration-primary transition-all cursor-pointer">
-                                                                                {post.userName}
-                                                                            </span>
-                                                                        </UserHoverCard>
-                                                                        <span className="text-[10px] text-muted-foreground/60">{timeAgo(post.createdAt)}</span>
-                                                                    </div>
-                                                                    {/* Delete button for text posts only - top right */}
-                                                                    {isOwner && post.type === 'text' && (
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-5 w-5 -mt-1 -mr-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                                            onClick={() => handleDeletePost(post.id)}
-                                                                            title="Sil"
-                                                                        >
-                                                                            <Trash2 size={12} />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-
-                                                                <p
-                                                                    className="text-xs text-foreground/80 leading-snug whitespace-pre-wrap break-all w-full"
-                                                                    style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}
-                                                                >
-                                                                    {renderContentWithMentions(post.content)}
-                                                                </p>
-
-                                                                {/* Poll Display */}
-                                                                {post.type === 'poll' && post.pollOptions && (
-                                                                    <div className="mt-2 space-y-1.5 w-full sm:w-80">
-
-                                                                        {post.pollOptions.map((opt, idx) => {
-                                                                            const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
-                                                                            const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes / totalVotes) * 100);
-
-                                                                            // Vibrant Colors (Like original Feed)
-                                                                            const colors = [
-                                                                                { bg: 'from-purple-500/20 to-purple-600/20', glow: 'shadow-purple-500/20', border: 'border-purple-500/30', text: 'text-purple-400' },
-                                                                                { bg: 'from-blue-500/20 to-blue-600/20', glow: 'shadow-blue-500/20', border: 'border-blue-500/30', text: 'text-blue-400' },
-                                                                                { bg: 'from-pink-500/20 to-pink-600/20', glow: 'shadow-pink-500/20', border: 'border-pink-500/30', text: 'text-pink-400' },
-                                                                                { bg: 'from-green-500/20 to-green-600/20', glow: 'shadow-green-500/20', border: 'border-green-500/30', text: 'text-green-400' },
-                                                                            ];
-                                                                            const color = colors[idx % colors.length];
-
-                                                                            return (
-                                                                                <button
-                                                                                    key={opt.id}
-                                                                                    onClick={() => handleVote(post.id, opt.id)}
-                                                                                    disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
-                                                                                    className={`w-full relative h-10 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
-                                                                                        ? 'cursor-default opacity-60'
-                                                                                        : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
-                                                                                        }`}
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <UserHoverCard
+                                                                                    userId={post.userId}
+                                                                                    username={post.userName}
+                                                                                    image={post.userImage}
+                                                                                    frame={post.userFrame}
                                                                                 >
-                                                                                    {/* Progress Bar */}
-                                                                                    <div
-                                                                                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${color.bg} transition-all duration-700 ease-out`}
-                                                                                        style={{ width: `${percentage}%` }}
-                                                                                    />
-
-                                                                                    <div className="absolute inset-0 flex items-center justify-between px-3.5 z-10">
-                                                                                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                                                                            {/* Novel Cover */}
-                                                                                            {opt.novelCover && (
-                                                                                                <div className="w-7 h-9 bg-muted/50 rounded-md overflow-hidden flex-shrink-0 relative shadow-sm border border-white/10">
-                                                                                                    <Image
-                                                                                                        src={opt.novelCover}
-                                                                                                        alt={opt.novelTitle || 'Novel cover'}
-                                                                                                        fill
-                                                                                                        className="object-cover"
-                                                                                                    />
-                                                                                                </div>
-                                                                                            )}
-                                                                                            <span className="font-medium truncate text-foreground text-xs sm:text-sm max-w-[60%] sm:max-w-[50%]">
-                                                                                                {opt.novelTitle || opt.text}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                        {opt.votes > 0 && (
-                                                                                            <span className={`font-mono font-semibold ${color.text} ml-2 shrink-0 text-sm`}>
-                                                                                                {opt.votes}
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </button>
-                                                                            )
-                                                                        })}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Action Buttons and Vote Count - Bottom Row (Polls only) */}
-                                                                {post.type === 'poll' && (
-                                                                    <div className="flex items-center justify-between mt-2">
-                                                                        {/* Left: Action Buttons */}
-                                                                        <div className="flex items-center gap-1">
-
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className={`h-6 w-6 ${savedPostIds.includes(post.id) ? 'text-primary fill-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
-                                                                                onClick={() => handleBookmark(post.id)}
-                                                                                title="Kaydet"
-                                                                            >
-                                                                                <Bookmark size={14} fill={savedPostIds.includes(post.id) ? "currentColor" : "none"} />
-                                                                            </Button>
-                                                                            {isOwner && (
+                                                                                    <span className="font-semibold text-[11px] sm:text-xs text-foreground/90 hover:underline decoration-primary transition-all cursor-pointer">
+                                                                                        {post.userName}
+                                                                                    </span>
+                                                                                </UserHoverCard>
+                                                                                <span className="text-[10px] text-muted-foreground/60">{timeAgo(post.createdAt)}</span>
+                                                                            </div>
+                                                                            {/* Delete button for text posts only - top right */}
+                                                                            {isOwner && post.type === 'text' && (
                                                                                 <Button
                                                                                     variant="ghost"
                                                                                     size="icon"
-                                                                                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                                                    className="h-5 w-5 -mt-1 -mr-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                                                     onClick={() => handleDeletePost(post.id)}
                                                                                     title="Sil"
                                                                                 >
-                                                                                    <Trash2 size={14} />
+                                                                                    <Trash2 size={12} />
                                                                                 </Button>
-                                                                            )}
-
-                                                                            {/* Lock Icon for Expired Polls */}
-                                                                            {post.expiresAt && post.expiresAt.toDate() < new Date() && (
-                                                                                <span title="Anket kapandı - oy kullanılamaz" className="inline-flex cursor-default">
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="icon"
-                                                                                        className="h-6 w-6 text-muted-foreground pointer-events-none opacity-100"
-                                                                                        disabled
-                                                                                    >
-                                                                                        <Lock size={14} />
-                                                                                    </Button>
-                                                                                </span>
                                                                             )}
                                                                         </div>
 
-                                                                        {/* Right: Vote Count and Details */}
-                                                                        {post.pollOptions && (
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="h-6 text-[11px] text-muted-foreground hover:text-primary px-2 gap-1.5"
-                                                                                onClick={() => setViewingPollId(post.id)}
-                                                                            >
-                                                                                <span className="font-semibold">{post.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} oy</span>
-                                                                                <span className="opacity-60">• Detaylar</span>
-                                                                            </Button>
+                                                                        <p
+                                                                            className="text-[11px] sm:text-xs text-foreground/80 leading-snug whitespace-pre-wrap break-all w-full"
+                                                                            style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}
+                                                                        >
+                                                                            {renderContentWithMentions(post.content)}
+                                                                        </p>
+
+                                                                        {/* Poll Display */}
+                                                                        {post.type === 'poll' && post.pollOptions && (
+                                                                            <div className="mt-2 space-y-1.5 w-full sm:w-80">
+
+                                                                                {post.pollOptions.map((opt, idx) => {
+                                                                                    const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
+                                                                                    const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes / totalVotes) * 100);
+
+                                                                                    // Vibrant Colors (Like original Feed)
+                                                                                    const colors = [
+                                                                                        { bg: 'from-purple-500/20 to-purple-600/20', glow: 'shadow-purple-500/20', border: 'border-purple-500/30', text: 'text-purple-400' },
+                                                                                        { bg: 'from-blue-500/20 to-blue-600/20', glow: 'shadow-blue-500/20', border: 'border-blue-500/30', text: 'text-blue-400' },
+                                                                                        { bg: 'from-pink-500/20 to-pink-600/20', glow: 'shadow-pink-500/20', border: 'border-pink-500/30', text: 'text-pink-400' },
+                                                                                        { bg: 'from-green-500/20 to-green-600/20', glow: 'shadow-green-500/20', border: 'border-green-500/30', text: 'text-green-400' },
+                                                                                    ];
+                                                                                    const color = colors[idx % colors.length];
+
+                                                                                    return (
+                                                                                        <button
+                                                                                            key={opt.id}
+                                                                                            onClick={() => handleVote(post.id, opt.id)}
+                                                                                            disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
+                                                                                            className={`w-full relative h-10 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                                                ? 'cursor-default opacity-60'
+                                                                                                : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
+                                                                                                }`}
+                                                                                        >
+                                                                                            {/* Progress Bar */}
+                                                                                            <div
+                                                                                                className={`absolute top-0 left-0 h-full bg-gradient-to-r ${color.bg} transition-all duration-700 ease-out`}
+                                                                                                style={{ width: `${percentage}%` }}
+                                                                                            />
+
+                                                                                            <div className="absolute inset-0 flex items-center justify-between px-3.5 z-10">
+                                                                                                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                                                                                    {/* Novel Cover */}
+                                                                                                    {opt.novelCover && (
+                                                                                                        <div className="w-7 h-9 bg-muted/50 rounded-md overflow-hidden flex-shrink-0 relative shadow-sm border border-white/10">
+                                                                                                            <Image
+                                                                                                                src={opt.novelCover}
+                                                                                                                alt={opt.novelTitle || 'Novel cover'}
+                                                                                                                fill
+                                                                                                                className="object-cover"
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                    <span className="font-medium truncate text-foreground text-xs sm:text-sm max-w-[60%] sm:max-w-[50%]">
+                                                                                                        {opt.novelTitle || opt.text}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                                {opt.votes > 0 && (
+                                                                                                    <span className={`font-mono font-semibold ${color.text} ml-2 shrink-0 text-sm`}>
+                                                                                                        {opt.votes}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </button>
+                                                                                    )
+                                                                                })}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Action Buttons and Vote Count - Bottom Row (Polls only) */}
+                                                                        {post.type === 'poll' && (
+                                                                            <div className="flex items-center justify-between mt-2">
+                                                                                {/* Left: Action Buttons */}
+                                                                                <div className="flex items-center gap-1">
+
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className={`h-6 w-6 ${savedPostIds.includes(post.id) ? 'text-primary fill-primary/20' : 'text-muted-foreground hover:text-foreground'}`}
+                                                                                        onClick={() => handleBookmark(post.id)}
+                                                                                        title="Kaydet"
+                                                                                    >
+                                                                                        <Bookmark size={14} fill={savedPostIds.includes(post.id) ? "currentColor" : "none"} />
+                                                                                    </Button>
+                                                                                    {isOwner && (
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="icon"
+                                                                                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                                                            onClick={() => handleDeletePost(post.id)}
+                                                                                            title="Sil"
+                                                                                        >
+                                                                                            <Trash2 size={14} />
+                                                                                        </Button>
+                                                                                    )}
+
+                                                                                    {/* Lock Icon for Expired Polls */}
+                                                                                    {post.expiresAt && post.expiresAt.toDate() < new Date() && (
+                                                                                        <span title="Anket kapandı - oy kullanılamaz" className="inline-flex cursor-default">
+                                                                                            <Button
+                                                                                                variant="ghost"
+                                                                                                size="icon"
+                                                                                                className="h-6 w-6 text-muted-foreground pointer-events-none opacity-100"
+                                                                                                disabled
+                                                                                            >
+                                                                                                <Lock size={14} />
+                                                                                            </Button>
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                {/* Right: Vote Count and Details */}
+                                                                                {post.pollOptions && (
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="h-6 text-[11px] text-muted-foreground hover:text-primary px-2 gap-1.5"
+                                                                                        onClick={() => setViewingPollId(post.id)}
+                                                                                    >
+                                                                                        <span className="font-semibold">{post.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} oy</span>
+                                                                                        <span className="opacity-60">• Detaylar</span>
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
                                                                         )}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        );
+                                                    })}
+                                                    {/* Sentinel for Infinite Scroll */}
+                                                    <div id="seed-sentinel" className="h-8 w-full flex justify-center py-4 scale-y-[-1]">
+                                                        {loadingMore && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>}
                                                     </div>
-                                                );
-                                            })}
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -867,14 +931,14 @@ export function CommunityPulse() {
 
                                 {/* POLLS TAB */}
                                 <TabsContent value="polls" className="flex-1 flex flex-col h-full mt-0 data-[state=inactive]:hidden">
-                                    <div ref={pollsScrollRef} className="space-y-2 pb-24 overflow-y-auto p-2 custom-scrollbar overscroll-y-contain">
+                                    <div ref={pollsScrollRef} className="absolute inset-x-0 top-3 bottom-3 px-3 overflow-y-auto space-y-4 custom-scrollbar overscroll-y-contain scale-y-[-1]">
                                         {posts.filter(p => p.type === 'poll').length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50 pt-12">
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50 pt-12 scale-y-[-1]">
                                                 <BarChart2 size={40} className="text-primary/50" />
                                                 <p className="text-sm">Henüz anket yok</p>
                                             </div>
-                                        ) : [...posts.filter(p => p.type === 'poll')].reverse().map((post) => (
-                                            <div key={post.id} className="flex gap-4 w-full max-w-2xl mx-auto">
+                                        ) : posts.filter(p => p.type === 'poll').map((post) => (
+                                            <div key={post.id} className="flex gap-4 w-full max-w-2xl mx-auto scale-y-[-1]">
                                                 <UserHoverCard
                                                     userId={post.userId}
                                                     username={post.userName}
@@ -886,7 +950,7 @@ export function CommunityPulse() {
                                                         src={post.userImage}
                                                         alt={post.userName}
                                                         frameId={post.userFrame}
-                                                        className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
+                                                        className="h-6 w-6 sm:h-8 sm:w-8 transition-transform hover:scale-105"
                                                         fallbackClass="text-[10px] bg-primary/10 text-primary"
                                                     />
                                                 </UserHoverCard>
@@ -906,17 +970,16 @@ export function CommunityPulse() {
                                                         <span className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</span>
                                                     </div>
 
-                                                    <div className={`relative px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800`}>
+                                                    <div className={`relative px-2 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800`}>
 
                                                         {post.content && (
-                                                            <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3">
+                                                            <div className="text-[11px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3">
                                                                 {renderContentWithMentions(post.content)}
                                                             </div>
                                                         )}
 
-                                                        {/* Poll Options */}
                                                         {post.pollOptions && post.pollOptions.length > 0 && (
-                                                            <div className="space-y-1.5 mt-2 w-80">
+                                                            <div className="space-y-1.5 mt-2 w-full sm:w-80">
                                                                 {post.pollOptions.map((opt, idx) => {
                                                                     const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
                                                                     const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes / totalVotes) * 100);
@@ -934,7 +997,7 @@ export function CommunityPulse() {
                                                                             key={opt.id}
                                                                             onClick={() => handleVote(post.id, opt.id)}
                                                                             disabled={post.expiresAt && post.expiresAt.toDate() < new Date()}
-                                                                            className={`w-full relative h-10 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
+                                                                            className={`w-full relative h-9 sm:h-12 rounded-lg bg-black/5 dark:bg-zinc-700/50 transition-all duration-200 overflow-hidden border border-black/5 dark:border-white/10 ${post.expiresAt && post.expiresAt.toDate() < new Date()
                                                                                 ? 'cursor-not-allowed opacity-60'
                                                                                 : 'hover:bg-black/10 dark:hover:bg-zinc-700/70 hover:border-primary/20'
                                                                                 }`}
@@ -955,7 +1018,7 @@ export function CommunityPulse() {
                                                                                             />
                                                                                         </div>
                                                                                     )}
-                                                                                    <span className="font-medium truncate text-foreground text-sm max-w-[50%]">
+                                                                                    <span className="font-medium truncate text-foreground text-xs sm:text-sm max-w-[60%] sm:max-w-[50%]">
                                                                                         {opt.novelTitle || opt.text}
                                                                                     </span>
                                                                                 </div>
@@ -1026,107 +1089,111 @@ export function CommunityPulse() {
                                 </TabsContent>
 
                                 {/* REVIEWS TAB */}
-                                <TabsContent value="reviews" ref={reviewsScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 mt-0 data-[state=inactive]:hidden custom-scrollbar overscroll-y-contain">
-                                    {reviews.length === 0 ? (
-                                        <p className="text-center text-muted-foreground py-8 text-sm">Henüz inceleme yok.</p>
-                                    ) : (
-                                        [...reviews].reverse().map((review) => (
-                                            <div key={review.id} className="flex gap-4 w-full max-w-2xl mx-auto">
-                                                <UserHoverCard
-                                                    userId={review.userId}
-                                                    username={review.userName}
-                                                    image={review.userImage}
-                                                    frame={review.userFrame}
-                                                    className="shrink-0 self-start"
-                                                >
-                                                    <UserAvatar
-                                                        src={review.userImage}
-                                                        alt={review.userName}
-                                                        frameId={review.userFrame}
-                                                        className="h-7 w-7 sm:h-8 sm:w-8 transition-transform hover:scale-105"
-                                                        fallbackClass="text-[10px] bg-primary/10 text-primary"
-                                                    />
-                                                </UserHoverCard>
+                                <TabsContent value="reviews" className="flex-1 flex flex-col h-full mt-0 data-[state=inactive]:hidden">
+                                    <div ref={reviewsScrollRef} className="absolute inset-x-0 top-3 bottom-3 px-3 overflow-y-auto space-y-4 custom-scrollbar overscroll-y-contain scale-y-[-1]">
+                                        {reviews.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 opacity-50 scale-y-[-1]">
+                                                <p className="text-center text-muted-foreground py-8 text-sm">Henüz inceleme yok.</p>
+                                            </div>
+                                        ) : (
+                                            reviews.map((review) => (
+                                                <div key={review.id} className="flex gap-4 w-full max-w-2xl mx-auto scale-y-[-1]">
+                                                    <UserHoverCard
+                                                        userId={review.userId}
+                                                        username={review.userName}
+                                                        image={review.userImage}
+                                                        frame={review.userFrame}
+                                                        className="shrink-0 self-start"
+                                                    >
+                                                        <UserAvatar
+                                                            src={review.userImage}
+                                                            alt={review.userName}
+                                                            frameId={review.userFrame}
+                                                            className="h-6 w-6 sm:h-8 sm:w-8 transition-transform hover:scale-105"
+                                                            fallbackClass="text-[10px] bg-primary/10 text-primary"
+                                                        />
+                                                    </UserHoverCard>
 
-                                                <div className="flex flex-col min-w-0 items-start w-full">
-                                                    <div className="flex items-center gap-2 mb-1 px-1">
-                                                        <UserHoverCard
-                                                            userId={review.userId}
-                                                            username={review.userName}
-                                                            image={review.userImage}
-                                                            frame={review.userFrame}
-                                                        >
-                                                            <span className="text-sm font-bold text-foreground/90 hover:underline decoration-primary cursor-pointer">
-                                                                {review.userName}
-                                                            </span>
-                                                        </UserHoverCard>
-                                                        <span className="text-[10px] text-muted-foreground">{timeAgo(review.createdAt)}</span>
-                                                    </div>
+                                                    <div className="flex flex-col min-w-0 items-start w-full">
+                                                        <div className="flex items-center gap-2 mb-1 px-1">
+                                                            <UserHoverCard
+                                                                userId={review.userId}
+                                                                username={review.userName}
+                                                                image={review.userImage}
+                                                                frame={review.userFrame}
+                                                            >
+                                                                <span className="text-sm font-bold text-foreground/90 hover:underline decoration-primary cursor-pointer">
+                                                                    {review.userName}
+                                                                </span>
+                                                            </UserHoverCard>
+                                                            <span className="text-[10px] text-muted-foreground">{timeAgo(review.createdAt)}</span>
+                                                        </div>
 
-                                                    <div className="relative px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800">
-                                                        {/* Rating */}
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <TooltipProvider>
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full text-xs font-medium border border-yellow-500/20 cursor-help hover:bg-yellow-500/20 transition-colors">
-                                                                            <Star size={10} className="fill-current" />
-                                                                            <span>{review.averageRating}</span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="bg-zinc-950 border-zinc-800 text-zinc-100 p-3 shadow-xl z-50" side="right" sideOffset={5}>
-                                                                        <div className="space-y-1.5 text-xs min-w-[140px]">
-                                                                            <div className="flex justify-between border-b border-white/10 pb-1.5 mb-1.5">
-                                                                                <span className="text-zinc-400 font-medium">Değerlendirme</span>
-                                                                                <span className="font-bold text-yellow-500">{review.averageRating}</span>
+                                                        <div className="relative px-2 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl shadow-sm w-full bg-zinc-900 border border-zinc-800">
+                                                            {/* Rating */}
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <TooltipProvider>
+                                                                    <Tooltip delayDuration={0}>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full text-xs font-medium border border-yellow-500/20 cursor-help hover:bg-yellow-500/20 transition-colors">
+                                                                                <Star size={10} className="fill-current" />
+                                                                                <span>{review.averageRating}</span>
                                                                             </div>
-                                                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Kurgu:</span> <b className="text-purple-400 ml-2">{review.ratings?.story || '-'}</b></div>
-                                                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Karakterler:</span> <b className="text-purple-400 ml-2">{review.ratings?.characters || '-'}</b></div>
-                                                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Dünya:</span> <b className="text-purple-400 ml-2">{review.ratings?.world || '-'}</b></div>
-                                                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Akıcılık:</span> <b className="text-purple-400 ml-2">{review.ratings?.flow || '-'}</b></div>
-                                                                            <div className="flex justify-between items-center"><span className="text-zinc-300">Dilbilgisi:</span> <b className="text-purple-400 ml-2">{review.ratings?.grammar || '-'}</b></div>
-                                                                        </div>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="bg-zinc-950 border-zinc-800 text-zinc-100 p-3 shadow-xl z-50" side="right" sideOffset={5}>
+                                                                            <div className="space-y-1.5 text-xs min-w-[140px]">
+                                                                                <div className="flex justify-between border-b border-white/10 pb-1.5 mb-1.5">
+                                                                                    <span className="text-zinc-400 font-medium">Değerlendirme</span>
+                                                                                    <span className="font-bold text-yellow-500">{review.averageRating}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between items-center"><span className="text-zinc-300">Kurgu:</span> <b className="text-purple-400 ml-2">{review.ratings?.story || '-'}</b></div>
+                                                                                <div className="flex justify-between items-center"><span className="text-zinc-300">Karakterler:</span> <b className="text-purple-400 ml-2">{review.ratings?.characters || '-'}</b></div>
+                                                                                <div className="flex justify-between items-center"><span className="text-zinc-300">Dünya:</span> <b className="text-purple-400 ml-2">{review.ratings?.world || '-'}</b></div>
+                                                                                <div className="flex justify-between items-center"><span className="text-zinc-300">Akıcılık:</span> <b className="text-purple-400 ml-2">{review.ratings?.flow || '-'}</b></div>
+                                                                                <div className="flex justify-between items-center"><span className="text-zinc-300">Dilbilgisi:</span> <b className="text-purple-400 ml-2">{review.ratings?.grammar || '-'}</b></div>
+                                                                            </div>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </div>
 
-                                                        {/* Content */}
-                                                        <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3 font-serif italic text-foreground/80 pl-2 border-l-2 border-primary/20">
-                                                            "{review.content}"
-                                                        </div>
+                                                            {/* Content */}
+                                                            <div className="text-[11px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3 font-serif italic text-foreground/80 pl-2 border-l-2 border-primary/20">
+                                                                "{review.content}"
+                                                            </div>
 
-                                                        {/* Novel Card */}
-                                                        <Link href={`/novel/${review.novelId}`} className="block group/card">
-                                                            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-black/40 border border-white/5 hover:bg-black/60 hover:border-primary/20 transition-all">
-                                                                <div className="w-10 h-14 bg-muted/20 rounded overflow-hidden shrink-0 shadow-sm border border-white/5 relative">
-                                                                    {review.novelCover ? (
-                                                                        <img src={review.novelCover} alt={review.novelTitle} className="w-full h-full object-cover" />
-                                                                    ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center">
-                                                                            <BookOpen size={16} className="text-muted-foreground/50" />
+                                                            {/* Novel Card */}
+                                                            <Link href={`/novel/${review.novelId}`} className="block group/card">
+                                                                <div className="flex items-center gap-3 p-2.5 rounded-xl bg-black/40 border border-white/5 hover:bg-black/60 hover:border-primary/20 transition-all">
+                                                                    <div className="w-10 h-14 bg-muted/20 rounded overflow-hidden shrink-0 shadow-sm border border-white/5 relative">
+                                                                        {review.novelCover ? (
+                                                                            <img src={review.novelCover} alt={review.novelTitle} className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                                <BookOpen size={16} className="text-muted-foreground/50" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h4 className="text-sm font-semibold truncate text-foreground/90 group-hover/card:text-primary transition-colors">
+                                                                            {review.novelTitle || `Roman #${review.novelId}`}
+                                                                        </h4>
+                                                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 group-hover/card:text-primary/80 transition-colors">
+                                                                            <span>İncelemeye Git</span>
+                                                                            <ArrowRight size={10} />
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="text-sm font-semibold truncate text-foreground/90 group-hover/card:text-primary transition-colors">
-                                                                        {review.novelTitle || `Roman #${review.novelId}`}
-                                                                    </h4>
-                                                                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 group-hover/card:text-primary/80 transition-colors">
-                                                                        <span>İncelemeye Git</span>
-                                                                        <ArrowRight size={10} />
+                                                                    </div>
+                                                                    <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground group-hover/card:bg-primary/10 group-hover/card:text-primary transition-all">
+                                                                        <ArrowRight size={14} />
                                                                     </div>
                                                                 </div>
-                                                                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground group-hover/card:bg-primary/10 group-hover/card:text-primary transition-all">
-                                                                    <ArrowRight size={14} />
-                                                                </div>
-                                                            </div>
-                                                        </Link>
+                                                            </Link>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
-                                    )}
+                                            ))
+                                        )}
+                                    </div>
                                 </TabsContent>
                             </Card>
                         </Tabs >

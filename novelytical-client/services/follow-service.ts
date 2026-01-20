@@ -61,7 +61,8 @@ export const FollowService = {
                     followerId,
                     userProfile.username,
                     userProfile.photoURL,
-                    userProfile.privacySettings?.privateProfile ? undefined : undefined // Frame could be added to profile interface later used here
+                    userProfile.privacySettings?.privateProfile ? undefined : undefined, // Frame
+                    `follow_${followerId}_${followingId}` // Unique ID to prevent duplicates
                 ));
             }
         } catch (error) {
@@ -130,6 +131,14 @@ export const FollowService = {
         }
 
         await deleteDoc(ref);
+
+        // Also remove the notification if it exists
+        try {
+            const notifId = `follow_${followerId}_${followingId}`;
+            await deleteDoc(doc(db, "notifications", notifId));
+        } catch (e) {
+            // Ignore error if notification doesn't exist
+        }
     },
 
     /**
@@ -247,5 +256,50 @@ export const FollowService = {
         return onSnapshot(q, (snapshot) => {
             callback(snapshot.size);
         });
+    },
+
+    /**
+     * Follows an author.
+     * Creates a document in 'author_follows' collection with ID `${userId}_${authorName}`.
+     */
+    async followAuthor(userId: string, authorName: string): Promise<void> {
+        if (!userId || !authorName) return;
+
+        // URL decode/encode normalization
+        const normalizedAuthor = decodeURIComponent(authorName);
+        const docId = `${userId}_${normalizedAuthor}`;
+        const ref = doc(db, "author_follows", docId);
+
+        await setDoc(ref, {
+            userId,
+            authorName: normalizedAuthor,
+            createdAt: serverTimestamp()
+        });
+    },
+
+    /**
+     * Unfollows an author.
+     */
+    async unfollowAuthor(userId: string, authorName: string): Promise<void> {
+        if (!userId || !authorName) return;
+
+        const normalizedAuthor = decodeURIComponent(authorName);
+        const docId = `${userId}_${normalizedAuthor}`;
+        const ref = doc(db, "author_follows", docId);
+
+        await deleteDoc(ref);
+    },
+
+    /**
+     * Checks if user is following an author.
+     */
+    async isFollowingAuthor(userId: string, authorName: string): Promise<boolean> {
+        if (!userId || !authorName) return false;
+
+        const normalizedAuthor = decodeURIComponent(authorName);
+        const docId = `${userId}_${normalizedAuthor}`;
+        const ref = doc(db, "author_follows", docId);
+        const snapshot = await getDoc(ref);
+        return snapshot.exists();
     }
 };

@@ -74,33 +74,51 @@ const calculateStatsFromCollections = async (novelId: number): Promise<NovelStat
     }
 };
 
+const statsCache = new Map<number, { data: NovelStats, timestamp: number }>();
+const STATS_CACHE_TTL = 10 * 60 * 1000; // 10 Minutes
+
 /**
  * Get stats for a specific novel
  */
 export const getNovelStats = async (novelId: number): Promise<NovelStats> => {
+    // 1. Check Cache
+    const cached = statsCache.get(novelId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp < STATS_CACHE_TTL)) {
+        return cached.data;
+    }
+
     try {
         const docRef = doc(db, COLLECTION_NAME, novelId.toString());
         const docSnap = await getDoc(docRef);
 
+        let stats: NovelStats;
+
         if (docSnap.exists()) {
             const data = docSnap.data();
-            return {
+            stats = {
                 reviewCount: data.reviewCount || 0,
                 libraryCount: data.libraryCount || 0,
                 viewCount: data.viewCount || 0,
                 commentCount: data.commentCount || 0
             };
+        } else {
+            // Stats document doesn't exist - calculate from actual collections
+            stats = await calculateStatsFromCollections(novelId);
+
+            // Initialize the stats document for future use (async, don't wait)
+            if (stats.reviewCount > 0 || stats.libraryCount > 0) {
+                setDoc(docRef, stats, { merge: true }).catch(console.error);
+            }
         }
 
-        // Stats document doesn't exist - calculate from actual collections
-        const calculatedStats = await calculateStatsFromCollections(novelId);
+        // 2. Set Cache
+        statsCache.set(novelId, {
+            data: stats,
+            timestamp: now
+        });
 
-        // Initialize the stats document for future use (async, don't wait)
-        if (calculatedStats.reviewCount > 0 || calculatedStats.libraryCount > 0) {
-            setDoc(docRef, calculatedStats, { merge: true }).catch(console.error);
-        }
-
-        return calculatedStats;
+        return stats;
     } catch (error) {
         console.error("Error fetching novel stats:", error);
         return { reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 };

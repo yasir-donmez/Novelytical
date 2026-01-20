@@ -26,10 +26,12 @@ export function ChatFloatingDialog() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false); // For infinite scroll
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Load user chats
+    // Load user chats... (unchanged)
     useEffect(() => {
         if (!user) return;
         const unsubscribe = ChatService.subscribeToUserChats(user.uid, (updatedChats) => {
@@ -38,7 +40,7 @@ export function ChatFloatingDialog() {
         return () => unsubscribe();
     }, [user]);
 
-    // Load active chat messages
+    // Load active chat messages (Hybrid: Realtime + History)
     useEffect(() => {
         if (!activeChat || !isOpen) {
             setMessages([]);
@@ -46,41 +48,53 @@ export function ChatFloatingDialog() {
         }
 
         setIsLoadingMessages(true);
-        const unsubscribe = ChatService.subscribeToMessages(activeChat.id, (msgs) => {
-            setMessages(msgs);
+        // Reset pagination
+        setHasMore(true);
+
+        const unsubscribe = ChatService.subscribeToMessages(activeChat.id, (realtimeMessages) => {
+            // Updated Logic:
+            // realtimeMessages are the LATEST 30 messages (Desc).
+            // We want to merge these into our existing list without losing fetched history.
+            // Since realtime updates usually affect the "Head" (newest), we replace the start.
+
+            setMessages(prev => {
+                // If clean slate (initial load), just take them
+                if (prev.length === 0) {
+                    setHasMore(realtimeMessages.length === 30);
+                    return realtimeMessages;
+                }
+
+                // If updating, merge based on ID to avoid dupes
+                const msgMap = new Map(prev.map(m => [m.id, m]));
+
+                // Update/Add new messages
+                realtimeMessages.forEach(m => msgMap.set(m.id, m));
+
+                // Convert back to array and sort DESC (Newest First)
+                const merged = Array.from(msgMap.values()).sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+
+                return merged;
+            });
+
             setIsLoadingMessages(false);
 
-            // Mark as read if there are unread messages
+            // Mark as read...
             if (activeChat.id && user) {
                 ChatService.markMessagesAsRead(activeChat.id, user.uid).catch(console.error);
             }
         });
 
-        // Add scroll event listener to detect when not at bottom (visually top due to reverse)
-        const scrollElement = scrollRef.current;
-        const handleScroll = () => {
-            if (scrollElement) {
-                // In reverse mode, scrollTop > 0 means we successfully scrolled "up" (visually) into history
-                // We want to show button if we are NOT at 0 (Visual Bottom)
-                const isAtBottom = Math.abs(scrollElement.scrollTop) < 50;
-                setShowScrollButton(!isAtBottom);
-            }
-        };
-
-        // Use a timeout to attach listener to ensure ref is ready
-        setTimeout(() => {
-            if (scrollRef.current) {
-                scrollRef.current.addEventListener('scroll', handleScroll);
-            }
-        }, 100);
-
         return () => {
             unsubscribe();
-            if (scrollRef.current) {
-                scrollRef.current.removeEventListener('scroll', handleScroll);
-            }
         };
     }, [activeChat, isOpen]);
+
+
+
+    // Auto-scroll logic... (keep or modify)
+    // If flipped container, scrollTop 0 is BOTTOM (Newest).
+    // So usually stays at bottom.
+
 
     // Cleanup scroll button logic - simpler now since default is bottom
     useEffect(() => {
@@ -168,6 +182,50 @@ export function ChatFloatingDialog() {
         }
     };
 
+    // Load More Function
+    const loadMore = async () => {
+        if (!activeChat || isLoadingMore || !hasMore || messages.length === 0) return;
+
+        setIsLoadingMore(true);
+        const lastMsg = messages[messages.length - 1]; // Oldest
+
+        try {
+            const { messages: older } = await ChatService.getOlderMessages(activeChat.id, lastMsg.createdAt);
+
+            if (older.length > 0) {
+                setMessages(prev => {
+                    const msgMap = new Map(prev.map(m => [m.id, m]));
+                    older.forEach(m => msgMap.set(m.id, m));
+                    return Array.from(msgMap.values()).sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                });
+                setHasMore(older.length === 20);
+            } else {
+                setHasMore(false);
+            }
+        } catch (e) {
+            console.error("Failed to load older messages", e);
+        }
+        setIsLoadingMore(false);
+    };
+
+    // New Observer
+    useEffect(() => {
+        const scrollElement = scrollRef.current;
+        if (!scrollElement) return;
+
+        const handleScroll = () => {
+            const isAtBottom = Math.abs(scrollElement.scrollTop) < 50;
+            setShowScrollButton(!isAtBottom);
+
+            if (!isLoadingMore && hasMore) {
+                loadMore();
+            }
+        };
+
+        scrollElement.addEventListener('scroll', handleScroll);
+        return () => scrollElement.removeEventListener('scroll', handleScroll);
+    }, [isLoadingMore, hasMore, messages, activeChat]);
+
     if (!user) return null;
 
     // Calculate position to prevent scrollbar shift
@@ -178,7 +236,7 @@ export function ChatFloatingDialog() {
     return (
         <div className={cn(
             "fixed z-50 flex flex-col items-end gap-4 pointer-events-none",
-            isOpen ? "inset-0 md:inset-auto md:bottom-4 md:right-4 w-full md:w-auto h-full md:h-auto" : "bottom-4 right-4 w-auto"
+            isOpen ? "inset-0 md:inset-auto md:bottom-4 md:right-4 w-full md:w-auto h-full md:h-auto" : "bottom-20 md:bottom-4 right-4 w-auto"
         )}>
             {isOpen && (
                 <div className="pointer-events-auto bg-background md:bg-background/80 md:backdrop-blur-xl border-0 md:border md:border-white/20 dark:md:border-white/10 shadow-none md:shadow-2xl md:shadow-primary/10 rounded-none md:rounded-3xl w-full md:w-[380px] h-full md:h-[600px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 zoom-in-95 fade-in duration-300 ease-out origin-bottom-right">
@@ -237,9 +295,14 @@ export function ChatFloatingDialog() {
                                                 <span className="text-sm">Sohbeti başlatın</span>
                                             </div>
                                         )}
-                                        {[...messages].reverse().map((msg, index, arr) => {
+                                        {/* Messages (already DESC, so in flipped container: 0 (Newest) is Bottom) */}
+                                        {messages.map((msg, index, arr) => {
                                             const isMe = msg.senderId === user?.uid;
+                                            // Since list is DESC (Newest...Oldest), previous message in time is index+1
                                             const prevMsg = arr[index + 1];
+                                            // Sequence check logic might need adjustment depending on visual grouping
+                                            // If we group by sender... 
+                                            // prevMsg (older) sender same as current?
                                             const isSequence = prevMsg && prevMsg.senderId === msg.senderId;
 
                                             return (
@@ -283,6 +346,12 @@ export function ChatFloatingDialog() {
                                                 </div>
                                             );
                                         })}
+                                        {/* Loading More Indicator (Visual Top) */}
+                                        {isLoadingMore && (
+                                            <div className="w-full flex justify-center py-2 scale-y-[-1]">
+                                                <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -412,29 +481,21 @@ export function ChatFloatingDialog() {
                 </div>
             )}
 
-            <Button
-                className={cn(
-                    "pointer-events-auto h-14 w-14 rounded-full shadow-xl bg-purple-600 hover:bg-purple-700 transition-all duration-300 relative group overflow-hidden",
-                    isOpen ? "rotate-90 scale-0 opacity-0 absolute bottom-0 right-0" : "scale-100 opacity-100 hover:scale-110"
-                )}
-                onClick={() => setIsOpen(true)}
-            >
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <MessageCircle className="h-6 w-6 text-primary-foreground relative z-10" />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse border-2 border-background">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                )}
-            </Button>
-
-            {/* Invisible closer for the button position when open, or just let minimize handle it */}
-            {isOpen && (
+            {!isOpen && (
                 <Button
-                    className="pointer-events-auto h-14 w-14 rounded-full shadow-lg bg-muted hover:bg-destructive/10 hover:text-destructive transition-all duration-300"
-                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                        "pointer-events-auto h-14 w-14 rounded-full shadow-xl bg-purple-600 hover:bg-purple-700 transition-all duration-300 relative group overflow-hidden",
+                        "scale-100 opacity-100 hover:scale-110"
+                    )}
+                    onClick={() => setIsOpen(true)}
                 >
-                    <X className="h-6 w-6" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <MessageCircle className="h-6 w-6 text-primary-foreground relative z-10" />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse border-2 border-background">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    )}
                 </Button>
             )}
         </div>

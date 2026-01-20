@@ -22,7 +22,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { db } from "@/lib/firebase"; // For realtime updates if needed, but polling is simpler for now
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, limit } from "firebase/firestore";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,29 +36,34 @@ export default function NotificationBell() {
     useEffect(() => {
         if (!user) return;
 
-        // Realtime listener for notifications
-        const q = query(
-            collection(db, "notifications"),
-            where("recipientId", "==", user.uid),
-            where("isRead", "==", false)
-        );
+        // Single fetch to save quota instead of realtime listener
+        const fetchNotifications = async () => {
+            try {
+                const q = query(
+                    collection(db, "notifications"),
+                    where("recipientId", "==", user.uid),
+                    where("isRead", "==", false),
+                    limit(20) // CRITICAL: Limit reads to prevent quota explosion if spam exists
+                );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const unreadData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as Notification));
+                const snapshot = await import("firebase/firestore").then(mod => mod.getDocs(q));
 
-            // Sort by createdAt desc in client since snapshot order isn't guaranteed without index/sort in query
-            // But complex query requires index. Let's sort locally for the Dropdown.
-            unreadData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                const unreadData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                } as Notification));
 
-            setNotifications(unreadData);
-            setUnreadCount(unreadData.length);
-        });
+                unreadData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
 
-        return () => unsubscribe();
-    }, [user]);
+                setNotifications(unreadData);
+                setUnreadCount(unreadData.length);
+            } catch (error) {
+                console.error("Error fetching notifications:", error);
+            }
+        };
+
+        fetchNotifications();
+    }, [user?.uid]);
 
     const handleRead = async (id: string, link: string) => {
         // Optimistic
@@ -123,22 +128,11 @@ export default function NotificationBell() {
 }
 
 function BellNotificationItem({ notification, onRead }: { notification: Notification, onRead: (id: string, link: string) => void }) {
-    const [senderFrame, setSenderFrame] = useState(notification.senderFrame);
-    const [senderImage, setSenderImage] = useState(notification.senderImage);
-
-    useEffect(() => {
-        if (notification.senderId) {
-            import("firebase/firestore").then(({ doc, getDoc }) => {
-                getDoc(doc(db, "users", notification.senderId!)).then(userDoc => {
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        setSenderFrame(userData.selectedFrame);
-                        setSenderImage(userData.photoURL);
-                    }
-                });
-            });
-        }
-    }, [notification.senderId]);
+    // Optimized: Do not fetch user doc for every item to save quota. 
+    // Rely on cached info in notification or simple fallback.
+    // Ensure 'senderFrame' and 'senderImage' are passed in notification object correctly.
+    const senderFrame = notification.senderFrame;
+    const senderImage = notification.senderImage;
 
     return (
         <Link

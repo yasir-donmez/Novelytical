@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Review } from "@/services/review-service";
+import { Review, getReviewsPaginated } from "@/services/review-service";
 import ReviewForm from "./review-form";
 import ReviewList from "./review-list";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { ArrowUpDown, Loader2 } from "lucide-react";
 
 interface ReviewSectionProps {
     novelId: number;
@@ -25,38 +23,55 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortOption, setSortOption] = useState("newest");
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
 
+    // Initial Fetch
     useEffect(() => {
-        setLoading(true);
-        const reviewsRef = collection(db, "reviews");
-
-        let q = query(reviewsRef, where("novelId", "==", novelId));
-
-        // Sorting Logic
-        if (sortOption === "newest") {
-            q = query(q, orderBy("createdAt", "desc"));
-        } else if (sortOption === "oldest") {
-            q = query(q, orderBy("createdAt", "asc"));
-        } else if (sortOption === "likes_desc") {
-            q = query(q, orderBy("likes", "desc"));
-        } else if (sortOption === "dislikes_desc") {
-            q = query(q, orderBy("unlikes", "desc"));
-        }
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const reviewsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as Review));
-            setReviews(reviewsData);
+        const fetchInitial = async () => {
+            setLoading(true);
+            const { reviews: newReviews, lastVisible } = await getReviewsPaginated(novelId, sortOption, 10, null);
+            setReviews(newReviews);
+            setLastDoc(lastVisible);
+            setHasMore(newReviews.length === 10);
             setLoading(false);
-        }, (error) => {
-            console.error("Error fetching reviews realtime:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        };
+        fetchInitial();
     }, [novelId, sortOption]);
+
+    // Load More Function
+    const loadMore = async () => {
+        if (loadingMore || !hasMore || !lastDoc) return;
+        setLoadingMore(true);
+        const { reviews: newReviews, lastVisible } = await getReviewsPaginated(novelId, sortOption, 10, lastDoc);
+
+        if (newReviews.length > 0) {
+            setReviews(prev => [...prev, ...newReviews]);
+            setLastDoc(lastVisible);
+            setHasMore(newReviews.length === 10);
+        } else {
+            setHasMore(false);
+        }
+        setLoadingMore(false);
+    };
+
+    // Intersection Observer for Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
+                    loadMore();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const sentinel = document.getElementById("review-sentinel");
+        if (sentinel) observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [loading, loadingMore, hasMore, lastDoc]);
 
     return (
         <div className="max-w-3xl mx-auto">
@@ -87,13 +102,19 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
 
             {loading ? (
                 <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <Loader2 className="animate-spin h-8 w-8 text-purple-600" />
                 </div>
             ) : (
-                <ReviewList reviews={reviews} onDelete={async (id) => {
-                    // Deletion logic handled by list component or service, 
-                    // onSnapshot updates the list automatically.
-                }} />
+                <>
+                    <ReviewList reviews={reviews} onDelete={async (id) => {
+                        setReviews(prev => prev.filter(r => r.id !== id));
+                    }} />
+
+                    {/* Sentinel for Infinite Scroll */}
+                    <div id="review-sentinel" className="h-4 w-full flex justify-center mt-4">
+                        {loadingMore && <Loader2 className="animate-spin h-4 w-4 text-muted-foreground" />}
+                    </div>
+                </>
             )}
         </div>
     );

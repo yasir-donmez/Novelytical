@@ -18,7 +18,7 @@ interface ScrollableSectionProps {
 
 export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, sectionClassName, hideBorder = false, headerAction }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [hasOverflow, setHasOverflow] = useState(false);
+    const [hasOverflow, setHasOverflow] = useState(true);
     const [isAtStart, setIsAtStart] = useState(true);
     const [isAtEnd, setIsAtEnd] = useState(false);
 
@@ -32,8 +32,8 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
 
 
             setIsAtStart(scrollLeft <= 2);
-            // Allow a tolerance (2px) for calculation errors
-            setIsAtEnd(Math.abs(scrollWidth - clientWidth - scrollLeft) < 2);
+            // Allow a larger tolerance (10px) for calculation errors
+            setIsAtEnd(Math.abs(scrollWidth - clientWidth - scrollLeft) < 10);
         }
     };
 
@@ -71,10 +71,24 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
         e.preventDefault();
         e.stopPropagation();
         if (scrollContainerRef.current) {
-            const { clientWidth } = scrollContainerRef.current;
+            const { clientWidth, scrollLeft, scrollWidth } = scrollContainerRef.current;
+            // Use slightly less than full width to ensure we see the 'next' item, but for 'full' step we likely want exactly one screen.
+            // However, sticking to clientWidth is safest for paging.
             const step = scrollStep === 'full' ? clientWidth : clientWidth / 2;
-            const scrollAmount = direction === 'left' ? -step : step;
-            scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+
+            const maxScroll = scrollWidth - clientWidth;
+            let targetScroll = direction === 'left' ? scrollLeft - step : scrollLeft + step;
+
+            // Smart snapping to edges
+            const tolerance = 50; // 50px tolerance to snap to edge
+            if (targetScroll <= tolerance) {
+                targetScroll = 0;
+            } else if (targetScroll >= maxScroll - tolerance) {
+                targetScroll = maxScroll;
+            }
+
+            scrollContainerRef.current.scrollTo({ left: targetScroll, behavior: 'smooth' });
+
             // setTimeout to check arrow state after scroll animation
             setTimeout(checkScroll, 300);
         }
@@ -150,11 +164,15 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
                     {children}
                 </div>
 
-                {/* Left Gradient Overlay (Desktop Only) - Always visible */}
-                <div className="hidden md:block absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-20 pointer-events-none" />
+                {/* Left Gradient Overlay (Desktop Only) - Hide when at start or no overflow */}
+                {hasOverflow && !isAtStart && (
+                    <div className="hidden md:block absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-20 pointer-events-none" />
+                )}
 
-                {/* Right Gradient Overlay (Desktop Only) - Always visible */}
-                <div className="hidden md:block absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
+                {/* Right Gradient Overlay (Desktop Only) - Hide when at end or no overflow */}
+                {hasOverflow && !isAtEnd && (
+                    <div className="hidden md:block absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
+                )}
             </div>
         </section>
     );

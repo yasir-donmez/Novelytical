@@ -176,6 +176,11 @@ body {
     animation-delay: 4s;
   }
 
+  .mask-linear-fade {
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
+
   /* 🌈 AI Premium Search Effects */
   @keyframes rainbow-border {
     0% {
@@ -225,10 +230,41 @@ body {
     }
   }
 
+  @keyframes marquee-infinite {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee-infinite 3s linear infinite;
+  }
+  
+  /* Pause by default, run on hover? Or Run by default, pause on hover? 
+     User said "Taşarsa kayacak" (If overflows it slides). 
+     Usually implies constant motion or motion on hover. 
+     Let's enable it on group hover for less distraction. */
+  .animate-marquee-hover {
+    display: flex;
+    width: max-content;
+    animation: marquee-infinite 3s linear infinite;
+    animation-play-state: paused;
+  }
+  
+  .group:hover .animate-marquee-hover {
+    animation-play-state: running;
+  }
+
   .ai-search-input {
     position: relative;
   }
 
+  /* Ensure rainbow border ONLY shows on focus/click, never on hover */
   .ai-search-input::before {
     content: '';
     position: absolute;
@@ -251,6 +287,12 @@ body {
     opacity: 0;
     transition: opacity 0.3s;
     z-index: -1;
+    pointer-events: none; /* Prevent interference */
+  }
+
+  .ai-search-input:hover::before {
+    /* Explicitly keep opacity 0 on hover unless focused */
+    opacity: 0;
   }
 
   .ai-search-input:focus-within::before {

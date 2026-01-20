@@ -27,6 +27,8 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
             title={title}
             icon={icon}
             hideBorder={true}
+            scrollStep="full"
+            hideGradients={true}
             headerAction={
                 <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 hover:text-primary" asChild>
                     <Link href="/romanlar?sort=rank_desc">
@@ -36,7 +38,7 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
             }
         >
             {novels.map((novel: any, index: number) => (
-                <div key={novel.id} className="relative w-[210px] sm:w-[250px] flex-none group/rank">
+                <div key={novel.id} className="relative w-[210px] sm:w-[230px] flex-none group/rank">
                     {/* Big Ranking Number */}
                     <div className="absolute -left-2 bottom-4 z-10 font-bold text-[9rem] leading-none select-none pointer-events-none drop-shadow-md transition-all duration-300
                         text-transparent bg-clip-text

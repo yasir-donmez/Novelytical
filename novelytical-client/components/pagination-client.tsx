@@ -10,7 +10,7 @@ import {
     PaginationPrevious,
     PaginationEllipsis,
 } from '@/components/ui/pagination';
-import { useEffect } from 'react';
+import { useEffect, useRef, useTransition } from 'react';
 
 interface PaginationProps {
     totalPages: number;
@@ -24,19 +24,28 @@ export function PaginationClient({ totalPages, currentPage, pageSize, totalRecor
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Scroll to top on page change
+    const isFirstRender = useRef(true);
+    const [isPending, startTransition] = useTransition();
+
+    // Scroll to top on page change, but skip initial render (browser handles restoration)
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [currentPage]);
 
     const handlePageChange = (page: number) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (page === 1) {
-            params.delete('page');
-        } else {
-            params.set('page', page.toString());
-        }
-        router.push(`${pathname}?${params.toString()}`);
+        startTransition(() => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (page === 1) {
+                params.delete('page');
+            } else {
+                params.set('page', page.toString());
+            }
+            router.push(`${pathname}?${params.toString()}`);
+        });
     };
 
     if (totalPages <= 1) return null;

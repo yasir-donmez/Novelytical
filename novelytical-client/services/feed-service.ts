@@ -94,7 +94,40 @@ export const getLatestPosts = async (count: number = 20): Promise<Post[]> => {
     }
 };
 
-export const subscribeToLatestPosts = (count: number = 20, callback: (posts: Post[]) => void) => {
+
+export const getPostsPaginated = async (
+    limitCount: number = 10,
+    lastDoc: any = null
+): Promise<{ posts: Post[], lastVisible: any }> => {
+    try {
+        let q = query(
+            collection(db, COLLECTION_NAME),
+            orderBy("createdAt", "desc")
+        );
+
+        if (lastDoc) {
+            const { startAfter } = await import("firebase/firestore");
+            q = query(q, startAfter(lastDoc));
+        }
+
+        q = query(q, limit(limitCount));
+
+        const querySnapshot = await getDocs(q);
+        const posts = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Post));
+
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        return { posts, lastVisible };
+    } catch (error) {
+        console.error("Error fetching paginated posts:", error);
+        return { posts: [], lastVisible: null };
+    }
+};
+
+export const subscribeToLatestPosts = (count: number = 20, callback: (posts: Post[], lastVisible: any) => void, onError?: (error: any) => void) => {
     const q = query(
         collection(db, COLLECTION_NAME),
         orderBy("createdAt", "desc"),
@@ -106,9 +139,11 @@ export const subscribeToLatestPosts = (count: number = 20, callback: (posts: Pos
             id: doc.id,
             ...doc.data()
         } as Post));
-        callback(posts);
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        callback(posts, lastVisible);
     }, (error) => {
         console.error("Error in post subscription:", error);
+        if (onError) onError(error);
     });
 };
 

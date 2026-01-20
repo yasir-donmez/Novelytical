@@ -22,6 +22,7 @@ export async function fetchNovels(params: {
     maxChapters?: number | null;
     minRating?: number | null;
     maxRating?: number | null;
+    revalidate?: number; // Optional caching
 }) {
     const queryParams = new URLSearchParams();
 
@@ -42,11 +43,18 @@ export async function fetchNovels(params: {
     try {
         const url = `${getApiUrl()}/api/novels?${queryParams.toString()}`;
 
-        const res = await fetch(url, {
+        const fetchOptions: RequestInit = {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-            cache: 'no-store' // Dynamic search, do not cache by default or use revalidate if preferred
-        });
+        };
+
+        if (params.revalidate !== undefined) {
+            (fetchOptions as any).next = { revalidate: params.revalidate };
+        } else {
+            fetchOptions.cache = 'no-store';
+        }
+
+        const res = await fetch(url, fetchOptions);
 
         if (!res.ok) {
             console.error('[fetchNovels] Failed:', res.status, res.statusText);

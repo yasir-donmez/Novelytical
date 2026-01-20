@@ -12,7 +12,8 @@ import {
     serverTimestamp,
     Timestamp,
     limit,
-    writeBatch
+    writeBatch,
+    setDoc
 } from "firebase/firestore";
 
 export type NotificationType = 'reply' | 'system' | 'like' | 'dislike' | 'follow';
@@ -43,12 +44,13 @@ export const createNotification = async (
     senderId?: string,
     senderName?: string,
     senderImage?: string,
-    senderFrame?: string
+    senderFrame?: string,
+    uniqueId?: string // Optional deterministic ID for deduplication
 ) => {
     try {
         if (recipientId === senderId) return; // Don't notify self
 
-        await addDoc(collection(db, COLLECTION_NAME), {
+        const notificationData = {
             recipientId,
             type,
             content,
@@ -60,7 +62,15 @@ export const createNotification = async (
             senderFrame: senderFrame || null,
             isRead: false,
             createdAt: serverTimestamp()
-        });
+        };
+
+        if (uniqueId) {
+            // Idempotent write: overwrites existing notification with same ID
+            await setDoc(doc(db, COLLECTION_NAME, uniqueId), notificationData);
+        } else {
+            // Standard auto-ID
+            await addDoc(collection(db, COLLECTION_NAME), notificationData);
+        }
     } catch (error) {
         console.error("Error creating notification:", error);
     }

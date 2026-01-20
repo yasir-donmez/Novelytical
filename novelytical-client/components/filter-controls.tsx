@@ -1,5 +1,7 @@
 'use client';
 
+import { useTransition } from 'react';
+
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { CategoryModal } from '@/components/category-modal';
 import { AdvancedFiltersModal } from '@/components/advanced-filters-modal';
@@ -9,6 +11,7 @@ export function FilterControls({ totalRecords, searchString }: { totalRecords?: 
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [isPending, startTransition] = useTransition();
     const tagFilters = searchParams.getAll('tag');
     const sortOrder = searchParams.get('sort') || 'rank_desc';
 
@@ -21,7 +24,9 @@ export function FilterControls({ totalRecords, searchString }: { totalRecords?: 
     const updateParams = (newParams: URLSearchParams) => {
         // Reset page on filter change
         newParams.set('page', '1');
-        router.push(`${pathname}?${newParams.toString()}`);
+        startTransition(() => {
+            router.push(`${pathname}?${newParams.toString()}`);
+        });
     };
 
     return (

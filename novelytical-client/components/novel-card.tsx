@@ -314,7 +314,6 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                         </div>
                     )}
                     <CardContent className={cn("px-4 pb-2 pt-3 flex-grow", aspect === 'auto' && "hidden")}>
-
                         <h3 className={cn("font-semibold text-base md:text-lg line-clamp-2 leading-7 min-h-[3.5rem] mb-2", aspect === 'auto' && "hidden")}>{novel.title}</h3>
                         <p className="text-sm text-muted-foreground truncate h-5 flex items-center mb-2">{novel.author}</p>
                         <div className="flex items-center gap-2 text-sm h-5">
@@ -324,18 +323,44 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                             <span className="text-muted-foreground">{novel.chapterCount} Bölüm</span>
                         </div>
                     </CardContent>
-                    <CardFooter className={cn("p-4 pt-0 flex-wrap gap-2 mt-auto", aspect === 'auto' && "hidden")}>
-                        {novel.tags && novel.tags.length > 0 ? (
-                            novel.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs h-5 px-2 flex items-center justify-center">
-                                    {tag}
-                                </Badge>
-                            ))
-                        ) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground/50 border-border/30 italic">
-                                Etiket Yok
-                            </Badge>
-                        )}
+                    {/* Fixed Height Footer: No Wrap, Horizontal Scroll */}
+                    {/* Fixed Height Footer: Continuous Marquee on Hover */}
+                    <CardFooter className={cn("px-4 pt-0 gap-2 mt-auto h-12 flex items-center overflow-hidden mask-linear-fade", aspect === 'auto' && "hidden")}>
+                        <div className="w-full overflow-hidden relative">
+                            {/* Marquee Wrapper: ALWAYS nowrap. Animate if > 1 tag or always? 
+                               Let's use a lower threshold (>1) or just always allow it. 
+                               If consistent height is priority, NEVER wrap. */}
+                            <div className={cn(
+                                "flex gap-2 items-center",
+                                novel.tags && novel.tags.length > 1 ? "animate-marquee-hover" : "flex-nowrap"
+                            )}>
+                                {/* Original Tags */}
+                                {novel.tags && novel.tags.length > 0 ? (
+                                    novel.tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="text-xs h-6 px-2 whitespace-nowrap flex-shrink-0">
+                                            {tag}
+                                        </Badge>
+                                    ))
+                                ) : (
+                                    <Badge variant="outline" className="text-xs text-muted-foreground/50 border-border/30 italic h-6 whitespace-nowrap">
+                                        Etiket Yok
+                                    </Badge>
+                                )}
+
+                                {/* Duplicate Tags for Loop - Lower threshold to > 1 to match the class above */}
+                                {novel.tags && novel.tags.length > 1 && (
+                                    <>
+                                        {/* Spacer for loop */}
+                                        <div className="w-4 flex-shrink-0" />
+                                        {novel.tags.map((tag, i) => (
+                                            <Badge key={`${tag}-dup-${i}`} variant="secondary" className="text-xs h-6 px-2 whitespace-nowrap flex-shrink-0">
+                                                {tag}
+                                            </Badge>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     </CardFooter>
                 </Link>
             </div >

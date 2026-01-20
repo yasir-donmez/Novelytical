@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { getNovelStats, calculateRank } from "@/services/novel-stats-service";
-import { TrendingUp, BookOpen, Star } from "lucide-react";
+import { TrendingUp, BookOpen, Star, Users } from "lucide-react";
+import { PaginationClient } from "@/components/pagination-client";
 
 export const metadata: Metadata = {
     title: "Yazarlar | Novelytical",
@@ -57,20 +58,31 @@ async function getTopAuthors() {
                 const sortedTopNovels = stats.topNovels.sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
                 return { name, ...stats, topNovels: sortedTopNovels };
             })
-            .sort((a, b) => b.totalRankScore - a.totalRankScore)
-            .slice(0, 50);
-
+            .sort((a, b) => b.totalRankScore - a.totalRankScore); // Return all authors
     } catch (error) {
         console.error("Failed to fetch authors:", error);
         return [];
     }
 }
 
-export default async function YazarlarPage() {
-    const authors = await getTopAuthors();
+export default async function YazarlarPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+    const allAuthors = await getTopAuthors();
+
+    // Pagination Logic
+    const params = await searchParams;
+    const currentPage = Number(params?.page) || 1;
+    const pageSize = 30;
+    const totalAuthors = allAuthors.length;
+    const totalPages = Math.ceil(totalAuthors / pageSize);
+
+    // Get current page data
+    const authors = allAuthors.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const getRankStyles = (index: number) => {
-        switch (index) {
+        // Absolute index for correct ranking styling across pages
+        const absoluteIndex = (currentPage - 1) * pageSize + index;
+
+        switch (absoluteIndex) {
             case 0: // Gold
                 return {
                     border: "border-yellow-500/50",
@@ -151,12 +163,18 @@ export default async function YazarlarPage() {
     };
 
     return (
-        <main className="container px-4 py-8 md:py-12 min-h-screen">
+        <div className="container px-4 pb-8 md:pb-12 pt-20">
             <div className="max-w-6xl mx-auto">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                {/* Visual Anchor Header */}
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
+                        <Users className="h-6 w-6 text-purple-500 fill-purple-500/20" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold mb-2">Popüler Yazarlar</h1>
-                        <p className="text-sm md:text-base text-muted-foreground">
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">
+                            Popüler Yazarlar
+                        </h2>
+                        <p className="text-sm md:text-base text-muted-foreground mt-1">
                             En yüksek etkileşim ve okunma oranına sahip yazarlar.
                         </p>
                     </div>
@@ -167,68 +185,81 @@ export default async function YazarlarPage() {
                         Henüz yazar verisi yok.
                     </div>
                 ) : (
-                    <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {authors.map((author, index) => {
-                            const styles = getRankStyles(index);
-                            return (
-                                <Link
-                                    href={`/yazarlar/${encodeURIComponent(author.name)}`}
-                                    key={author.name}
-                                    className="block group"
-                                >
-                                    <div
-                                        className={`p-4 md:p-5 rounded-xl border transition-all duration-300 h-full relative overflow-hidden ${styles.border} ${styles.bg}`}
+                    <>
+                        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                            {authors.map((author, index) => {
+                                const styles = getRankStyles(index);
+                                // Absolute rank for display
+                                const displayRank = (currentPage - 1) * pageSize + index + 1;
+
+                                return (
+                                    <Link
+                                        href={`/yazarlar/${encodeURIComponent(author.name)}`}
+                                        key={author.name}
+                                        className="block group"
                                     >
-                                        <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${styles.icon}`}>
-                                            <TrendingUp className="w-10 h-10 md:w-12 md:h-12" />
-                                        </div>
+                                        <div
+                                            className={`p-4 md:p-5 rounded-xl border transition-all duration-300 h-full relative overflow-hidden ${styles.border} ${styles.bg}`}
+                                        >
+                                            <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${styles.icon}`}>
+                                                <TrendingUp className="w-10 h-10 md:w-12 md:h-12" />
+                                            </div>
 
-                                        <div className="flex items-center gap-4 z-10 relative">
-                                            {/* Dynamic Avatar */}
-                                            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden relative border shadow-inner shrink-0 ${styles.border}`}>
-                                                {renderAvatar(author.topNovels)}
-                                                {/* Rank Badge Overlay */}
-                                                <div className={`absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]`}>
-                                                    <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-bold shadow-md ${styles.badge}`}>
-                                                        {index + 1}
+                                            <div className="flex items-center gap-4 z-10 relative">
+                                                {/* Dynamic Avatar */}
+                                                <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden relative border shadow-inner shrink-0 ${styles.border}`}>
+                                                    {renderAvatar(author.topNovels)}
+                                                    {/* Rank Badge Overlay */}
+                                                    <div className={`absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]`}>
+                                                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-bold shadow-md ${styles.badge}`}>
+                                                            {displayRank}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className={`font-bold text-base md:text-lg truncate transition-colors mb-1 ${displayRank <= 3 ? styles.text : styles.icon}`}>{author.name}</h3>
+
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-3">
+                                                        <span className="flex items-center gap-1">
+                                                            <BookOpen className="w-3 h-3" />
+                                                            {author.count} Kitap
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Star className="w-3 h-3" />
+                                                            {new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(author.totalChapters)} Bölüm
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${displayRank <= 3 ? `bg-gradient-to-r ${styles.badge.split(' ').slice(0, 2).join(' ')}` : 'bg-gradient-to-r from-primary to-purple-500'}`}
+                                                                style={{ width: `${Math.min(100, (author.totalRankScore / allAuthors[0].totalRankScore) * 100)}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className={`text-xs font-bold ${displayRank <= 3 ? styles.icon : 'text-primary'}`}>
+                                                            {new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(author.totalRankScore)}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className={`font-bold text-base md:text-lg truncate transition-colors mb-1 ${index > 2 ? styles.text : styles.icon}`}>{author.name}</h3>
-
-                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-3">
-                                                    <span className="flex items-center gap-1">
-                                                        <BookOpen className="w-3 h-3" />
-                                                        {author.count} Kitap
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Star className="w-3 h-3" />
-                                                        {new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(author.totalChapters)} Bölüm
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full ${index < 3 ? `bg-gradient-to-r ${styles.badge.split(' ').slice(0, 2).join(' ')}` : 'bg-gradient-to-r from-primary to-purple-500'}`}
-                                                            style={{ width: `${Math.min(100, (author.totalRankScore / authors[0].totalRankScore) * 100)}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className={`text-xs font-bold ${index < 3 ? styles.icon : 'text-primary'}`}>
-                                                        {new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(author.totalRankScore)}
-                                                    </span>
-                                                </div>
-                                            </div>
                                         </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        {/* Pagination Control */}
+                        <PaginationClient
+                            totalPages={totalPages}
+                            currentPage={currentPage}
+                            pageSize={pageSize}
+                            totalRecords={totalAuthors}
+                        />
+                    </>
                 )}
             </div>
-        </main>
+        </div>
     );
 }

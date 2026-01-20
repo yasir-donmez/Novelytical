@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Home, BookOpen, MessageSquare, Menu, LayoutGrid } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +12,31 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ onMenuClick }: MobileBottomNavProps) {
     const pathname = usePathname()
+    const [isVisible, setIsVisible] = useState(true)
+
+    useEffect(() => {
+        let lastScrollY = window.scrollY
+
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY
+
+            // Show if at top or scrolling up
+            if (currentScrollY < 10) {
+                setIsVisible(true)
+            } else if (currentScrollY > lastScrollY + 5) {
+                // Scrolling down -> Hide
+                setIsVisible(false)
+            } else if (currentScrollY < lastScrollY - 5) {
+                // Scrolling up -> Show
+                setIsVisible(true)
+            }
+
+            lastScrollY = currentScrollY
+        }
+
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
 
     const navItems = [
         {
@@ -36,7 +62,10 @@ export function MobileBottomNav({ onMenuClick }: MobileBottomNavProps) {
     ]
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/40 pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div className={cn(
+            "fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/40 pb-[env(safe-area-inset-bottom)] md:hidden transition-transform duration-300 ease-in-out",
+            !isVisible && "translate-y-full"
+        )}>
             <nav className="flex items-center justify-around h-16 px-2">
                 {navItems.map((item, index) => {
                     const isActive = item.href ? pathname === item.href : false

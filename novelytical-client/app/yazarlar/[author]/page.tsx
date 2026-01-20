@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getNovelsByAuthor, getSimilarNovels } from "@/lib/data/novels";
 import { getNovelStats, calculateRank } from "@/services/novel-stats-service";
+import { FollowService } from "@/services/follow-service";
+import { useAuth } from "@/contexts/auth-context";
+import { toast } from "sonner";
 import { NovelListDto } from "@/types/novel";
 import { NovelCard } from "@/components/novel-card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,47 @@ export default function AuthorDetailPage() {
         grammar: number;
     } | null>(null);
     const [totalRankScore, setTotalRankScore] = useState(0);
+
+    // Follow Logic
+    const { user } = useAuth();
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
+
+    useEffect(() => {
+        const checkFollowStatus = async () => {
+            if (user && authorName) {
+                const following = await FollowService.isFollowingAuthor(user.uid, authorName);
+                setIsFollowing(following);
+            }
+        };
+        checkFollowStatus();
+    }, [user, authorName]);
+
+    const handleFollow = async () => {
+        if (!user) {
+            toast.error("Takip etmek için giriş yapmalısınız.");
+            router.push("/login");
+            return;
+        }
+
+        setFollowLoading(true);
+        try {
+            if (isFollowing) {
+                await FollowService.unfollowAuthor(user.uid, authorName);
+                setIsFollowing(false);
+                toast.success(`"${authorName}" takipten çıkarıldı.`);
+            } else {
+                await FollowService.followAuthor(user.uid, authorName);
+                setIsFollowing(true);
+                toast.success(`"${authorName}" takip ediliyor.`);
+            }
+        } catch (error) {
+            console.error("Follow error:", error);
+            toast.error("İşlem başarısız oldu.");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
 
     const renderAvatar = (novels: { coverUrl: string }[]) => {
         if (!novels || novels.length === 0) {
@@ -236,14 +280,16 @@ export default function AuthorDetailPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <Button className="w-full" size="lg">
+                    <div className="w-full">
+                        <Button
+                            className="w-full"
+                            size="lg"
+                            onClick={handleFollow}
+                            variant={isFollowing ? "secondary" : "default"}
+                            disabled={followLoading}
+                        >
                             <User className="mr-2 h-4 w-4" />
-                            Takip Et
-                        </Button>
-                        <Button variant="outline" className="w-full" size="lg">
-                            <TrendingUp className="mr-2 h-4 w-4" />
-                            Paylaş
+                            {isFollowing ? "Takip Ediliyor" : "Takip Et"}
                         </Button>
                     </div>
 

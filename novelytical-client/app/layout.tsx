@@ -106,7 +106,9 @@ export default function RootLayout({
               <SiteHeader />
               <Toaster position="top-right" richColors />
               <ScrollManager />
-              {children}
+              <main className="min-h-screen">
+                {children}
+              </main>
               <Footer />
               <div className="h-16 md:hidden w-full flex-shrink-0" aria-hidden="true" />
               <ChatFloatingDialog />

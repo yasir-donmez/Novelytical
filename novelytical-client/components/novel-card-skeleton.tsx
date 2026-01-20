@@ -1,14 +1,15 @@
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { CardContent, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card'; // We import Card but don't use it for the wrapper to avoid padding issues
 
 export function NovelCardSkeleton() {
     return (
         <>
             {/* Mobile: Horizontal Layout (Only on very small screens) */}
-            <Card className="md:hidden flex flex-row rounded-xl p-1.5 overflow-hidden border border-border/50 bg-slate-100/50 dark:bg-card">
+            <div className="md:hidden flex flex-row rounded-xl p-1.5 overflow-hidden border border-border/50 bg-slate-100/50 dark:bg-card">
                 {/* Cover Skeleton */}
-                <div className="w-24 aspect-[2/3] flex-shrink-0 overflow-hidden rounded-lg">
-                    <Skeleton className="w-full h-full" />
+                <div className="w-24 aspect-[2/3] flex-shrink-0 overflow-hidden rounded-lg bg-zinc-800/40">
+                    <Skeleton className="w-full h-full opacity-50" />
                 </div>
 
                 {/* Content Skeleton */}
@@ -28,40 +29,46 @@ export function NovelCardSkeleton() {
                         </div>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            {/* Tablet/Desktop: Vertical Layout */}
+            {/* Desktop: Vertical Layout - EXACT MATCH to NovelCard structure */}
             <div className="hidden md:block h-full w-full">
-                <Card className="h-full overflow-hidden border border-border/50 bg-slate-100/50 dark:bg-card shadow-sm flex flex-col group">
-                    <CardHeader className="p-3">
+                <div className="h-full overflow-hidden border border-border/50 bg-card/60 backdrop-blur-md shadow-sm flex flex-col group rounded-xl">
+                    <div className="p-3">
                         <div className="aspect-[2/3] rounded-xl overflow-hidden relative shadow-sm bg-muted/20">
                             <Skeleton className="w-full h-full" />
                         </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2 space-y-2 flex-grow flex flex-col">
-                        {/* Title - emulating 2 lines or a block */}
-                        <div className="space-y-1.5 pt-1">
-                            <Skeleton className="h-5 w-full rounded-sm" />
-                            <Skeleton className="h-5 w-3/4 rounded-sm" />
+                    </div>
+                    {/* Content Section: Must match NovelCard padding and flex-grow */}
+                    {/* NovelCard: px-4 pb-2 pt-3 flex-grow */}
+                    <CardContent className="px-4 pb-2 pt-3 flex-grow">
+                        {/* Title: 3.5rem total (2 lines * leading-7) */}
+                        {/* We use a flex-col justify-center to mimic the vertical alignment of text lines */}
+                        <div className="min-h-[3.5rem] mb-2 flex flex-col justify-center gap-1.5">
+                            <Skeleton className="h-4 w-full rounded-sm opacity-60" />
+                            <Skeleton className="h-4 w-2/3 rounded-sm opacity-60" />
                         </div>
-                        {/* Author */}
-                        <Skeleton className="h-4 w-1/2 rounded-sm mt-1" />
 
-                        {/* Rating row */}
-                        <div className="flex items-center gap-2 pt-1 text-sm mt-1">
-                            <Skeleton className="h-4 w-4 rounded-full" />
-                            <Skeleton className="h-4 w-8 rounded-sm" />
-                            <Skeleton className="h-4 w-4" /> {/* Bullet */}
-                            <Skeleton className="h-4 w-16 rounded-sm" />
+                        {/* Author: h-5 margin-bottom-2 */}
+                        <div className="h-5 mb-2 flex items-center">
+                            <Skeleton className="h-4 w-1/2 rounded-sm" />
+                        </div>
+
+                        {/* Stats Row: h-5 */}
+                        <div className="flex items-center gap-2 h-5 text-sm"> {/* Added text-sm to match parent font sizing context */}
+                            <Skeleton className="h-4 w-4 rounded-full bg-yellow-500/20" />
+                            <Skeleton className="h-4 w-8 rounded-sm opacity-70" />
+                            <div className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                            <Skeleton className="h-4 w-16 rounded-sm opacity-50" />
                         </div>
                     </CardContent>
-                    <CardFooter className="p-4 pt-0 flex gap-2 mt-auto flex-wrap">
-                        {/* Tags */}
-                        <Skeleton className="h-5 w-16 rounded-full opacity-70" />
-                        <Skeleton className="h-5 w-20 rounded-full opacity-70" />
-                        <Skeleton className="h-5 w-14 rounded-full opacity-70" />
+
+                    {/* Footer: Fixed h-12, overflow hidden, matching the real card */}
+                    <CardFooter className="px-4 pt-0 gap-2 mt-auto h-12 flex items-center overflow-hidden">
+                        <Skeleton className="h-6 w-16 rounded-md opacity-30 flex-shrink-0" />
+                        <Skeleton className="h-6 w-14 rounded-md opacity-30 flex-shrink-0" />
                     </CardFooter>
-                </Card>
+                </div>
             </div>
         </>
     );

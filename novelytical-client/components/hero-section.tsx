@@ -1,79 +1,71 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Play, Info } from 'lucide-react';
+import { SearchBar } from '@/components/search-bar';
+import { Play, Search } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 interface HeroSectionProps {
-    novel: any; // Using any for now, should be NovelDto
+    novels: any[];
 }
 
-export function HeroSection({ novel }: HeroSectionProps) {
-    if (!novel) return null;
+export function HeroSection({ novels }: HeroSectionProps) {
+    if (!novels || novels.length === 0) return null;
+
+    // We only need enough novels to fill the grid, usually 24 is plenty
+    const displayNovels = novels.slice(0, 24);
 
     return (
-        <div className="relative h-[100vh] w-full max-w-6xl mx-auto overflow-hidden md:rounded-b-2xl">
-            {/* Background Image with Gradient */}
-            <div className="absolute inset-0 bg-muted">
-                {(novel.coverUrl || novel.coverImage) && (
-                    <Image
-                        src={novel.coverUrl || novel.coverImage}
-                        alt={novel.title}
-                        fill
-                        priority={true}
-                        unoptimized={true}
-                        sizes="100vw"
-                        className="object-cover object-[50%_20%]"
-                    />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-l from-background via-background/10 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-            </div>
-
-
-
-            {/* Content */}
-            <div className="relative h-full container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
-                <div className="max-w-2xl space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
-                    <div className="flex gap-2">
-                        <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/20 backdrop-blur-sm">
-                            Haftanın Öne Çıkanı
-                        </Badge>
-                        {(novel.tags?.[0] || novel.categories?.[0]) && (
-                            <Badge variant="outline" className="border-foreground/20">
-                                {novel.tags?.[0] || novel.categories?.[0]}
-                            </Badge>
+        <div className="relative h-[85vh] w-full overflow-hidden">
+            {/* 1. Background Collage */}
+            {/* 1. Background Collage */}
+            <div className="absolute inset-0 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1 opacity-60">
+                {displayNovels.map((novel, i) => (
+                    <div key={i} className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-800/50 rounded-sm">
+                        {(novel.coverUrl || novel.coverImage) ? (
+                            <img
+                                src={novel.coverUrl || novel.coverImage}
+                                alt=""
+                                className="object-cover w-full h-full hover:scale-105 transition-transform duration-700"
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-muted/50" />
                         )}
                     </div>
+                ))}
+            </div>
 
-                    <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground drop-shadow-lg">
-                        {novel.title}
-                    </h1>
+            {/* 2. Glassmorphism Overlay (The "Frosted" Effect) */}
+            {/* Layer 1: Darken */}
+            <div className="absolute inset-0 bg-background/40" />
 
-                    <p className="text-lg md:text-xl text-muted-foreground line-clamp-3 md:line-clamp-2 max-w-xl">
-                        {novel.description}
-                    </p>
+            {/* Layer 2: Blur & Gradient Vignette */}
+            <div className="absolute inset-0 backdrop-blur-[8px] bg-gradient-to-t from-background via-background/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-background/40" />
 
-                    <div className="flex flex-wrap gap-4 pt-4">
-                        <Button size="lg" className="gap-2 rounded-full font-semibold text-md h-12 px-8" asChild>
-                            <Link href={`/novel/${novel.slug}`}>
-                                <Play className="h-5 w-5 fill-current" />
-                                Hemen Oku
-                            </Link>
-                        </Button>
-                        <Button size="lg" variant="outline" className="gap-2 rounded-full font-semibold text-md h-12 px-8 bg-background/5 border-foreground/10 hover:bg-foreground/10 backdrop-blur-sm" asChild>
-                            <Link href={`/novel/${novel.slug}/detay`}>
-                                <Info className="h-5 w-5" />
-                                Detaylar
-                            </Link>
-                        </Button>
+            {/* 3. Centered Content */}
+            <div className="relative h-full flex flex-col items-center justify-center text-center px-4 pb-24">
+
+                {/* Brand / Logo Area - Navbar Style */}
+                <div className="flex items-center gap-2 mb-6 pointer-events-none select-none">
+                    <div className="relative w-20 h-20 md:w-28 md:h-28 drop-shadow-2xl">
+                        <Image
+                            src="/logo.png"
+                            alt="Novelytical Logo"
+                            fill
+                            className="object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                            priority
+                        />
                     </div>
                 </div>
+
+                <div className="w-full max-w-2xl mx-auto mt-8 transform transition-all hover:scale-[1.02]">
+                    <SearchBar />
+                </div>
             </div>
+
+
         </div>
     );
 }

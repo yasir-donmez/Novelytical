@@ -2,39 +2,12 @@
 
 import Link from "next/link"
 import { Github, Twitter } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 export function Footer() {
-    const footerRef = useRef<HTMLElement>(null)
-    const [isVisible, setIsVisible] = useState(false)
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                setIsVisible(entry.isIntersecting)
-            },
-            { threshold: 0.1 }
-        )
-
-        if (footerRef.current) {
-            observer.observe(footerRef.current)
-        }
-
-        return () => {
-            if (footerRef.current) {
-                observer.unobserve(footerRef.current)
-            }
-        }
-    }, [])
-
     return (
         <footer
-            ref={footerRef}
-            className={cn(
-                "border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-700 ease-out",
-                isVisible ? "opacity-100 blur-0" : "opacity-0 blur-sm"
-            )}
+            className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
         >
             <div className="container px-4 sm:px-12 lg:px-16 xl:px-24 py-12 md:py-16">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8">

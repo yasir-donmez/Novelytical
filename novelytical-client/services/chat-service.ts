@@ -16,7 +16,8 @@ import {
     limit,
     getDocs,
     writeBatch,
-    increment
+    increment,
+    startAfter
 } from "firebase/firestore";
 import { UserService, UserProfile } from "./user-service";
 
@@ -117,7 +118,8 @@ export const ChatService = {
      */
     subscribeToMessages(chatId: string, callback: (messages: ChatMessage[]) => void) {
         const messagesRef = collection(db, CHATS_COLLECTION, chatId, "messages");
-        const q = query(messagesRef, orderBy("createdAt", "asc"), limit(100));
+        // Use desc to get LATEST messages, then client reverses them
+        const q = query(messagesRef, orderBy("createdAt", "desc"), limit(30));
 
         return onSnapshot(q, (snapshot) => {
             const messages = snapshot.docs.map(doc => ({
@@ -126,6 +128,34 @@ export const ChatService = {
             } as ChatMessage));
             callback(messages);
         });
+    },
+
+    /**
+     * Fetches older messages for pagination.
+     */
+    async getOlderMessages(chatId: string, lastDoc: any, limitCount: number = 20): Promise<{ messages: ChatMessage[], lastVisible: any }> {
+        const messagesRef = collection(db, CHATS_COLLECTION, chatId, "messages");
+
+        let q = query(
+            messagesRef,
+            orderBy("createdAt", "desc"), // Consistent with subscription
+            limit(limitCount)
+        );
+
+        if (lastDoc) {
+            q = query(q, startAfter(lastDoc));
+        }
+
+        const snapshot = await getDocs(q);
+        const messages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as ChatMessage));
+
+        return {
+            messages,
+            lastVisible: snapshot.docs[snapshot.docs.length - 1]
+        };
     },
 
     /**

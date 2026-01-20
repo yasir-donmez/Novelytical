@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -14,6 +14,7 @@ export function SearchBar() {
     const searchParams = useSearchParams();
     const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
     const debouncedSearch = useDebounce(searchInput, 800);
+    const [isPending, startTransition] = useTransition();
 
     // Check if any filter is active
     const tagFilters = searchParams.getAll('tag');
@@ -59,18 +60,22 @@ export function SearchBar() {
             }
 
             params.delete('page');
-            router.push(`/romanlar?${params.toString()}`, { scroll: false });
+            startTransition(() => {
+                router.push(`/romanlar?${params.toString()}`, { scroll: false });
+            });
         }
     }, [debouncedSearch, router]); // Remove searchParams from dep to avoid loop, we read current params inside.
 
     const handleClear = () => {
         setSearchInput('');
         // Clear all filters by navigating to novels page
-        router.push('/romanlar');
+        startTransition(() => {
+            router.push('/romanlar');
+        });
     };
 
     return (
-        <div className="relative max-w-2xl mx-auto">
+        <div className="relative max-w-2xl mx-auto group">
             {/* Outer Glow Layer */}
             <div className="absolute -inset-2 bg-gradient-to-r from-primary/30 via-purple-500/30 to-blue-500/30 rounded-full blur-xl opacity-0 group-focus-within:opacity-60 transition-all duration-500 animate-pulse"></div>
 
