@@ -1,6 +1,7 @@
 using Novelytical.Data;
 using Novelytical.Worker;
 using Novelytical.Application;
+using Novelytical.Worker.Services;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -96,7 +97,7 @@ try
             ProjectId = builder.Configuration["Firebase:ProjectId"] ?? "novelytical"
         });
         
-        builder.Services.AddSingleton<Novelytical.Worker.Services.FirebaseNotificationService>();
+        builder.Services.AddSingleton<FirebaseNotificationService>();
     }
     else
     {
