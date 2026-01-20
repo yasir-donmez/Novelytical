@@ -9,7 +9,7 @@ namespace Novelytical.Services
 {
     public class FirebaseNotificationService
     {
-        private readonly FirestoreDb _firestoreDb;
+        private readonly FirestoreDb? _firestoreDb;
         private readonly ILogger<FirebaseNotificationService> _logger;
 
         public FirebaseNotificationService(ILogger<FirebaseNotificationService> logger)

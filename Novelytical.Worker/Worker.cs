@@ -551,10 +551,10 @@ namespace Novelytical.Worker
                                 string type = isNew ? "new_novel" : "new_chapter";
                                 // Fire and forget notification to not block scraper
                                 _ = notifService.NotifyNovelUpdateAsync(
-                                    dbNovel.Author, 
+                                    dbNovel.Author ?? "Unknown", 
                                     dbNovel.Title, 
                                     dbNovel.Id.ToString(), 
-                                    dbNovel.CoverUrl, 
+                                    dbNovel.CoverUrl ?? string.Empty, 
                                     type
                                 ).ContinueWith(t => 
                                 {
