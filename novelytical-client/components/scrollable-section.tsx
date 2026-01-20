@@ -14,9 +14,10 @@ interface ScrollableSectionProps {
     sectionClassName?: string;
     hideBorder?: boolean;
     headerAction?: React.ReactNode;
+    hideGradients?: boolean;
 }
 
-export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, sectionClassName, hideBorder = false, headerAction }: ScrollableSectionProps) {
+export function ScrollableSection({ title, icon, children, scrollStep = 'half', className, sectionClassName, hideBorder = false, headerAction, hideGradients = false }: ScrollableSectionProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [hasOverflow, setHasOverflow] = useState(true);
     const [isAtStart, setIsAtStart] = useState(true);
@@ -165,12 +166,12 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
                 </div>
 
                 {/* Left Gradient Overlay (Desktop Only) - Hide when at start or no overflow */}
-                {hasOverflow && !isAtStart && (
+                {hasOverflow && !isAtStart && !hideGradients && (
                     <div className="hidden md:block absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-20 pointer-events-none" />
                 )}
 
                 {/* Right Gradient Overlay (Desktop Only) - Hide when at end or no overflow */}
-                {hasOverflow && !isAtEnd && (
+                {hasOverflow && !isAtEnd && !hideGradients && (
                     <div className="hidden md:block absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
                 )}
             </div>
