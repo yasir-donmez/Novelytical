@@ -51,18 +51,21 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Novelytical.Worker
+        run: dotnet restore
+
+      - name: Build Worker
+        run: dotnet build Novelytical.Worker -c Release --no-restore
 
       - name: Download ONNX Model
         run: |
-          mkdir -p Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
-          cd Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          mkdir -p Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          cd Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
           curl -L -o model.onnx "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx"
           curl -L -o sentencepiece.bpe.model "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/sentencepiece.bpe.model"
           curl -L -o tokenizer.json "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json"
 
       - name: Run FastTrack Scraper
-        run: dotnet run --project Novelytical.Worker --no-restore
+        run: dotnet run --project Novelytical.Worker -c Release --no-build
         timeout-minutes: 30
 
   # ===========================
@@ -92,18 +95,21 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Novelytical.Worker
+        run: dotnet restore
+
+      - name: Build Worker
+        run: dotnet build Novelytical.Worker -c Release --no-restore
 
       - name: Download ONNX Model
         run: |
-          mkdir -p Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
-          cd Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          mkdir -p Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          cd Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
           curl -L -o model.onnx "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx"
           curl -L -o sentencepiece.bpe.model "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/sentencepiece.bpe.model"
           curl -L -o tokenizer.json "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json"
 
       - name: Run SlowTrack Scraper
-        run: dotnet run --project Novelytical.Worker --no-restore
+        run: dotnet run --project Novelytical.Worker -c Release --no-build
         timeout-minutes: 180  # 3 saat (100 sayfa için yeterli olmalı)
 
   # ===========================
@@ -130,16 +136,19 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Novelytical.Worker
+        run: dotnet restore
+
+      - name: Build Worker
+        run: dotnet build Novelytical.Worker -c Release --no-restore
 
       - name: Download ONNX Model
         run: |
-          mkdir -p Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
-          cd Novelytical.Application/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          mkdir -p Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
+          cd Novelytical.Worker/bin/Release/net9.0/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
           curl -L -o model.onnx "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx"
           curl -L -o sentencepiece.bpe.model "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/sentencepiece.bpe.model"
           curl -L -o tokenizer.json "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json"
 
       - name: Run Vector Indexer
-        run: dotnet run --project Novelytical.Worker --no-restore
+        run: dotnet run --project Novelytical.Worker -c Release --no-build
         timeout-minutes: 60
