@@ -5,9 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\Embeddings\**\*">
+    <Content Include="Resources\Embeddings\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
