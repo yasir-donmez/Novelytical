@@ -5,7 +5,7 @@ import { HomeTags } from '@/components/home-tags';
 import { NovelGridServer } from '@/components/novel-grid-server';
 import { CommunityPulse } from '@/components/community-section/community-pulse';
 import HeroSkeleton from '@/components/hero-skeleton';
-import NovelGridSkeleton from '@/components/novel-grid-skeleton';
+import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
 
 export const runtime = 'nodejs';
 // export const dynamic = 'force-dynamic'; // Keeping standard caching unless necessary
