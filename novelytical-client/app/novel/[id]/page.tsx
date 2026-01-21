@@ -9,6 +9,7 @@ import { SimilarNovelsServer } from '@/components/similar-novels-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import InteractionTabs from '@/components/interaction-tabs';
 
+export const dynamic = 'force-dynamic';
 export const experimental_ppr = true;
 
 interface PageProps {
