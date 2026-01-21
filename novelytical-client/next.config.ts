@@ -2,7 +2,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone", // 🐳 Docker Optimisation
   reactStrictMode: false,
   async headers() {
     return [
