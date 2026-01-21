@@ -21,6 +21,7 @@ ARG BUILD_CONFIGURATION=Release
 # Download Embedding Model directly (since it's gitignored)
 RUN mkdir -p /app/publish/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
 RUN curl -L -o /app/publish/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2/model.onnx https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx
+RUN curl -L -o /app/publish/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2/sentencepiece.bpe.model https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/sentencepiece.bpe.model
 
 
 FROM base AS final
