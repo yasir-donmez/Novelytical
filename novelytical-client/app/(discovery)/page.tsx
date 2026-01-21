@@ -7,6 +7,7 @@ import { LaneSkeleton } from '@/components/lanes/lane-skeleton';
 import { BentoGridLane } from '@/components/lanes/bento-grid-lane';
 import { BentoLaneSkeleton } from '@/components/lanes/bento-lane-skeleton';
 
+export const dynamic = 'force-dynamic';
 export const experimental_ppr = true;
 
 export default function HomePage() {
