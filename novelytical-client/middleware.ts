@@ -22,7 +22,7 @@ export function middleware(request: NextRequest) {
         `img-src 'self' data: https:; ` +
         `font-src 'self' data: https://fonts.gstatic.com; ` +
         `frame-src 'self' https://accounts.google.com https://novelytical.firebaseapp.com; ` +
-        `connect-src 'self' ${apiUrl} ${siteUrl} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://firestore.googleapis.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io;`
+        `connect-src 'self' ${apiUrl} ${siteUrl} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://firestore.googleapis.com;`
     );
 
     // CORS headers (allow backend API)

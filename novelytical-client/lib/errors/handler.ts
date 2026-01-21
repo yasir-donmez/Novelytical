@@ -1,6 +1,6 @@
 import { AppError } from './types';
 import { toast } from 'sonner';
-import * as Sentry from '@sentry/nextjs';
+
 
 /**
  * Global error handler
@@ -18,17 +18,6 @@ export function handleError(error: unknown): AppError {
             duration: 5000,
         });
 
-        // Log non-operational errors to Sentry (unexpected errors)
-        if (!error.isOperational && process.env.NODE_ENV === 'production') {
-            Sentry.captureException(error, {
-                tags: {
-                    errorCode: error.code,
-                    statusCode: error.statusCode.toString(),
-                },
-                level: 'error',
-            });
-        }
-
         return error;
     }
 
@@ -44,14 +33,6 @@ export function handleError(error: unknown): AppError {
         description: 'Lütfen sayfayı yenilemeyi deneyin',
         duration: 5000,
     });
-
-    // Always log unknown errors to Sentry in production
-    if (process.env.NODE_ENV === 'production') {
-        Sentry.captureException(error, {
-            tags: { errorType: 'unknown' },
-            level: 'error',
-        });
-    }
 
     return unknownError;
 }

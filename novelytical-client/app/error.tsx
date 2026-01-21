@@ -2,9 +2,8 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Home, RefreshCcw, Bug } from "lucide-react";
+import { AlertTriangle, Home, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 
 export default function Error({
     error,
@@ -16,42 +15,7 @@ export default function Error({
     useEffect(() => {
         // Log the error to console
         console.error("Novelytical Application Error:", error);
-
-        // Log to Sentry in production
-        if (process.env.NODE_ENV === 'production') {
-            Sentry.captureException(error, {
-                tags: { errorBoundary: 'global' },
-                level: 'error',
-                contexts: {
-                    errorInfo: {
-                        digest: error.digest,
-                        message: error.message,
-                    },
-                },
-            });
-        }
     }, [error]);
-
-    const reportProblem = () => {
-        if (process.env.NODE_ENV === 'production') {
-            Sentry.showReportDialog({
-                eventId: Sentry.lastEventId() || '',
-                title: 'Bir sorun mu yaşıyorsunuz?',
-                subtitle: 'Ekibimiz size yardımcı olmak istiyor.',
-                subtitle2: 'Lütfen ne olduğunu anlatın:',
-                labelName: 'İsim',
-                labelEmail: 'Email',
-                labelComments: 'Ne oldu?',
-                labelClose: 'Kapat',
-                labelSubmit: 'Gönder',
-                errorGeneric: 'Gönderilirken bir hata oluştu. Lütfen tekrar deneyin.',
-                errorFormEntry: 'Bazı alanlar geçersiz. Lütfen düzeltin ve tekrar deneyin.',
-                successMessage: 'Geri bildiriminiz gönderildi. Teşekkürler!',
-            });
-        } else {
-            alert('Sentry sadece production modda aktif. Development moddasınız.');
-        }
-    };
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -90,12 +54,6 @@ export default function Error({
                         Ana Sayfa
                     </Link>
                 </Button>
-                {process.env.NODE_ENV === 'production' && (
-                    <Button onClick={reportProblem} variant="ghost" size="lg" className="gap-2">
-                        <Bug className="h-4 w-4" />
-                        Sorunu Bildir
-                    </Button>
-                )}
             </div>
         </div>
     );
