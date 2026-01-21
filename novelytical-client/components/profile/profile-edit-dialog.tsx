@@ -68,6 +68,7 @@ export default function ProfileEditDialog() {
 
     // Username check logic
     const handleUsernameChange = async (value: string) => {
+        if (!user) return;
         setDisplayName(value);
         setUsernameError(null);
         setUsernameSuccess(false);
@@ -110,6 +111,7 @@ export default function ProfileEditDialog() {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!user) return;
 
         // Prevent submit if error
         if (usernameError) {
@@ -155,7 +157,7 @@ export default function ProfileEditDialog() {
     };
 
     const handlePasswordReset = async () => {
-        if (!user.email) return;
+        if (!user?.email) return;
         try {
             await sendPasswordResetEmail(auth, user.email);
             toast.success("Şifre sıfırlama bağlantısı e-postanıza gönderildi.");
@@ -165,11 +167,11 @@ export default function ProfileEditDialog() {
         }
     };
 
-    const googleProvider = user.providerData.find(p => p.providerId === 'google.com');
+    const googleProvider = user?.providerData.find(p => p.providerId === 'google.com');
     const isGoogleUser = !!googleProvider;
 
-    const hasChanges = displayName !== (user.displayName || "") ||
-        photoURL !== (user.photoURL || "") ||
+    const hasChanges = displayName !== (user?.displayName || "") ||
+        photoURL !== (user?.photoURL || "") ||
         selectedFrame !== (levelData?.selectedFrame || "default");
 
     const [avatarSeeds, setAvatarSeeds] = useState<string[]>([]);
@@ -213,7 +215,8 @@ export default function ProfileEditDialog() {
                 toast.success(`You gained ${amount} XP! New Level: ${result.newLevel}`);
                 fetchLevelData(); // Refresh data
             }
-        } catch (e) {
+        } catch (error) {
+            console.error(error);
             toast.error("Failed to add XP");
         } finally {
             setLoading(false);

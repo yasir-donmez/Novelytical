@@ -24,9 +24,9 @@ export function HeroSection({ novels }: HeroSectionProps) {
             <div className="absolute inset-0 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1 opacity-60">
                 {displayNovels.map((novel, i) => (
                     <div key={i} className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-800/50 rounded-sm">
-                        {(novel.coverUrl || novel.coverImage) ? (
+                        {(novel.coverUrl) ? (
                             <Image
-                                src={novel.coverUrl || novel.coverImage || ""}
+                                src={novel.coverUrl || ""}
                                 alt=""
                                 className="object-cover hover:scale-105 transition-transform duration-700"
                                 fill
