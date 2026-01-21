@@ -42,7 +42,8 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     // 🌐 Dynamic API URL for Docker/Production
-    const apiUrl = process.env.API_URL || 'http://localhost:5050';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const apiUrl = process.env.API_URL || (isProduction ? 'https://novelytical-api.onrender.com' : 'http://localhost:5050');
 
     return [
       {

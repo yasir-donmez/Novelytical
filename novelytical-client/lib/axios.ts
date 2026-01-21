@@ -9,9 +9,19 @@ const getBaseUrl = () => {
         return url.endsWith('/api') ? url : `${url}/api`;
     }
     // Default fallback
-    const defaultUrl = typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const defaultUrl = typeof window === 'undefined'
+        ? (isProduction ? 'https://novelytical-api.onrender.com/api' : 'http://localhost:5050/api')
+        : '/api';
+
     console.log('[Axios] Base URL determined as:', process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL : defaultUrl);
-    return typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050/api') : '/api';
+
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        const url = process.env.NEXT_PUBLIC_API_URL;
+        return url.endsWith('/api') ? url : `${url}/api`;
+    }
+
+    return defaultUrl;
 };
 
 const api = axios.create({
