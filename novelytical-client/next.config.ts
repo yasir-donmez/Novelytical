@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -54,20 +54,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-/*
-export default withSentryConfig(nextConfig, {
-  org: "yasir-donmez",
-  project: "novelytical",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  reactComponentAnnotation: {
-    enabled: true,
-  },
-  // tunnelRoute disabled - sending directly to Sentry
-  // tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: true,
-});
-*/
+
 
 export default nextConfig;
