@@ -9,7 +9,9 @@ const getBaseUrl = () => {
         return url.endsWith('/api') ? url : `${url}/api`;
     }
     // Default fallback
-    return typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api';
+    const defaultUrl = typeof window === 'undefined' ? 'http://localhost:5050/api' : '/api';
+    console.log('[Axios] Base URL determined as:', process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL : defaultUrl);
+    return typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050/api') : '/api';
 };
 
 const api = axios.create({
