@@ -19,6 +19,8 @@ RUN dotnet build "./Novelytical.Web.csproj" -c $BUILD_CONFIGURATION -o /app/buil
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Novelytical.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# Explicitly copy Embedding Resources to ensure they exist in final image
+RUN cp -r /src/Novelytical.Application/Resources /app/publish/
 
 FROM base AS final
 WORKDIR /app
