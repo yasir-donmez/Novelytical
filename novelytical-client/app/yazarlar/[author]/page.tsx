@@ -20,6 +20,7 @@ import { RatingCriteriaTooltip } from "@/components/rating-criteria-tooltip";
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollableSection } from "@/components/scrollable-section";
+import Image from "next/image";
 
 interface AuthorStats {
     totalNovels: number;
@@ -102,17 +103,17 @@ export default function AuthorDetailPage() {
         }
 
         if (novels.length === 1) {
-            return <img src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
+            return <Image src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" fill sizes="128px" />;
         }
 
         if (novels.length === 2) {
             return (
-                <div className="w-full h-full flex">
-                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
-                        <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                <div className="w-full h-full flex relative">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
+                        <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="64px" />
                     </div>
-                    <div className="w-1/2 h-full overflow-hidden">
-                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    <div className="w-1/2 h-full overflow-hidden relative">
+                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="64px" />
                     </div>
                 </div>
             );
@@ -120,16 +121,16 @@ export default function AuthorDetailPage() {
 
         // 3+ Novels (T-split)
         return (
-            <div className="w-full h-full flex flex-col">
-                <div className="h-1/2 w-full overflow-hidden border-b border-white/10">
-                    <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+            <div className="w-full h-full flex flex-col relative">
+                <div className="h-1/2 w-full overflow-hidden border-b border-white/10 relative">
+                    <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="128px" />
                 </div>
-                <div className="h-1/2 w-full flex">
-                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
-                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                <div className="h-1/2 w-full flex relative">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
+                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="64px" />
                     </div>
-                    <div className="w-1/2 h-full overflow-hidden">
-                        <img src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
+                    <div className="w-1/2 h-full overflow-hidden relative">
+                        <Image src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" fill sizes="64px" />
                     </div>
                 </div>
             </div>
@@ -152,10 +153,10 @@ export default function AuthorDetailPage() {
 
                 // Extract top novels for avatar (sort by views, take top 3 with covers)
                 const novelsWithCovers = authorNovels
-                    .filter((n: any) => n.coverUrl)
-                    .sort((a: any, b: any) => (b.viewCount || 0) - (a.viewCount || 0))
+                    .filter((n: NovelListDto) => n.coverUrl)
+                    .sort((a: NovelListDto, b: NovelListDto) => (b.viewCount || 0) - (a.viewCount || 0))
                     .slice(0, 3)
-                    .map((n: any) => ({ coverUrl: n.coverUrl }));
+                    .map((n: NovelListDto) => ({ coverUrl: n.coverUrl || '' }));
                 setTopNovels(novelsWithCovers);
 
                 // 2. Fetch Live Stats for accurate aggregation (Views, etc.)
@@ -164,16 +165,16 @@ export default function AuthorDetailPage() {
                 );
 
                 // 3. Calculate Stats
-                const totalChapters = authorNovels.reduce((sum: number, n: any) => sum + (n.chapterCount || 0), 0);
+                const totalChapters = authorNovels.reduce((sum: number, n: NovelListDto) => sum + (n.chapterCount || 0), 0);
 
                 // Use scrapedRating if available, otherwise rating
-                const getRating = (n: any) => n.scrapedRating ?? n.rating ?? 0;
+                const getRating = (n: NovelListDto) => n.scrapedRating ?? n.rating ?? 0;
 
-                const totalRating = authorNovels.reduce((sum: number, n: any) => sum + getRating(n), 0);
-                const validRatings = authorNovels.filter((n: any) => getRating(n) > 0).length;
+                const totalRating = authorNovels.reduce((sum: number, n: NovelListDto) => sum + getRating(n), 0);
+                const validRatings = authorNovels.filter((n: NovelListDto) => getRating(n) > 0).length;
 
                 // Total Views = Scraped Views + Site Views
-                const totalViews = authorNovels.reduce((sum: number, n: any, i: number) => {
+                const totalViews = authorNovels.reduce((sum: number, n: NovelListDto, i: number) => {
                     const scraped = n.viewCount || 0;
                     const site = liveStats[i]?.viewCount || 0;
                     return sum + scraped + site;
@@ -181,7 +182,7 @@ export default function AuthorDetailPage() {
 
                 // Calculate estimated Total Rank Score
                 // Sum of individual novel ranks using the standard formula
-                const calcRank = authorNovels.reduce((sum: number, n: any, i: number) => {
+                const calcRank = authorNovels.reduce((sum: number, n: NovelListDto, i: number) => {
                     const rank = calculateRank(n.viewCount || 0, liveStats[i]);
                     return sum + rank;
                 }, 0);
@@ -207,12 +208,12 @@ export default function AuthorDetailPage() {
 
                 // 3. Get Recommendations based on the most popular novel
                 // Find novel with max views
-                const mostPopular = [...authorNovels].sort((a: any, b: any) => (b.viewCount || 0) - (a.viewCount || 0))[0];
+                const mostPopular = [...authorNovels].sort((a: NovelListDto, b: NovelListDto) => (b.viewCount || 0) - (a.viewCount || 0))[0];
 
                 if (mostPopular) {
                     const sims = await getSimilarNovels(mostPopular.id, 12);
                     // Filter out books by SAME author to show "Users also read OTHER authors"
-                    const filtered = sims.filter((n: any) => n.author !== authorName);
+                    const filtered = sims.filter((n: NovelListDto) => n.author !== authorName);
                     setRecommended(filtered);
                 }
 

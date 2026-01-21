@@ -28,20 +28,6 @@ export function MentionInput({ value, onChange, onSubmit, users, placeholder, cl
     const [filteredUsers, setFilteredUsers] = useState<MentionUser[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Filter users based on input
-    useEffect(() => {
-        if (filterText) {
-            const lowerFilter = filterText.toLowerCase();
-            const filtered = users.filter(u =>
-                u.username.toLowerCase().includes(lowerFilter)
-            ).slice(0, 5); // Limit to 5 suggestions
-            setFilteredUsers(filtered);
-            setShowSuggestions(filtered.length > 0);
-        } else {
-            setShowSuggestions(false);
-        }
-    }, [filterText, users]);
-
     // Reset suggestions if value is cleared externally
     useEffect(() => {
         if (!value) {
@@ -62,14 +48,17 @@ export function MentionInput({ value, onChange, onSubmit, users, placeholder, cl
             const query = lastWord.slice(1);
             setFilterText(query);
 
-            // Calculate position for suggestions (simplified approximation)
-            // In a real robust app, we'd use a hidden div to mirror coordinates
-            // For now, we'll position reasonably relative to the textarea
-            // or just use fixed positioning for simplicity in this context
-
-            // We'll just show it absolute relative to container for now
-            // Improving positioning is complex without a library
+            // Filter logic moved here
+            if (users) {
+                const lowerFilter = query.toLowerCase();
+                const filtered = users.filter(u =>
+                    u.username.toLowerCase().includes(lowerFilter)
+                ).slice(0, 5);
+                setFilteredUsers(filtered);
+                setShowSuggestions(filtered.length > 0);
+            }
         } else {
+            setFilterText('');
             setShowSuggestions(false);
         }
     };

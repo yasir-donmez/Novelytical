@@ -74,14 +74,15 @@ export function AdvancedFiltersModal({
     const [internalMaxRating, setInternalMaxRating] = useState<number | null>(maxRating);
 
     // Sync with props when modal opens
-    useEffect(() => {
-        if (open) {
+    const handleOpenChange = (isOpen: boolean) => {
+        if (isOpen) {
             setInternalMinChapters(minChapters);
             setInternalMaxChapters(maxChapters);
             setInternalMinRating(minRating);
             setInternalMaxRating(maxRating);
         }
-    }, [open, minChapters, maxChapters, minRating, maxRating]);
+        setOpen(isOpen);
+    };
 
     const handleApply = () => {
         onApply({
@@ -103,7 +104,7 @@ export function AdvancedFiltersModal({
     const hasActiveFilters = minChapters !== null || maxChapters !== null || minRating !== null || maxRating !== null;
 
     // Shared Content
-    const FiltersContent = ({ className }: { className?: string }) => (
+    const renderFiltersContent = (className?: string) => (
         <div className={cn("space-y-6", className)}>
             {/* Chapter Count Filter */}
             <div className="space-y-3">
@@ -264,7 +265,7 @@ export function AdvancedFiltersModal({
 
     if (isDesktop) {
         return (
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
                     {triggerButton}
                 </DialogTrigger>
@@ -280,7 +281,7 @@ export function AdvancedFiltersModal({
                     </DialogHeader>
 
                     <div className="py-4">
-                        <FiltersContent />
+                        {renderFiltersContent()}
                     </div>
 
                     <div className="flex gap-2 pt-4 border-t">
@@ -303,7 +304,7 @@ export function AdvancedFiltersModal({
 
     // Mobile Drawer
     return (
-        <Drawer open={open} onOpenChange={setOpen}>
+        <Drawer open={open} onOpenChange={handleOpenChange}>
             <DrawerTrigger asChild>
                 {triggerButton}
             </DrawerTrigger>
@@ -319,7 +320,7 @@ export function AdvancedFiltersModal({
                 </DrawerHeader>
 
                 <div className="p-4 overflow-y-auto">
-                    <FiltersContent />
+                    {renderFiltersContent()}
                 </div>
 
                 <DrawerFooter className="pt-2 border-t">

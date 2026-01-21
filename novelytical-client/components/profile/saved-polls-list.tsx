@@ -11,7 +11,9 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { PollVotersModal } from "@/components/community-section/poll-voters-modal";
 
-function timeAgo(date: any) {
+import { Timestamp } from 'firebase/firestore';
+
+function timeAgo(date: Timestamp | null | undefined) {
     if (!date) return '';
     const seconds = Math.floor((new Date().getTime() - date.toDate().getTime()) / 1000);
     let interval = seconds / 31536000;

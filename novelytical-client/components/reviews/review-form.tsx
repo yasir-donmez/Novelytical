@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
 import { addReview, Ratings, getUserReviewForNovel, updateReview } from "@/services/review-service";
 import { StarRating } from "./star-rating";
@@ -153,10 +154,12 @@ export default function ReviewForm({ novelId, coverImage, onReviewAdded }: Revie
                                 {coverImage && (
                                     <div className="flex-shrink-0 mx-auto md:mx-0">
                                         <div className="w-[120px] aspect-[2/3] rounded-lg overflow-hidden shadow-md border border-white/10 relative group">
-                                            <img
+                                            <Image
                                                 src={coverImage}
                                                 alt="Novel Cover"
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                                fill
+                                                sizes="120px"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
                                                 <span className="text-[10px] font-medium text-white/90">Değerlendir</span>

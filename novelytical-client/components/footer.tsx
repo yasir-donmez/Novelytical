@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Github, Twitter } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +15,7 @@ export function Footer() {
                     {/* Brand */}
                     <div className="col-span-2 md:col-span-1 space-y-4">
                         <div className="flex items-center gap-1">
-                            <img src="/logo.png" alt="N" width={32} height={32} />
+                            <Image src="/logo.png" alt="N" width={32} height={32} />
                             <span className="text-xl font-bold">ovelytical</span>
                         </div>
                         <p className="text-sm text-muted-foreground leading-relaxed">

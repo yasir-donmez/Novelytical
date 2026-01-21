@@ -185,7 +185,7 @@ export default function NotificationsForm() {
                             </Label>
                             <Select
                                 value={settings.retentionPeriod}
-                                onValueChange={(val: any) => setSettings(prev => ({ ...prev, retentionPeriod: val }))}
+                                onValueChange={(val: string) => setSettings(prev => ({ ...prev, retentionPeriod: val as any }))}
                             >
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="Süre seçin" />

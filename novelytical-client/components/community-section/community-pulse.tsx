@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import { getLatestReviews, Review } from '@/services/review-service';
 import { novelService } from '@/services/novelService';
 import { getLatestPosts, createPost, votePoll, Post, toggleSavePost, getUserSavedPostIds, deletePost, getUserPollVotes, getPostsPaginated, subscribeToLatestPosts } from '@/services/feed-service';
@@ -10,7 +11,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
 import { LevelService, UserLevelData } from '@/services/level-service';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 // ... other imports
 
 // ... existing code ...
@@ -21,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageSquare, Star, ArrowRight, Flame, Send, BarChart2, BookOpen, Bookmark, Trash2, Lock } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +40,7 @@ interface PollOptionData {
     novelCover?: string;
 }
 
-function timeAgo(date: any) {
+function timeAgo(date: Timestamp | null | undefined) {
     if (!date) return '';
     const seconds = Math.floor((new Date().getTime() - date.toDate().getTime()) / 1000);
     let interval = seconds / 31536000;
@@ -344,7 +345,7 @@ export function CommunityPulse() {
         const previousUserVotes = { ...userVotes };
         const currentVote = userVotes[postId];
 
-        let newUserVotes = { ...userVotes };
+        const newUserVotes = { ...userVotes };
 
         // Calculate new posts state
         const newPosts = posts.map(post => {
@@ -852,8 +853,8 @@ export function CommunityPulse() {
                                                                     /* Novel Preview Mode */
                                                                     <div className="flex items-center gap-2 p-1.5 bg-primary/5 rounded-md border border-primary/20 group">
                                                                         {opt.novelCover && (
-                                                                            <div className="w-6 h-8 bg-muted rounded overflow-hidden flex-shrink-0">
-                                                                                <img src={opt.novelCover} alt={opt.novelTitle} className="w-full h-full object-cover" />
+                                                                            <div className="relative w-6 h-8 bg-muted rounded overflow-hidden flex-shrink-0">
+                                                                                <Image src={opt.novelCover || ""} alt={opt.novelTitle || ""} className="object-cover" fill sizes="24px" />
                                                                             </div>
                                                                         )}
                                                                         <span className="text-[10px] font-medium flex-1 truncate text-foreground/90">{opt.novelTitle}</span>
@@ -1010,11 +1011,13 @@ export function CommunityPulse() {
                                                                             <div className="absolute inset-0 flex items-center justify-between px-3.5 z-10">
                                                                                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                                                                     {opt.novelCover && (
-                                                                                        <div className="w-7 h-9 bg-muted/50 rounded-md overflow-hidden flex-shrink-0 relative shadow-sm border border-white/10">
-                                                                                            <img
+                                                                                        <div className="relative w-7 h-9 bg-muted/50 rounded-md overflow-hidden flex-shrink-0 shadow-sm border border-white/10">
+                                                                                            <Image
                                                                                                 src={opt.novelCover}
                                                                                                 alt={opt.novelTitle || 'Novel cover'}
-                                                                                                className="w-full h-full object-cover"
+                                                                                                className="object-cover"
+                                                                                                fill
+                                                                                                sizes="28px"
                                                                                             />
                                                                                         </div>
                                                                                     )}
@@ -1159,15 +1162,15 @@ export function CommunityPulse() {
 
                                                             {/* Content */}
                                                             <div className="text-[11px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 sm:mb-3 font-serif italic text-foreground/80 pl-2 border-l-2 border-primary/20">
-                                                                "{review.content}"
+                                                                &quot;{review.content}&quot;
                                                             </div>
 
                                                             {/* Novel Card */}
                                                             <Link href={`/novel/${review.novelId}`} className="block group/card">
                                                                 <div className="flex items-center gap-3 p-2.5 rounded-xl bg-black/40 border border-white/5 hover:bg-black/60 hover:border-primary/20 transition-all">
-                                                                    <div className="w-10 h-14 bg-muted/20 rounded overflow-hidden shrink-0 shadow-sm border border-white/5 relative">
+                                                                    <div className="relative w-10 h-14 bg-muted/20 rounded overflow-hidden shrink-0 shadow-sm border border-white/5">
                                                                         {review.novelCover ? (
-                                                                            <img src={review.novelCover} alt={review.novelTitle} className="w-full h-full object-cover" />
+                                                                            <Image src={review.novelCover || ""} alt={review.novelTitle || ""} className="object-cover" fill sizes="40px" />
                                                                         ) : (
                                                                             <div className="w-full h-full flex items-center justify-center">
                                                                                 <BookOpen size={16} className="text-muted-foreground/50" />

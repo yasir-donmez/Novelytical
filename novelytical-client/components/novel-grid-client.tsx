@@ -10,6 +10,7 @@ import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
 import api from '@/lib/axios';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import type { NovelListDto, PagedResponse } from '@/types/novel';
 
 export function NovelGridClient() {
     const searchParams = useSearchParams();
@@ -39,7 +40,7 @@ export function NovelGridClient() {
             if (minRating !== null) queryParams.append('minRating', minRating.toString());
             if (maxRating !== null) queryParams.append('maxRating', maxRating.toString());
 
-            const response = await api.get(`/novels?${queryParams.toString()}`);
+            const response = await api.get<PagedResponse<NovelListDto>>(`/novels?${queryParams.toString()}`);
             return response.data;
         },
         retry: 1,
@@ -108,7 +109,7 @@ export function NovelGridClient() {
             ) : (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mt-6">
-                        {novels.map((novel: any) => (
+                        {novels.map((novel) => (
                             <NovelCard key={novel.id} novel={novel} />
                         ))}
                     </div>

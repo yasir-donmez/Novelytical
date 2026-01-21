@@ -126,8 +126,9 @@ export function ChatFloatingDialog() {
     // Handle external open requests
     useEffect(() => {
         if (!user) return;
-        const handleOpenChat = async (e: any) => {
-            const targetId = e.detail.userId;
+        const handleOpenChat = async (e: Event) => {
+            const customEvent = e as CustomEvent<{ userId: string }>;
+            const targetId = customEvent.detail.userId;
             try {
                 // 1. Open Dialog
                 setIsOpen(true);
@@ -159,7 +160,7 @@ export function ChatFloatingDialog() {
         return () => window.removeEventListener('open-chat', handleOpenChat);
     }, [user, chats]);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent | React.SyntheticEvent) => {
         e.preventDefault();
         if (!user || !activeChat || !newMessage.trim()) return;
 
@@ -387,7 +388,7 @@ export function ChatFloatingDialog() {
                                             onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();
-                                                    handleSendMessage(e as any);
+                                                    handleSendMessage(e);
                                                 }
                                             }}
                                             placeholder="Mesaj yaz..."

@@ -3,6 +3,8 @@ import { Metadata } from "next";
 import { getNovelStats, calculateRank } from "@/services/novel-stats-service";
 import { TrendingUp, BookOpen, Star, Users } from "lucide-react";
 import { PaginationClient } from "@/components/pagination-client";
+import type { NovelListDto } from "@/types/novel";
+import Image from "next/image";
 
 export const metadata: Metadata = {
     title: "Yazarlar | Novelytical",
@@ -20,12 +22,12 @@ async function getTopAuthors() {
         if (!res.ok) return [];
 
         const data = await res.json();
-        const novels = data.data || data || [];
+        const novels: NovelListDto[] = data.data || data || [];
 
         // Fetch live stats for ALL fetched novels to calculate accurate Ranks
         // This might be heavy, but it's cached for 1 hour.
         const novelsWithStats = await Promise.all(
-            novels.map(async (novel: any) => {
+            novels.map(async (novel) => {
                 const stats = await getNovelStats(novel.id);
                 // Use standard rank calculation
                 const rankScore = calculateRank(novel.viewCount || 0, stats);
@@ -36,7 +38,7 @@ async function getTopAuthors() {
         // Aggregate per author
         const authorStats: Record<string, { count: number; totalChapters: number; totalRankScore: number; topNovels: { coverUrl: string; rankScore: number }[] }> = {};
 
-        novelsWithStats.forEach((novel: any) => {
+        novelsWithStats.forEach((novel) => {
             const author = novel.author || "Bilinmeyen";
             if (!authorStats[author]) {
                 authorStats[author] = { count: 0, totalChapters: 0, totalRankScore: 0, topNovels: [] };
@@ -128,17 +130,17 @@ export default async function YazarlarPage({ searchParams }: { searchParams: Pro
         }
 
         if (novels.length === 1) {
-            return <img src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
+            return <Image src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" fill sizes="64px" />;
         }
 
         if (novels.length === 2) {
             return (
-                <div className="w-full h-full flex">
-                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
-                        <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                <div className="w-full h-full flex relative">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
+                        <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="32px" />
                     </div>
-                    <div className="w-1/2 h-full overflow-hidden">
-                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                    <div className="w-1/2 h-full overflow-hidden relative">
+                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="32px" />
                     </div>
                 </div>
             );
@@ -146,16 +148,16 @@ export default async function YazarlarPage({ searchParams }: { searchParams: Pro
 
         // 3+ Novels (T-split / Mercedes ish)
         return (
-            <div className="w-full h-full flex flex-col">
-                <div className="h-1/2 w-full overflow-hidden border-b border-white/10">
-                    <img src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+            <div className="w-full h-full flex flex-col relative">
+                <div className="h-1/2 w-full overflow-hidden border-b border-white/10 relative">
+                    <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="64px" />
                 </div>
-                <div className="h-1/2 w-full flex">
-                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10">
-                        <img src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                <div className="h-1/2 w-full flex relative">
+                    <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
+                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="32px" />
                     </div>
-                    <div className="w-1/2 h-full overflow-hidden">
-                        <img src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
+                    <div className="w-1/2 h-full overflow-hidden relative">
+                        <Image src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" fill sizes="32px" />
                     </div>
                 </div>
             </div>

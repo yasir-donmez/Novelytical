@@ -4,6 +4,7 @@ import { fetchNovels } from '@/lib/data/novels';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import type { NovelListDto } from '@/types/novel';
 
 interface TrendingLaneProps {
     title: string;
@@ -11,7 +12,7 @@ interface TrendingLaneProps {
 }
 
 export async function TrendingLane({ title, icon }: TrendingLaneProps) {
-    let novels = [];
+    let novels: NovelListDto[] = [];
     try {
         const res = await fetchNovels({ pageSize: 10, sortOrder: 'rank_desc' });
         novels = res.data || [];
@@ -37,7 +38,7 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
                 </Button>
             }
         >
-            {novels.map((novel: any, index: number) => (
+            {novels.map((novel, index) => (
                 <div key={novel.id} className="relative w-[210px] sm:w-[230px] flex-none group/rank">
                     {/* Big Ranking Number */}
                     <div className="absolute -left-2 bottom-4 z-10 font-bold text-[9rem] leading-none select-none pointer-events-none drop-shadow-md transition-all duration-300

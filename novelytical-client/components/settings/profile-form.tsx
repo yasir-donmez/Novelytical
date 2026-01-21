@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { updateProfile } from "firebase/auth";
 import { updateUserIdentityInReviews } from "@/services/review-service";
@@ -187,9 +188,12 @@ export default function ProfileForm() {
                             currentFrameObj.cssClass
                         )}>
                             <div className="absolute inset-[4px] rounded-full overflow-hidden bg-zinc-900">
-                                <img
+                                <Image
                                     src={photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`}
-                                    className="w-full h-full object-cover"
+                                    className="object-cover"
+                                    fill
+                                    sizes="128px"
+                                    alt="Profile"
                                 />
                             </div>
                         </div>
@@ -229,10 +233,10 @@ export default function ProfileForm() {
                                         {avatarSeeds.map((seed, i) => (
                                             <div key={i} onClick={() => handleAvatarSelect(seed)}
                                                 className={cn(
-                                                    "cursor-pointer rounded-lg p-1 border-2 aspect-square hover:bg-muted/50 transition-all",
+                                                    "relative cursor-pointer rounded-lg p-1 border-2 aspect-square hover:bg-muted/50 transition-all",
                                                     photoURL.includes(seed) ? "border-primary ring-2 ring-primary/20" : "border-transparent"
                                                 )}>
-                                                <img src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`} className="w-full h-full rounded" />
+                                                <Image src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`} className="rounded object-cover" fill sizes="100px" alt="Avatar Option" />
                                             </div>
                                         ))}
                                         <Button type="button" variant="ghost" onClick={refreshAvatars} className="w-full h-full aspect-square border-2 border-dashed hover:border-primary hover:text-primary transition-all">

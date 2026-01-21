@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getCommentsByUserId, Comment, deleteComment } from "@/services/comment-service";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
@@ -14,17 +14,24 @@ export default function UserComments() {
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchComments = async () => {
+    const fetchComments = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
-        const data = await getCommentsByUserId(user.uid);
-        setComments(data);
-        setLoading(false);
-    };
+        // Don't set loading true if we are refreshing after delete to avoid full spinner
+        // But for initial load we want it.
+        // We can check if comments are empty?
+        // simple approach:
+        try {
+            const data = await getCommentsByUserId(user.uid);
+            setComments(data);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
 
     useEffect(() => {
+        setLoading(true);
         fetchComments();
-    }, [user]);
+    }, [fetchComments]);
 
     const handleDelete = async (commentId: string) => {
         if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;

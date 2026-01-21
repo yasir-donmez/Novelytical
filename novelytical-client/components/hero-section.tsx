@@ -5,9 +5,10 @@ import { SearchBar } from '@/components/search-bar';
 import { Play, Search } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import type { NovelListDto } from '@/types/novel';
 
 interface HeroSectionProps {
-    novels: any[];
+    novels: NovelListDto[];
 }
 
 export function HeroSection({ novels }: HeroSectionProps) {
@@ -24,10 +25,12 @@ export function HeroSection({ novels }: HeroSectionProps) {
                 {displayNovels.map((novel, i) => (
                     <div key={i} className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-800/50 rounded-sm">
                         {(novel.coverUrl || novel.coverImage) ? (
-                            <img
-                                src={novel.coverUrl || novel.coverImage}
+                            <Image
+                                src={novel.coverUrl || novel.coverImage || ""}
                                 alt=""
-                                className="object-cover w-full h-full hover:scale-105 transition-transform duration-700"
+                                className="object-cover hover:scale-105 transition-transform duration-700"
+                                fill
+                                sizes="(max-width: 768px) 33vw, 16vw"
                             />
                         ) : (
                             <div className="w-full h-full bg-muted/50" />

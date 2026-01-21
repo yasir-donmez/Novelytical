@@ -90,7 +90,7 @@ export function parseChapterUrl(url: string): ParseResult {
     }
 
     // Normalize URL
-    let normalizedUrl = url.trim().toLowerCase();
+    const normalizedUrl = url.trim().toLowerCase();
 
     // Try to extract hostname
     let hostname: string;

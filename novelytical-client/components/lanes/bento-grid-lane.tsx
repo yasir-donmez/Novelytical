@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming utils exists
+import type { NovelListDto } from '@/types/novel';
 
 interface BentoGridLaneProps {
     title: string;
@@ -12,7 +13,7 @@ interface BentoGridLaneProps {
 
 export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
     const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc' });
-    const novels = res.data?.slice(0, 7) || [];
+    const novels: NovelListDto[] = res.data?.slice(0, 7) || [];
 
     if (novels.length === 0) return null;
 
@@ -35,7 +36,7 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 h-auto lg:h-[650px]">
-                {novels.map((novel: any, i: number) => (
+                {novels.map((novel, i) => (
                     <div
                         key={novel.id}
                         className={cn(

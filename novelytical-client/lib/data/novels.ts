@@ -12,7 +12,7 @@ const getApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 };
 
-export async function fetchNovels(params: {
+export interface FetchNovelsParams {
     searchString?: string;
     tags?: string[];
     sortOrder?: string;
@@ -23,7 +23,9 @@ export async function fetchNovels(params: {
     minRating?: number | null;
     maxRating?: number | null;
     revalidate?: number; // Optional caching
-}) {
+}
+
+export async function fetchNovels(params: FetchNovelsParams) {
     const queryParams = new URLSearchParams();
 
     if (params.searchString) queryParams.append('searchString', params.searchString);

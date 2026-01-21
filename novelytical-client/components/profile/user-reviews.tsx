@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getReviewsByUserId, Review, deleteReview } from "@/services/review-service";
 import ReviewItem from "@/components/reviews/review-item";
 import { useAuth } from "@/contexts/auth-context";
@@ -12,17 +12,20 @@ export default function UserReviews() {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchReviews = async () => {
+    const fetchReviews = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
-        const data = await getReviewsByUserId(user.uid);
-        setReviews(data);
-        setLoading(false);
-    };
+        try {
+            const data = await getReviewsByUserId(user.uid);
+            setReviews(data);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
 
     useEffect(() => {
+        setLoading(true);
         fetchReviews();
-    }, [user]);
+    }, [fetchReviews]);
 
     const handleDelete = async (id: string) => {
         // Optimistic update handled in ReviewItem via onDelete callback which we'll use to refetch

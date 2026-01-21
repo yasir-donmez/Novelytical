@@ -38,7 +38,7 @@ export function SearchBar() {
             // For now simple sync:
             setSearchInput(urlQ);
         }
-    }, [searchParams]); // This might cause loop if searchInput -> debounced -> router push -> searchParams update -> useEffect -> setSearchInput ...
+    }, [searchParams.get('q')]); // Depend only on the query string value
 
     // To break the loop:
     // When router.push happens, searchParams updates.

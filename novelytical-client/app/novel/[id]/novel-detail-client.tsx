@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,7 +59,10 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
     useEffect(() => {
         setLocationHref(window.location.href);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
+    useEffect(() => {
         // Increment view count, THEN fetch stats to ensure we get the updated value
         incrementViewCount(novel.id).then(() => {
             getNovelStats(novel.id).then(stats => {
@@ -139,10 +144,13 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                     <div className="relative w-full group">
                         <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-border/10 z-10">
                             {novel.coverUrl ? (
-                                <img
+                                <Image
                                     src={novel.coverUrl}
                                     alt={novel.title}
-                                    className="object-cover w-full h-full block"
+                                    className="object-cover block"
+                                    fill
+                                    sizes="(max-width: 768px) 200px, 300px"
+                                    priority
                                 />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-muted">

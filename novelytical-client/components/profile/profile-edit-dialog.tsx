@@ -1,5 +1,6 @@
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect } from "react";
 import { updateProfile, sendPasswordResetEmail } from "firebase/auth";
@@ -59,7 +60,7 @@ export default function ProfileEditDialog() {
         }
     }, [open, user]);
 
-    if (!user) return null;
+    // Early return moved down
 
     // Username check logic
     // Race condition tracking
@@ -219,6 +220,8 @@ export default function ProfileEditDialog() {
         }
     };
 
+    if (!user) return null;
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -255,11 +258,13 @@ export default function ProfileEditDialog() {
                                     {/* Persistent Preview & URL Row */}
                                     <div className="flex gap-4 items-start mb-4">
                                         <div className="shrink-0">
-                                            <div className="h-16 w-16 rounded-full border-2 border-border overflow-hidden bg-muted shadow-sm">
-                                                <img
+                                            <div className="relative h-16 w-16 rounded-full border-2 border-border overflow-hidden bg-muted shadow-sm">
+                                                <Image
                                                     src={photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`}
                                                     alt="Preview"
-                                                    className="h-full w-full object-cover"
+                                                    className="object-cover"
+                                                    fill
+                                                    sizes="64px"
                                                 />
                                             </div>
                                         </div>
@@ -312,8 +317,8 @@ export default function ProfileEditDialog() {
                                                         onClick={() => handleAvatarSelect(seed)}
                                                         className={`cursor-pointer rounded-xl p-2 border-2 transition-all hover:scale-105 active:scale-95 ${isSelected ? 'border-purple-500 bg-purple-500/10 shadow-md ring-2 ring-purple-500/20' : 'border-transparent bg-muted/50 hover:bg-muted'}`}
                                                     >
-                                                        <div className="aspect-square rounded-lg overflow-hidden bg-white/5">
-                                                            <img src={url} alt="Avatar Option" className="w-full h-full object-cover" />
+                                                        <div className="relative aspect-square rounded-lg overflow-hidden bg-white/5">
+                                                            <Image src={url} alt="Avatar Option" className="object-cover" fill sizes="100px" />
                                                         </div>
                                                     </div>
                                                 )
@@ -456,7 +461,7 @@ export default function ProfileEditDialog() {
                                                 <div className={cn("relative h-14 w-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-105", frame.cssClass)}>
                                                     {/* Avatar Preview inside Frame */}
                                                     <div className="absolute inset-[3px] rounded-full overflow-hidden bg-background">
-                                                        <img src={photoURL || user.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`} className="h-full w-full object-cover" />
+                                                        <Image src={photoURL || user.photoURL || `https://api.dicebear.com/7.x/adventurer/svg?seed=${displayName}`} className="object-cover" fill sizes="64px" alt="Avatar Frame" />
                                                     </div>
                                                 </div>
                                                 <span className={cn("text-xs font-bold", frame.color)}>{frame.name}</span>

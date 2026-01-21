@@ -42,11 +42,12 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
     const [internalTags, setInternalTags] = useState<string[]>(currentTags);
 
     // Sync internal state with props only when modal opens
-    useEffect(() => {
-        if (open) {
+    const handleOpenChange = (isOpen: boolean) => {
+        if (isOpen) {
             setInternalTags(currentTags);
         }
-    }, [open, currentTags]);
+        setOpen(isOpen);
+    };
 
     const { data: tags, isLoading } = useQuery({
         queryKey: ['tags'],
@@ -69,7 +70,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
         }
     }
 
-    const toggleNegative = (tag: string, e: React.MouseEvent) => {
+    const toggleNegative = (tag: string, e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
         const negativeTag = `-${tag}`;
 
@@ -88,7 +89,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
     }
 
     // Shared Content Component
-    const CategoryList = ({ className }: { className?: string }) => (
+    const renderCategoryList = (className?: string) => (
         <div className={cn("grid grid-cols-2 lg:grid-cols-4 gap-3", className)}>
             {isLoading ? (
                 Array.from({ length: 16 }).map((_, i) => (
@@ -132,7 +133,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
                                         onClick={(e) => toggleNegative(tag, e)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === ' ') {
-                                                toggleNegative(tag, e as any);
+                                                toggleNegative(tag, e);
                                             }
                                         }}
                                         title={isPositive ? "Hariç Tut (Negatif Yap)" : "Dahil Et (Pozitif Yap)"}
@@ -168,7 +169,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
 
     if (isDesktop) {
         return (
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
                     {triggerButton}
                 </DialogTrigger>
@@ -184,7 +185,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
-                        <CategoryList className="md:grid-cols-3" />
+                        {renderCategoryList("md:grid-cols-3")}
                     </div>
 
                     <div className="px-6 py-4 border-t bg-muted/40 flex justify-end">
@@ -210,7 +211,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
 
     // Mobile Drawer
     return (
-        <Drawer open={open} onOpenChange={setOpen}>
+        <Drawer open={open} onOpenChange={handleOpenChange}>
             <DrawerTrigger asChild>
                 {triggerButton}
             </DrawerTrigger>
@@ -226,7 +227,7 @@ export function CategoryModal({ selectedTags, onChange }: CategoryModalProps) {
                 </DrawerHeader>
 
                 <div className="p-4 overflow-y-auto">
-                    <CategoryList />
+                    {renderCategoryList()}
                 </div>
 
                 <DrawerFooter className="pt-2 border-t bg-muted/20">

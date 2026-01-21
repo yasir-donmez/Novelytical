@@ -1,15 +1,16 @@
 import { ScrollableSection } from '@/components/scrollable-section';
 import { NovelCard } from '@/components/novel-card';
-import { fetchNovels } from '@/lib/data/novels';
+import { fetchNovels, type FetchNovelsParams } from '@/lib/data/novels';
+import type { NovelListDto } from '@/types/novel';
 
 interface GenericLaneProps {
     title: string;
     icon?: React.ReactNode;
-    params: any; // fetchNovels params
+    params: FetchNovelsParams;
 }
 
 export async function GenericLane({ title, icon, params }: GenericLaneProps) {
-    let novels = [];
+    let novels: NovelListDto[] = [];
     try {
         const res = await fetchNovels(params);
         novels = res.data || [];
@@ -22,7 +23,7 @@ export async function GenericLane({ title, icon, params }: GenericLaneProps) {
 
     return (
         <ScrollableSection title={title} icon={icon}>
-            {novels.map((novel: any) => (
+            {novels.map((novel) => (
                 <div key={novel.id} className="w-[160px] sm:w-[200px] flex-none">
                     <NovelCard novel={novel} aspect="portrait" showLastUpdated={false} />
                 </div>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/user-nav";
 import NotificationBell from "@/components/notifications/notification-bell";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowRight } from "lucide-react";
@@ -47,7 +48,7 @@ export function SiteHeader() {
                 <div className="container flex h-16 items-center justify-between px-4 sm:px-12 lg:px-16 xl:px-24">
                     <div className="flex items-center gap-6 md:gap-8">
                         <Link href="/" className="flex items-center gap-1 group relative z-50" onClick={() => setMobileMenuOpen(false)}>
-                            <img
+                            <Image
                                 src="/logo.png"
                                 alt="N"
                                 width={40}
