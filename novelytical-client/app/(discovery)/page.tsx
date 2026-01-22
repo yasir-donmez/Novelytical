@@ -7,8 +7,6 @@ import { LaneSkeleton } from '@/components/lanes/lane-skeleton';
 import { BentoGridLane } from '@/components/lanes/bento-grid-lane';
 import { BentoLaneSkeleton } from '@/components/lanes/bento-lane-skeleton';
 
-export const experimental_ppr = true;
-
 export default function HomePage() {
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-20 pt-20">
@@ -35,7 +33,7 @@ export default function HomePage() {
                 <GenericLane
                     title="Editörün Seçimi"
                     icon={<Trophy className="h-6 w-6 text-purple-500 fill-purple-500/20" />}
-                    params={{ pageSize: 12, sortOrder: 'rating_desc' }}
+                    params={{ pageSize: 12, sortOrder: 'rating_desc', revalidate: 600 }} // 10 minutes cache
                 />
             </Suspense>
 
@@ -44,7 +42,7 @@ export default function HomePage() {
                 <GenericLane
                     title="Fantastik Dünyalar"
                     icon={<BookOpen className="h-6 w-6 text-blue-500" />}
-                    params={{ pageSize: 12, tags: ['Fantastik'] }}
+                    params={{ pageSize: 12, tags: ['Fantastik'], revalidate: 600 }} // 10 minutes cache
                 />
             </Suspense>
         </div>

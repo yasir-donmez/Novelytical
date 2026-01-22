@@ -12,7 +12,7 @@ interface BentoGridLaneProps {
 }
 
 export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
-    const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc' });
+    const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc', revalidate: 300 }); // 5 minutes cache
     const novels: NovelListDto[] = res.data?.slice(0, 7) || [];
 
     if (novels.length === 0) return null;

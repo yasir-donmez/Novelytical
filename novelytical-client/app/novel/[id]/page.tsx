@@ -9,8 +9,6 @@ import { SimilarNovelsServer } from '@/components/similar-novels-server';
 import { Skeleton } from '@/components/ui/skeleton';
 import InteractionTabs from '@/components/interaction-tabs';
 
-export const dynamic = 'force-dynamic';
-
 interface PageProps {
     params: Promise<{
         id: string;

@@ -82,7 +82,7 @@ export async function getNovelById(id: number | string) {
     const res = await fetch(`${getApiUrl()}/api/novels/${id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store'
+        next: { revalidate: 300 } // 5 minutes cache
     });
     if (!res.ok) throw new Error('Failed to fetch novel');
     // Need to return data.data based on service structure? 
@@ -120,7 +120,7 @@ export async function getSimilarNovels(id: number | string, count: number = 12) 
     // Endpoint: /novels/{id}/similar
     // Params: limit (Service uses 'limit', I previously used 'count' which was wrong)
     const res = await fetch(`${getApiUrl()}/api/novels/${id}/similar?limit=${count}`, {
-        cache: 'no-store'
+        next: { revalidate: 600 } // 10 minutes cache
     });
     if (!res.ok) return [];
     const json = await res.json();
