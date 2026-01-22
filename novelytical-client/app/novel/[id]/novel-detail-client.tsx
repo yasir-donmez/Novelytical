@@ -59,7 +59,6 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
 
     useEffect(() => {
         setLocationHref(window.location.href);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

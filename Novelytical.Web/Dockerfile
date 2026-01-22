@@ -18,6 +18,8 @@ RUN dotnet build "./Novelytical.Web.csproj" -c $BUILD_CONFIGURATION -o /app/buil
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./Novelytical.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
 # Download Embedding Model directly (since it's gitignored)
 RUN mkdir -p /app/publish/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2
 RUN curl -L -o /app/publish/Resources/Embeddings/paraphrase-multilingual-MiniLM-L12-v2/model.onnx https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/onnx/model.onnx

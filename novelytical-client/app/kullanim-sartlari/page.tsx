@@ -119,7 +119,7 @@ export default function KullanimSartlariPage() {
                             <h2 className="text-lg font-semibold">Sorumluluk Reddi</h2>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Platform "olduğu gibi" sunulmaktadır. Roman bilgilerinin doğruluğu,
+                            Platform &quot;olduğu gibi&quot; sunulmaktadır. Roman bilgilerinin doğruluğu,
                             güncelliği veya eksiksizliği konusunda garanti verilmemektedir.
                             Kullanımdan doğan sorumluluk kullanıcıya aittir.
                         </p>

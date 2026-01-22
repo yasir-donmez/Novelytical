@@ -79,8 +79,7 @@ public class OnnxEmbedder : IEmbedder, IDisposable
     private float[] GenerateEmbedding(string text)
     {
         // Tokenize using Microsoft.ML.Tokenizers
-        // EncodeToIds(text, addBeginningOfSentence, addEndOfSentence, considerPreTokenization, considerNormalization)
-        var encodedIds = _tokenizer.EncodeToIds(text, true, true, true, true);
+        var encodedIds = _tokenizer.EncodeToIds(text);
         var inputIds = encodedIds.Select(id => (long)id).ToList();
         
         // Truncate if needed
@@ -105,9 +104,9 @@ public class OnnxEmbedder : IEmbedder, IDisposable
 
         var dimensions = new int[] { 1, MaxSequenceLength };
         
-        var inputIdsTensor = new DenseTensor<long>(new Memory<long>(inputIdsArray), new ReadOnlySpan<int>(dimensions));
-        var attentionMaskTensor = new DenseTensor<long>(new Memory<long>(attentionMaskArray), new ReadOnlySpan<int>(dimensions));
-        var tokenTypeIdsTensor = new DenseTensor<long>(new Memory<long>(tokenTypeIds), new ReadOnlySpan<int>(dimensions));
+        var inputIdsTensor = new DenseTensor<long>(new Memory<long>(inputIdsArray), dimensions);
+        var attentionMaskTensor = new DenseTensor<long>(new Memory<long>(attentionMaskArray), dimensions);
+        var tokenTypeIdsTensor = new DenseTensor<long>(new Memory<long>(tokenTypeIds), dimensions);
 
         var inputs = new List<NamedOnnxValue>
         {

@@ -33,7 +33,7 @@ export default function HakkimizdaPage() {
                     <div className="space-y-4 text-muted-foreground leading-relaxed">
                         <p>
                             Novelytical, aslında büyük bir misyonla değil, saf bir <strong className="text-foreground">merakla</strong> başladı.
-                            "Yapay zeka araçları ne yapabilir?" sorusunun cevabını aramak istedim.
+                            &quot;Yapay zeka araçları ne yapabilir?&quot; sorusunun cevabını aramak istedim.
                         </p>
                         <p>
                             Bir <strong className="text-foreground">öğrenci</strong> olarak, teknolojinin nasıl geliştiğini sadece
@@ -81,7 +81,7 @@ export default function HakkimizdaPage() {
                         <div className="p-4 rounded-xl border bg-card">
                             <h3 className="font-medium mb-2">📖 Roman Sevgisi</h3>
                             <p className="text-sm text-muted-foreground">
-                                Web novel'lar okumayı seviyorum. Kendi okuma takip sistemimi yapmak
+                                Web novel&apos;lar okumayı seviyorum. Kendi okuma takip sistemimi yapmak
                                 eğlenceli bir hedefti.
                             </p>
                         </div>
