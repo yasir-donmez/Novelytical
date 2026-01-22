@@ -3,25 +3,14 @@ import { handleError } from '@/lib/errors/handler';
 import { NetworkError, ServerError } from '@/lib/errors/types';
 
 const getBaseUrl = () => {
-    // If env var is set, verify/append /api
-    if (process.env.NEXT_PUBLIC_API_URL) {
-        const url = process.env.NEXT_PUBLIC_API_URL;
-        return url.endsWith('/api') ? url : `${url}/api`;
-    }
-    // Default fallback
-    const isProduction = process.env.NODE_ENV === 'production';
-    const defaultUrl = typeof window === 'undefined'
-        ? (isProduction ? 'https://novelytical-api.onrender.com/api' : 'http://localhost:5050/api')
-        : '/api';
-
-    console.log('[Axios] Base URL determined as:', process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL : defaultUrl);
-
-    if (process.env.NEXT_PUBLIC_API_URL) {
-        const url = process.env.NEXT_PUBLIC_API_URL;
-        return url.endsWith('/api') ? url : `${url}/api`;
+    // Client-side: always use '/api' proxy (handled by next.config.mjs rewrites)
+    if (typeof window !== 'undefined') {
+        return '/api';
     }
 
-    return defaultUrl;
+    // Server-side: use API_URL environment variable or fallback
+    const apiUrl = process.env.API_URL || 'http://localhost:5050';
+    return apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
 };
 
 const api = axios.create({

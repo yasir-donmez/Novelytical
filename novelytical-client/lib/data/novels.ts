@@ -2,11 +2,11 @@ import api from '../axios';
 import { handleError } from '../errors/handler';
 import { NetworkError } from '../errors/types';
 
-// Helper function to get API base URL
+// Helper function to get API base URL (without /api suffix - that's added in fetch calls)
 const getApiUrl = () => {
     if (typeof window !== 'undefined') {
-        // Client-side: always use '/api' proxy (configured in next.config.mjs rewrites)
-        return '/api';
+        // Client-side: use empty string (relative URL /api/novels)
+        return '';
     }
     // Server-side (SSR): use direct backend URL
     // Falls back to localhost for local development
