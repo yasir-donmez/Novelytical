@@ -16,10 +16,15 @@ const nextConfig = {
         ];
     },
     images: {
+        // Production için daha geniş domain desteği
         remotePatterns: [
             {
                 protocol: "https",
                 hostname: "www.royalroadcdn.com",
+            },
+            {
+                protocol: "https", 
+                hostname: "royalroadcdn.com",
             },
             {
                 protocol: "https",
@@ -31,17 +36,36 @@ const nextConfig = {
             },
             {
                 protocol: "https",
-                hostname: "*.novelfire.net",
-            },
-            {
-                protocol: "https",
                 hostname: "api.dicebear.com",
             },
             {
                 protocol: "https",
                 hostname: "firebasestorage.googleapis.com",
+            },
+            {
+                protocol: "https",
+                hostname: "storage.googleapis.com",
+            },
+            {
+                protocol: "https",
+                hostname: "images.unsplash.com",
+            },
+            {
+                protocol: "https",
+                hostname: "cdn.jsdelivr.net",
+            },
+            {
+                protocol: "https",
+                hostname: "avatars.githubusercontent.com",
             }
         ],
+        // Production için image optimization ayarları
+        formats: ['image/webp', 'image/avif'],
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+        minimumCacheTTL: 60,
+        dangerouslyAllowSVG: true,
+        contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     },
     async rewrites() {
         // 🌐 Dynamic API URL for Docker/Production

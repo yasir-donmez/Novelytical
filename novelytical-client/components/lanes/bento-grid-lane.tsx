@@ -12,8 +12,14 @@ interface BentoGridLaneProps {
 }
 
 export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
-    const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc', revalidate: 3600 }); // 60 minutes cache (optimized from 5 minutes)
-    const novels: NovelListDto[] = res.data?.slice(0, 7) || [];
+    let novels: NovelListDto[] = [];
+    try {
+        const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc', revalidate: 3600 });
+        novels = res.data?.slice(0, 7) || [];
+    } catch (error) {
+        console.error(`Failed to fetch Bento Grid Lane:`, error);
+        return null;
+    }
 
     if (novels.length === 0) return null;
 

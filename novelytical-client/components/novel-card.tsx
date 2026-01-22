@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NovelListDto } from '@/types/novel';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Bookmark, Star, MessageCircle } from 'lucide-react';
+import { ProductionImageLoader } from './production-image-loader';
+import { Bookmark, Star, MessageCircle, Crown } from 'lucide-react';
 import { getRelativeTimeString } from '@/lib/utils/date';
-import { getNovelStats, NovelStats, calculateRank } from '@/services/novel-stats-service';
-import { TrendingUp, Crown } from 'lucide-react';
+import { getNovelStats, NovelStats } from '@/services/novel-stats-service';
 
 interface NovelCardProps {
     novel: NovelListDto;
@@ -23,13 +22,11 @@ interface NovelCardProps {
 export function NovelCard({ novel, variant = 'default', aspect, className, showLastUpdated = true }: NovelCardProps) {
     // State for novel stats
     const [stats, setStats] = useState<NovelStats>({ reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 });
-    const [rankScore, setRankScore] = useState<number>(0);
 
     // Fetch stats on mount
     useEffect(() => {
         getNovelStats(novel.id).then(fetchedStats => {
             setStats(fetchedStats);
-            setRankScore(calculateRank(novel.viewCount || 0, fetchedStats));
         });
     }, [novel.id, novel.viewCount]);
 
@@ -75,12 +72,13 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                 <div className="w-24 aspect-[2/3] flex-shrink-0 overflow-hidden rounded-lg flex items-center justify-center relative">
                     {novel.coverUrl ? (
                         <>
-                            <Image
+                            <ProductionImageLoader
                                 src={novel.coverUrl}
                                 alt={novel.title}
                                 className="object-cover w-full h-full"
                                 fill
                                 sizes="(max-width: 768px) 100px, 200px"
+                                fallbackSrc="/images/book-placeholder.svg"
                             />
                             {/* Last Updated Badge (Mobile/Horizontal) */}
                             {showLastUpdated && novel.lastUpdated && (
@@ -156,12 +154,13 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                             )}>
                                 {novel.coverUrl ? (
                                     <>
-                                        <Image
+                                        <ProductionImageLoader
                                             src={novel.coverUrl}
                                             alt={novel.title}
                                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110 block"
                                             fill
                                             sizes="(max-width: 768px) 100vw, 300px"
+                                            fallbackSrc="/images/book-placeholder.svg"
                                         />
                                         {/* Last Updated Badge - Top Left (Conditional) */}
                                         {showLastUpdated && (
@@ -249,12 +248,13 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                             )}>
                                 {novel.coverUrl ? (
                                     <>
-                                        <Image
+                                        <ProductionImageLoader
                                             src={novel.coverUrl}
                                             alt={novel.title}
                                             className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-110 block"
                                             fill
                                             sizes="(max-width: 768px) 150px, 300px"
+                                            fallbackSrc="/images/book-placeholder.svg"
                                         />
                                         {/* Last Updated Badge - Top Left (Conditional) */}
                                         {showLastUpdated && novel.lastUpdated && (

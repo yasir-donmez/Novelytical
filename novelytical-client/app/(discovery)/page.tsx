@@ -23,8 +23,7 @@ export default async function HomePage() {
             {/* Hero Section with novel collage background */}
             <HeroSection novels={heroNovels} />
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-20">
-                {/* 1. Trending Lane (With Numbers) */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-20">{/* 1. Trending Lane (With Numbers) */}
                 <Suspense fallback={<LaneSkeleton title="Haftanın Trendleri" icon={<Flame className="h-6 w-6 text-orange-500 fill-orange-500/20" />} variant="trending" hideBorder={true} />}>
                     <TrendingLane
                         title="Haftanın Trendleri"

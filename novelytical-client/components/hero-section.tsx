@@ -1,10 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/search-bar';
-import { Play, Search } from 'lucide-react';
-import Link from 'next/link';
-import Image from 'next/image';
+import { ProductionImageLoader } from './production-image-loader';
 import type { NovelListDto } from '@/types/novel';
 
 interface HeroSectionProps {
@@ -25,12 +22,13 @@ export function HeroSection({ novels }: HeroSectionProps) {
                 {displayNovels.map((novel, i) => (
                     <div key={i} className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-800/50 rounded-sm">
                         {(novel.coverUrl) ? (
-                            <Image
-                                src={novel.coverUrl || ""}
+                            <ProductionImageLoader
+                                src={novel.coverUrl}
                                 alt=""
-                                className="object-cover hover:scale-105 transition-transform duration-700"
                                 fill
+                                className="object-cover hover:scale-105 transition-transform duration-700"
                                 sizes="(max-width: 768px) 33vw, 16vw"
+                                fallbackSrc="/images/book-placeholder.svg"
                             />
                         ) : (
                             <div className="w-full h-full bg-muted/50" />
@@ -53,12 +51,13 @@ export function HeroSection({ novels }: HeroSectionProps) {
                 {/* Brand / Logo Area - Navbar Style */}
                 <div className="flex items-center gap-2 mb-6 pointer-events-none select-none">
                     <div className="relative w-20 h-20 md:w-28 md:h-28 drop-shadow-2xl">
-                        <Image
+                        <ProductionImageLoader
                             src="/logo.png"
                             alt="Novelytical Logo"
                             fill
                             className="object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                             priority
+                            fallbackSrc="/images/default-placeholder.svg"
                         />
                     </div>
                 </div>

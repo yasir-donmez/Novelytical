@@ -1,5 +1,3 @@
-import { HeroServer } from '@/components/hero-server';
-
 export default function DiscoveryLayout({
     children,
 }: {
@@ -7,11 +5,8 @@ export default function DiscoveryLayout({
 }) {
     return (
         <div className="min-h-screen bg-background pb-20 w-full overflow-x-hidden">
-            {/* Fixed Hero Section - Shared across all pages in this group */}
-            <HeroServer />
-
-            {/* Dynamic Content - Changes based on route */}
-            <div className="relative z-20 -mt-44">
+            {/* Dynamic Content - Hero section now handled by individual pages */}
+            <div className="relative z-20">
                 {children}
             </div>
         </div>
