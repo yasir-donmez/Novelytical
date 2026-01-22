@@ -34,33 +34,17 @@ try
     builder.Services.AddDataLayer(connectionString!);          // Data layer (DbContext, Repositories)
     builder.Services.AddApplicationLayer();                    // Application layer (Services, Cache)
     
-    // Health Check servisi - Redis optional
-    var healthChecksBuilder = builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString!);
-    
-    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrEmpty(redisConnectionString) && redisConnectionString != "localhost:6379")
-    {
-        healthChecksBuilder.AddRedis(redisConnectionString);
-    }
+    // Health Check servisi
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString!)
+        .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 
-    // 🚀 Caching Strategy (Redis) - Production optimized
-    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrEmpty(redisConnectionString) && redisConnectionString != "localhost:6379")
+    // 🚀 Caching Strategy (Redis)
+    builder.Services.AddStackExchangeRedisCache(options =>
     {
-        builder.Services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = redisConnectionString;
-            options.InstanceName = "Novelytical_";
-        });
-    }
-    else
-    {
-        // Fallback to in-memory cache if Redis not available
-        builder.Services.AddMemoryCache();
-        builder.Services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache, 
-            Microsoft.Extensions.Caching.Memory.MemoryDistributedCache>();
-    }
+        options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        options.InstanceName = "Novelytical_";
+    });
 
     // Add services to the container.
     builder.Services.AddControllers();
