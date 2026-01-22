@@ -21,12 +21,28 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .WriteTo.Seq(context.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
+    builder.Host.UseSerilog((context, services, configuration) => 
+    {
+        configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .WriteTo.Console();
+            
+        // Only add Seq in development or if URL is properly configured
+        var seqUrl = context.Configuration["Seq:ServerUrl"];
+        if (!string.IsNullOrEmpty(seqUrl) && !seqUrl.Contains("localhost"))
+        {
+            try
+            {
+                configuration.WriteTo.Seq(seqUrl);
+            }
+            catch
+            {
+                // Ignore Seq if connection fails
+            }
+        }
+    });
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     
@@ -34,17 +50,46 @@ try
     builder.Services.AddDataLayer(connectionString!);          // Data layer (DbContext, Repositories)
     builder.Services.AddApplicationLayer();                    // Application layer (Services, Cache)
     
-    // Health Check servisi
-    builder.Services.AddHealthChecks()
-        .AddNpgSql(connectionString!)
-        .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
-
-    // 🚀 Caching Strategy (Redis)
-    builder.Services.AddStackExchangeRedisCache(options =>
+    // Health Check servisi - Redis health check with timeout optimization
+    var healthChecksBuilder = builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString!);
+    
+    // Add Redis health check with short timeout to prevent deploy timeouts
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+    if (!string.IsNullOrEmpty(redisConnectionString) && !redisConnectionString.Contains("localhost"))
     {
-        options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-        options.InstanceName = "Novelytical_";
-    });
+        try
+        {
+            healthChecksBuilder.AddRedis(redisConnectionString, timeout: TimeSpan.FromSeconds(3));
+        }
+        catch
+        {
+            // Ignore Redis health check if connection fails
+            Log.Warning("Redis health check skipped due to connection issues");
+        }
+    }
+
+    // 🚀 Caching Strategy (Redis) - Upstash optimized with aggressive timeouts
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+    if (!string.IsNullOrEmpty(redisConnectionString) && !redisConnectionString.Contains("localhost"))
+    {
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = redisConnectionString;
+            options.InstanceName = "Novelytical_";
+            // Aggressive timeout settings for Upstash Redis
+            options.ConfigurationOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            options.ConfigurationOptions.ConnectTimeout = 2000; // 2 seconds
+            options.ConfigurationOptions.SyncTimeout = 2000;    // 2 seconds
+            options.ConfigurationOptions.AbortOnConnectFail = false;
+            options.ConfigurationOptions.ConnectRetry = 1;      // Only 1 retry
+        });
+    }
+    else
+    {
+        // Fallback to memory cache
+        builder.Services.AddMemoryCache();
+    }
 
     // Add services to the container.
     builder.Services.AddControllers();
