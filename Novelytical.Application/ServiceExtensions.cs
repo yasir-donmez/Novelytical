@@ -24,26 +24,12 @@ public static class ServiceExtensions
         var outputDir = Path.GetDirectoryName(assemblyLocation);
         var embeddingsDir = Path.Combine(outputDir!, "Resources", "Embeddings", "paraphrase-multilingual-MiniLM-L12-v2");
 
-        // Register embedder based on environment
+        // PRODUCTION MEMORY OPTIMIZATION: Always use DummyEmbedder
+        // Vector search completely disabled to prevent memory issues
         services.AddSingleton<IEmbedder>(sp =>
         {
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            
-            if (environment == "Production")
-            {
-                // Use dummy embedder in production to save memory
-                var logger = sp.GetRequiredService<ILogger<DummyEmbedder>>();
-                return new DummyEmbedder(logger);
-            }
-            else
-            {
-                // Use real embedder in development/local
-                var logger = sp.GetRequiredService<ILogger<Services.Embeddings.OnnxEmbedder>>();
-                var modelPath = Path.Combine(embeddingsDir, "model.onnx");
-                var tokenizerPath = Path.Combine(embeddingsDir, "sentencepiece.bpe.model");
-                
-                return new Services.Embeddings.OnnxEmbedder(modelPath, tokenizerPath, logger);
-            }
+            var logger = sp.GetRequiredService<ILogger<DummyEmbedder>>();
+            return new DummyEmbedder(logger);
         });
 
 
