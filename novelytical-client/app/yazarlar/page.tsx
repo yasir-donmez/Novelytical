@@ -15,7 +15,7 @@ async function getTopAuthors() {
     try {
         // Fetch a larger dataset (1000) to get a better representation of "Top Authors"
         // Ideally this should be an aggregation endpoint on the backend in the future.
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050'}/api/novels?pageSize=1000`, {
+        const res = await fetch(`${process.env.API_URL || 'http://localhost:5050'}/api/novels?pageSize=1000`, {
             next: { revalidate: 3600 } // Cache for 1 hour
         });
 

@@ -13,23 +13,23 @@ export interface ResilienceConfig {
   maxRetries: number;
   retryDelayMs: number;
   exponentialBackoff: boolean;
-  
+
   // Circuit breaker configuration
   circuitBreakerThreshold: number; // Number of failures before opening circuit
   circuitBreakerTimeout: number; // Time to wait before trying again (ms)
   circuitBreakerResetTimeout: number; // Time to wait before resetting circuit (ms)
-  
+
   // Fallback configuration
   enableFallbackChain: boolean;
   fallbackToMemoryOnly: boolean;
   fallbackToLocalStorageOnly: boolean;
   gracefulDegradation: boolean;
-  
+
   // Network resilience
   networkTimeoutMs: number;
   offlineSupport: boolean;
   offlineStorageKey: string;
-  
+
   // Error monitoring
   errorReportingEnabled: boolean;
   maxErrorHistory: number;
@@ -55,20 +55,20 @@ export const DEFAULT_RESILIENCE_CONFIG: ResilienceConfig = {
   maxRetries: 3,
   retryDelayMs: 1000,
   exponentialBackoff: true,
-  
+
   circuitBreakerThreshold: 5,
   circuitBreakerTimeout: 30000, // 30 seconds
   circuitBreakerResetTimeout: 60000, // 1 minute
-  
+
   enableFallbackChain: true,
   fallbackToMemoryOnly: true,
   fallbackToLocalStorageOnly: true,
   gracefulDegradation: true,
-  
+
   networkTimeoutMs: 5000,
   offlineSupport: true,
   offlineStorageKey: 'novelytical_offline_cache',
-  
+
   errorReportingEnabled: true,
   maxErrorHistory: 100
 };
@@ -77,7 +77,7 @@ export class ResilientCacheManager implements CacheManager {
   private cacheManager: CacheManagerImpl;
   private circuitBreakers = new Map<string, CircuitBreakerState>();
   private errorHistory: ErrorInfo[] = [];
-  private isOnline = navigator.onLine;
+  private isOnline = typeof window !== 'undefined' ? navigator.onLine : true;  // SSR-safe: default to online on server
   private offlineQueue: Array<{ operation: string; args: any[]; resolve: Function; reject: Function }> = [];
 
   constructor(
@@ -153,28 +153,28 @@ export class ResilientCacheManager implements CacheManager {
     while (attempt <= this.resilienceConfig.maxRetries) {
       try {
         const result = await this.executeWithTimeout(fn, this.resilienceConfig.networkTimeoutMs);
-        
+
         // Reset circuit breaker on success
         this.resetCircuitBreaker(operation);
-        
+
         return result;
       } catch (error) {
         lastError = error as Error;
         attempt++;
-        
+
         // Record error
         this.recordError(operation, lastError, context, attempt <= this.resilienceConfig.maxRetries);
-        
+
         // Update circuit breaker
         this.recordFailure(operation);
-        
+
         // Try fallback strategies before retrying
         if (attempt <= this.resilienceConfig.maxRetries) {
           const fallbackResult = await this.tryFallbackStrategies(operation, context, lastError);
           if (fallbackResult !== null) {
             return fallbackResult as T;
           }
-          
+
           // Wait before retry with exponential backoff
           if (attempt < this.resilienceConfig.maxRetries) {
             const delay = this.calculateRetryDelay(attempt);
@@ -201,7 +201,7 @@ export class ResilientCacheManager implements CacheManager {
   private async executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
     return Promise.race([
       fn(),
-      new Promise<never>((_, reject) => 
+      new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Operation timeout')), timeoutMs)
       )
     ]);
@@ -302,13 +302,13 @@ export class ResilientCacheManager implements CacheManager {
       if (offlineResult !== null) {
         return offlineResult;
       }
-      
+
       // Try memory cache
       const memoryResult = await this.cacheManager.memory.get<T>(context.key);
       if (memoryResult !== null) {
         return memoryResult;
       }
-      
+
       // Try localStorage cache
       const localStorageResult = await this.cacheManager.localStorage.get<T>(context.key);
       if (localStorageResult !== null) {
@@ -343,17 +343,17 @@ export class ResilientCacheManager implements CacheManager {
     switch (circuitBreaker.state) {
       case 'closed':
         return true;
-      
+
       case 'open':
         if (now >= circuitBreaker.nextAttemptTime) {
           circuitBreaker.state = 'half-open';
           return true;
         }
         return false;
-      
+
       case 'half-open':
         return true;
-      
+
       default:
         return true;
     }
@@ -362,7 +362,7 @@ export class ResilientCacheManager implements CacheManager {
   private recordFailure(operation: string): void {
     const now = Date.now();
     let circuitBreaker = this.circuitBreakers.get(operation);
-    
+
     if (!circuitBreaker) {
       circuitBreaker = {
         state: 'closed',
@@ -440,6 +440,8 @@ export class ResilientCacheManager implements CacheManager {
     if (!this.resilienceConfig.offlineSupport) return;
 
     // Load offline queue from storage on startup
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       const stored = localStorage.getItem(`${this.resilienceConfig.offlineStorageKey}_queue`);
       if (stored) {
@@ -454,11 +456,13 @@ export class ResilientCacheManager implements CacheManager {
     this.offlineQueue.push({
       operation,
       args: [context],
-      resolve: () => {},
-      reject: () => {}
+      resolve: () => { },
+      reject: () => { }
     });
 
     // Persist queue to localStorage
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(
         `${this.resilienceConfig.offlineStorageKey}_queue`,
@@ -503,6 +507,8 @@ export class ResilientCacheManager implements CacheManager {
     }
 
     // Clear persisted queue
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       localStorage.removeItem(`${this.resilienceConfig.offlineStorageKey}_queue`);
     } catch (error) {
@@ -511,6 +517,8 @@ export class ResilientCacheManager implements CacheManager {
   }
 
   private getFromOfflineStorage<T>(key: string): T | null {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return null;
     try {
       const stored = localStorage.getItem(`${this.resilienceConfig.offlineStorageKey}_${key}`);
       if (stored) {
@@ -532,7 +540,7 @@ export class ResilientCacheManager implements CacheManager {
     if (!this.resilienceConfig.exponentialBackoff) {
       return this.resilienceConfig.retryDelayMs;
     }
-    
+
     return this.resilienceConfig.retryDelayMs * Math.pow(2, attempt - 1);
   }
 

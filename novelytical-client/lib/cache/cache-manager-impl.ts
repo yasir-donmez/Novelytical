@@ -7,13 +7,13 @@
  * Enhanced with background refresh and intelligent cache miss handling
  */
 
-import { 
-  CacheManager, 
-  CacheConfig, 
-  CacheStats, 
-  CacheMetadata, 
+import {
+  CacheManager,
+  CacheConfig,
+  CacheStats,
+  CacheMetadata,
   DEFAULT_CACHE_CONFIG,
-  getTTLForDataType 
+  getTTLForDataType
 } from './cache-manager';
 import { MemoryCache } from './memory-cache';
 import { LocalStorageCache } from './localstorage-cache';
@@ -27,7 +27,7 @@ export class CacheManagerImpl implements CacheManager {
   public backgroundRefresher!: BackgroundCacheRefresher;
   public missHandler!: CacheMissHandler;
   public ttlOptimizer!: TTLOptimizer;
-  
+
   private performanceStats = {
     totalRequests: 0,
     totalResponseTime: 0,
@@ -37,10 +37,10 @@ export class CacheManagerImpl implements CacheManager {
   constructor(private config: CacheConfig = DEFAULT_CACHE_CONFIG) {
     this.memory = new MemoryCache(config, config.maxMemorySize * 1024 * 1024);
     this.localStorage = new LocalStorageCache(config, config.maxLocalStorageSize * 1024 * 1024);
-    
+
     // Initialize background systems asynchronously to avoid circular dependency
     this.initializeBackgroundSystems();
-    
+
     // Start periodic cleanup
     this.startPeriodicCleanup();
   }
@@ -52,7 +52,7 @@ export class CacheManagerImpl implements CacheManager {
         this.backgroundRefresher = getBackgroundRefresher();
         this.missHandler = getCacheMissHandler();
         this.ttlOptimizer = getTTLOptimizer();
-        
+
         // Start background systems
         if (this.backgroundRefresher) {
           this.backgroundRefresher.start();
@@ -119,14 +119,14 @@ export class CacheManagerImpl implements CacheManager {
    * Set data in all cache layers and register for background refresh
    */
   async set<T>(
-    key: string, 
-    value: T, 
-    dataType: string = 'dynamic', 
+    key: string,
+    value: T,
+    dataType: string = 'dynamic',
     customTTL?: number
   ): Promise<void> {
     try {
       const ttl = customTTL || this.getOptimizedTTL(key, dataType);
-      
+
       // Set in both cache layers
       await Promise.all([
         this.memory.set(key, value, ttl),
@@ -369,11 +369,11 @@ export class CacheManagerImpl implements CacheManager {
   async getStats(): Promise<CacheStats> {
     const memoryStats = this.memory.getStats();
     const localStorageStats = this.localStorage.getStats();
-    
+
     const totalHits = memoryStats.hitCount + localStorageStats.hitCount;
     const totalMisses = memoryStats.missCount + localStorageStats.missCount;
     const totalRequests = totalHits + totalMisses;
-    
+
     return {
       memory: memoryStats,
       localStorage: localStorageStats,
@@ -381,8 +381,8 @@ export class CacheManagerImpl implements CacheManager {
         totalHits,
         totalMisses,
         overallHitRate: totalRequests > 0 ? totalHits / totalRequests : 0,
-        avgResponseTime: this.performanceStats.totalRequests > 0 
-          ? this.performanceStats.totalResponseTime / this.performanceStats.totalRequests 
+        avgResponseTime: this.performanceStats.totalRequests > 0
+          ? this.performanceStats.totalResponseTime / this.performanceStats.totalRequests
           : 0
       }
     };
@@ -395,7 +395,10 @@ export class CacheManagerImpl implements CacheManager {
     // Try memory cache first
     let metadata = this.memory.getMetadata(key);
     if (metadata) return metadata;
-    
+
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return null;
+
     // Try localStorage cache
     try {
       const fullKey = `${this.config.localStoragePrefix}${key}`;
@@ -407,7 +410,7 @@ export class CacheManagerImpl implements CacheManager {
     } catch (error) {
       console.warn('Error getting metadata:', error);
     }
-    
+
     return null;
   }
 
@@ -419,7 +422,7 @@ export class CacheManagerImpl implements CacheManager {
       // Check if already cached
       const cached = await this.get<T>(key, dataType);
       if (cached !== null) return;
-      
+
       // Fetch and cache data
       const data = await dataFetcher();
       await this.set(key, data, dataType);
@@ -432,8 +435,8 @@ export class CacheManagerImpl implements CacheManager {
    * Refresh cache entry in background
    */
   async refreshInBackground<T>(
-    key: string, 
-    dataFetcher: () => Promise<T>, 
+    key: string,
+    dataFetcher: () => Promise<T>,
     dataType: string = 'dynamic'
   ): Promise<void> {
     // Don't await - run in background
@@ -460,7 +463,7 @@ export class CacheManagerImpl implements CacheManager {
     if (this.missHandler) {
       this.missHandler.registerFetcher(key, dataType, fetcher, priority);
     }
-    
+
     // Register with background refresher for proactive refresh
     this.backgroundRefresher.registerRefresh(key, dataType, fetcher, priority);
   }
@@ -478,7 +481,7 @@ export class CacheManagerImpl implements CacheManager {
     const refreshStats = this.backgroundRefresher?.getStats() || { totalRefreshes: 0, successfulRefreshes: 0, failedRefreshes: 0 };
     const missStats = this.missHandler?.getStats() || { totalMisses: 0, successfulFetches: 0, failedFetches: 0 };
     const ttlStats = this.ttlOptimizer?.getOptimizationStats() || { totalOptimizations: 0, averageOptimization: 0 };
-    
+
     return {
       cache: cacheStats,
       backgroundRefresh: refreshStats,
@@ -516,31 +519,31 @@ export class CacheManagerImpl implements CacheManager {
   }> {
     const stats = await this.getStats();
     const suggestions: string[] = [];
-    
+
     // Analyze hit rate
     if (stats.overall.overallHitRate < 0.7) {
       suggestions.push('Consider increasing TTL values for frequently accessed data');
     }
-    
+
     // Analyze memory usage
     const memoryUsagePercent = stats.memory.size / stats.memory.maxSize;
     if (memoryUsagePercent > 0.9) {
       suggestions.push('Memory cache is nearly full, consider increasing maxMemorySize');
     }
-    
+
     // Analyze localStorage usage
     const localStorageUsagePercent = stats.localStorage.size / stats.localStorage.maxSize;
     if (localStorageUsagePercent > 0.9) {
       suggestions.push('LocalStorage cache is nearly full, consider cleanup or size increase');
     }
-    
+
     let recommendation = 'Cache performance is optimal';
     if (stats.overall.overallHitRate < 0.5) {
       recommendation = 'Cache hit rate is low, consider optimization';
     } else if (stats.overall.overallHitRate < 0.7) {
       recommendation = 'Cache performance is good but can be improved';
     }
-    
+
     return {
       recommendation,
       hitRate: stats.overall.overallHitRate,
@@ -562,7 +565,7 @@ export class CacheManagerImpl implements CacheManager {
     if (optimizedTTL) {
       return optimizedTTL;
     }
-    
+
     // Fallback to default TTL
     return getTTLForDataType(dataType, this.config);
   }
@@ -575,13 +578,13 @@ export class CacheManagerImpl implements CacheManager {
     // This is a simplified implementation
     // In a real scenario, you'd need to iterate through cache entries
     // and check their metadata against the conditions
-    
+
     if (options.olderThan) {
       // Invalidate entries created before the specified timestamp
       await this.memory.cleanup(); // This removes expired entries
       // For localStorage, we'd need a more sophisticated approach
     }
-    
+
     // Note: Full implementation would require iterating through all cache entries
     // and checking their metadata, which could be expensive for large caches
     // This is a trade-off between functionality and performance

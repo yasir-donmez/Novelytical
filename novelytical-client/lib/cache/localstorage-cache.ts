@@ -22,21 +22,26 @@ export class LocalStorageCache implements CacheLayer {
     private config: CacheConfig,
     private maxSizeBytes: number = 100 * 1024 * 1024 // 100MB default
   ) {
-    this.calculateCurrentSize();
+    // SSR guard: only calculate size in browser
+    if (typeof window !== 'undefined') {
+      this.calculateCurrentSize();
+    }
   }
 
   async get<T>(key: string): Promise<T | null> {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return null;
     try {
       const fullKey = this.getFullKey(key);
       const stored = localStorage.getItem(fullKey);
-      
+
       if (!stored) {
         this.stats.missCount++;
         return null;
       }
 
       const entry: LocalStorageCacheEntry = JSON.parse(stored);
-      
+
       // Check if expired
       const now = Date.now();
       if (now > entry.metadata.expiresAt) {
@@ -49,7 +54,7 @@ export class LocalStorageCache implements CacheLayer {
       entry.metadata.lastAccessed = now;
       entry.metadata.accessCount++;
       localStorage.setItem(fullKey, JSON.stringify(entry));
-      
+
       this.stats.hitCount++;
       return entry.value as T;
     } catch (error) {
@@ -59,10 +64,12 @@ export class LocalStorageCache implements CacheLayer {
     }
   }
   async set<T>(key: string, value: T, ttl: number = 5 * 60 * 1000): Promise<void> {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       const now = Date.now();
       const fullKey = this.getFullKey(key);
-      
+
       const metadata: CacheMetadata = {
         key,
         createdAt: now,
@@ -76,7 +83,7 @@ export class LocalStorageCache implements CacheLayer {
       const entry: LocalStorageCacheEntry = { value, metadata };
       const serialized = JSON.stringify(entry);
       const size = new Blob([serialized]).size;
-      
+
       metadata.size = size;
 
       // Check if we need to make space
@@ -90,8 +97,8 @@ export class LocalStorageCache implements CacheLayer {
       if (error instanceof Error && error.name === 'QuotaExceededError') {
         await this.cleanup();
         try {
-          const entry: LocalStorageCacheEntry = { 
-            value, 
+          const entry: LocalStorageCacheEntry = {
+            value,
             metadata: {
               key,
               createdAt: Date.now(),
@@ -111,10 +118,12 @@ export class LocalStorageCache implements CacheLayer {
   }
 
   async delete(key: string): Promise<void> {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       const fullKey = this.getFullKey(key);
       const stored = localStorage.getItem(fullKey);
-      
+
       if (stored) {
         const entry: LocalStorageCacheEntry = JSON.parse(stored);
         this.stats.totalSize -= entry.metadata.size;
@@ -126,6 +135,8 @@ export class LocalStorageCache implements CacheLayer {
   }
 
   async clear(): Promise<void> {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return;
     try {
       const keys = this.getAllCacheKeys();
       for (const key of keys) {
@@ -138,20 +149,22 @@ export class LocalStorageCache implements CacheLayer {
   }
 
   async has(key: string): Promise<boolean> {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return false;
     try {
       const fullKey = this.getFullKey(key);
       const stored = localStorage.getItem(fullKey);
-      
+
       if (!stored) return false;
-      
+
       const entry: LocalStorageCacheEntry = JSON.parse(stored);
-      
+
       // Check if expired
       if (Date.now() > entry.metadata.expiresAt) {
         localStorage.removeItem(fullKey);
         return false;
       }
-      
+
       return true;
     } catch (error) {
       return false;
@@ -179,7 +192,7 @@ export class LocalStorageCache implements CacheLayer {
   async cleanup(): Promise<void> {
     const now = Date.now();
     const keys = this.getAllCacheKeys();
-    
+
     for (const fullKey of keys) {
       try {
         const stored = localStorage.getItem(fullKey);
@@ -201,7 +214,7 @@ export class LocalStorageCache implements CacheLayer {
   async invalidatePattern(pattern: string): Promise<void> {
     const regex = new RegExp(pattern);
     const keys = this.getAllCacheKeys();
-    
+
     for (const fullKey of keys) {
       const key = fullKey.replace(this.config.localStoragePrefix, '');
       if (regex.test(key)) {
@@ -216,6 +229,8 @@ export class LocalStorageCache implements CacheLayer {
   }
 
   private getAllCacheKeys(): string[] {
+    // SSR guard: localStorage only available in browser
+    if (typeof window === 'undefined') return [];
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -229,7 +244,7 @@ export class LocalStorageCache implements CacheLayer {
   private calculateCurrentSize(): void {
     let totalSize = 0;
     const keys = this.getAllCacheKeys();
-    
+
     for (const key of keys) {
       try {
         const stored = localStorage.getItem(key);
@@ -240,7 +255,7 @@ export class LocalStorageCache implements CacheLayer {
         // Ignore errors for size calculation
       }
     }
-    
+
     this.stats.totalSize = totalSize;
   }
 
@@ -252,7 +267,7 @@ export class LocalStorageCache implements CacheLayer {
     // Get all entries with their access times
     const entries: Array<{ key: string, lastAccessed: number, size: number }> = [];
     const keys = this.getAllCacheKeys();
-    
+
     for (const fullKey of keys) {
       try {
         const stored = localStorage.getItem(fullKey);
@@ -276,7 +291,7 @@ export class LocalStorageCache implements CacheLayer {
     // Remove LRU entries until we have enough space
     for (const entry of entries) {
       await this.delete(entry.key);
-      
+
       if (this.stats.totalSize + requiredSize <= this.maxSizeBytes) {
         break;
       }
