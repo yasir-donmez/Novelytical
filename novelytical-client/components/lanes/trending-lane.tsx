@@ -14,7 +14,7 @@ interface TrendingLaneProps {
 export async function TrendingLane({ title, icon }: TrendingLaneProps) {
     let novels: NovelListDto[] = [];
     try {
-        const res = await fetchNovels({ pageSize: 10, sortOrder: 'rank_desc', revalidate: 300 }); // 5 minutes cache
+        const res = await fetchNovels({ pageSize: 10, sortOrder: 'rank_desc', revalidate: 3600 }); // 60 minutes cache (optimized from 5 minutes)
         novels = res.data || [];
     } catch (error) {
         console.error(`Failed to fetch Trending Lane:`, error);

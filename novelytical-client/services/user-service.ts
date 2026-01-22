@@ -14,10 +14,12 @@ import {
 
 const USERS_COLLECTION = "users";
 
-// Simple in-memory cache
-// Key: uid, Value: { data: UserProfile, timestamp: number }
+// Import optimized cache manager
+import { getCacheManager, CacheKeys } from "@/lib/cache";
+
+// Legacy cache for backward compatibility (will be phased out)
 const userProfileCache = new Map<string, { data: UserProfile, timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 Minutes
+const CACHE_TTL = 30 * 60 * 1000; // 30 Minutes (optimized from 5 minutes)
 
 export interface UserProfile {
     uid: string;
@@ -147,24 +149,34 @@ export const UserService = {
 
     /**
      * Fetches the full user profile from Firestore.
-     * Uses in-memory caching to prevent excessive reads (5 minute TTL).
+     * Uses optimized multi-layered caching to prevent excessive reads (30 minute TTL).
      */
     async getUserProfile(uid: string): Promise<UserProfile | null> {
-        // 1. Check Cache
-        const cached = userProfileCache.get(uid);
-        const now = Date.now();
-        if (cached && (now - cached.timestamp < CACHE_TTL)) {
-            // console.log(`[UserService] Serving ${uid} from cache`);
-            return cached.data;
-        }
+        const cacheManager = getCacheManager();
+        const cacheKey = CacheKeys.userProfile(uid);
 
         try {
-            // console.log(`[UserService] Fetching ${uid} from Firestore`);
+            // Try optimized cache first
+            let profile = await cacheManager.get<UserProfile>(cacheKey, 'user');
+            if (profile) {
+                return profile;
+            }
+
+            // Fallback to legacy cache for migration period
+            const cached = userProfileCache.get(uid);
+            const now = Date.now();
+            if (cached && (now - cached.timestamp < CACHE_TTL)) {
+                // Migrate to new cache system
+                await cacheManager.set(cacheKey, cached.data, 'user');
+                return cached.data;
+            }
+
+            // Fetch from Firestore
             const docRef = doc(db, USERS_COLLECTION, uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                const profile: UserProfile = {
+                profile = {
                     uid,
                     username: data.username,
                     email: data.email,
@@ -175,7 +187,8 @@ export const UserService = {
                     notificationSettings: data.notificationSettings
                 };
 
-                // 2. Set Cache
+                // Cache in both systems during migration
+                await cacheManager.set(cacheKey, profile, 'user');
                 userProfileCache.set(uid, {
                     data: profile,
                     timestamp: now

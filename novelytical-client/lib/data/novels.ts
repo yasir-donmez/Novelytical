@@ -5,11 +5,12 @@ import { NetworkError } from '../errors/types';
 // Helper function to get API base URL
 const getApiUrl = () => {
     if (typeof window !== 'undefined') {
-        // Client-side: use '/api' proxy
-        return process.env.NEXT_PUBLIC_API_URL || '/api';
+        // Client-side: always use '/api' proxy (configured in next.config.mjs rewrites)
+        return '/api';
     }
-    // Server-side: use full URL
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+    // Server-side (SSR): use direct backend URL
+    // Falls back to localhost for local development
+    return process.env.API_URL || 'http://localhost:5050';
 };
 
 export interface FetchNovelsParams {

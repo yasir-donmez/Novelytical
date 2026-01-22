@@ -74,25 +74,39 @@ const calculateStatsFromCollections = async (novelId: number): Promise<NovelStat
     }
 };
 
+// Import optimized cache manager
+import { getCacheManager, CacheKeys } from "@/lib/cache";
+
+// Legacy cache for backward compatibility (will be phased out)
 const statsCache = new Map<number, { data: NovelStats, timestamp: number }>();
-const STATS_CACHE_TTL = 10 * 60 * 1000; // 10 Minutes
+const STATS_CACHE_TTL = 60 * 60 * 1000; // 60 Minutes (optimized from 10 minutes)
 
 /**
- * Get stats for a specific novel
+ * Get stats for a specific novel with optimized caching
  */
 export const getNovelStats = async (novelId: number): Promise<NovelStats> => {
-    // 1. Check Cache
-    const cached = statsCache.get(novelId);
-    const now = Date.now();
-    if (cached && (now - cached.timestamp < STATS_CACHE_TTL)) {
-        return cached.data;
-    }
+    const cacheManager = getCacheManager();
+    const cacheKey = CacheKeys.novelStats(novelId);
 
     try {
+        // Try optimized cache first
+        let stats = await cacheManager.get<NovelStats>(cacheKey, 'stats');
+        if (stats) {
+            return stats;
+        }
+
+        // Fallback to legacy cache for migration period
+        const cached = statsCache.get(novelId);
+        const now = Date.now();
+        if (cached && (now - cached.timestamp < STATS_CACHE_TTL)) {
+            // Migrate to new cache system
+            await cacheManager.set(cacheKey, cached.data, 'stats');
+            return cached.data;
+        }
+
+        // Fetch from Firestore
         const docRef = doc(db, COLLECTION_NAME, novelId.toString());
         const docSnap = await getDoc(docRef);
-
-        let stats: NovelStats;
 
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -112,7 +126,8 @@ export const getNovelStats = async (novelId: number): Promise<NovelStats> => {
             }
         }
 
-        // 2. Set Cache
+        // Cache in both systems during migration
+        await cacheManager.set(cacheKey, stats, 'stats');
         statsCache.set(novelId, {
             data: stats,
             timestamp: now
