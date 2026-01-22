@@ -70,7 +70,6 @@ try
     }
 
     // 🚀 Caching Strategy (Redis) - Upstash optimized with aggressive timeouts
-    var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
     if (!string.IsNullOrEmpty(redisConnectionString) && !redisConnectionString.Contains("localhost"))
     {
         builder.Services.AddStackExchangeRedisCache(options =>
