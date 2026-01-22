@@ -1,3 +1,5 @@
+'use client';
+
 import { Suspense } from 'react';
 import { Flame, Sparkles, Trophy, BookOpen } from 'lucide-react';
 import { GenericLane } from '@/components/lanes/generic-lane';

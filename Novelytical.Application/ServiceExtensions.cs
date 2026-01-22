@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Novelytical.Application.Interfaces;
+using Novelytical.Application.Services.Embeddings;
 
 namespace Novelytical.Application;
 
@@ -23,14 +24,26 @@ public static class ServiceExtensions
         var outputDir = Path.GetDirectoryName(assemblyLocation);
         var embeddingsDir = Path.Combine(outputDir!, "Resources", "Embeddings", "paraphrase-multilingual-MiniLM-L12-v2");
 
-        // Register OnnxEmbedder
+        // Register embedder based on environment
         services.AddSingleton<IEmbedder>(sp =>
         {
-            var logger = sp.GetRequiredService<ILogger<Services.Embeddings.OnnxEmbedder>>();
-            var modelPath = Path.Combine(embeddingsDir, "model.onnx");
-            var tokenizerPath = Path.Combine(embeddingsDir, "sentencepiece.bpe.model");
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             
-            return new Services.Embeddings.OnnxEmbedder(modelPath, tokenizerPath, logger);
+            if (environment == "Production")
+            {
+                // Use dummy embedder in production to save memory
+                var logger = sp.GetRequiredService<ILogger<DummyEmbedder>>();
+                return new DummyEmbedder(logger);
+            }
+            else
+            {
+                // Use real embedder in development/local
+                var logger = sp.GetRequiredService<ILogger<Services.Embeddings.OnnxEmbedder>>();
+                var modelPath = Path.Combine(embeddingsDir, "model.onnx");
+                var tokenizerPath = Path.Combine(embeddingsDir, "sentencepiece.bpe.model");
+                
+                return new Services.Embeddings.OnnxEmbedder(modelPath, tokenizerPath, logger);
+            }
         });
 
 

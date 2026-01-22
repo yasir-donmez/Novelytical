@@ -91,20 +91,12 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             // Standard sorting and filtering
             var query = _repository.GetOptimizedQuery();
 
-            // 0. Hybrid Search (Vector + FullText) if search is active
+            // 0. Search functionality (Vector search temporarily disabled for memory optimization)
             if (!string.IsNullOrWhiteSpace(request.SearchString))
             {
-                try 
-                {
-                    var (searchResults, searchCount) = await HybridSearchWithRRF(request);
-                    return new PagedResponse<NovelListDto>(searchResults, request.PageNumber, request.PageSize, searchCount);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Hybrid Search failed for query: {Query}. Falling back to standard search.", request.SearchString);
-                    // Fallback to standard ILike search execution below
-                    query = query.Where(n => EF.Functions.ILike(n.Title, $"%{request.SearchString}%"));
-                }
+                _logger.LogInformation("Using fallback search for query: {Query}", request.SearchString);
+                // Use standard ILike search instead of hybrid search
+                query = query.Where(n => EF.Functions.ILike(n.Title, $"%{request.SearchString}%"));
             }
 
             // ... (rest of filtering) ...
