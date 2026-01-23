@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function HakkimizdaPage() {
     return (
-        <main className="container px-4 py-12 min-h-screen">
+        <main className="container px-4 pt-20 pb-12 min-h-screen">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">

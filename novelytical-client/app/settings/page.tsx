@@ -24,7 +24,7 @@ export default function SettingsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen pt-24 pb-12 bg-background">
+        <div className="min-h-screen pt-20 pb-12 bg-background">
             <div className="container mx-auto px-4 max-w-4xl">
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
                     <div className="mb-8">

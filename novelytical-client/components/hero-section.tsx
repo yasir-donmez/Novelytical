@@ -46,7 +46,7 @@ export function HeroSection({ novels }: HeroSectionProps) {
             <div className="absolute inset-0 bg-gradient-to-r from-background/40 via-transparent to-background/40" />
 
             {/* 3. Centered Content */}
-            <div className="relative h-full flex flex-col items-center justify-center text-center px-4 pb-24">
+            <div className="relative h-full flex flex-col items-center justify-center text-center px-4 pb-24 pt-20">
 
                 {/* Brand / Logo Area - Navbar Style */}
                 <div className="flex items-center gap-2 mb-6 pointer-events-none select-none">

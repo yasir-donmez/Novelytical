@@ -131,7 +131,7 @@ export default function UserProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen pt-24 pb-12 flex justify-center items-center">
+            <div className="min-h-screen pt-20 pb-12 flex justify-center items-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
             </div>
         );
@@ -168,7 +168,7 @@ export default function UserProfilePage() {
     }
 
     return (
-        <div className="min-h-screen pt-24 pb-12 bg-background">
+        <div className="min-h-screen pt-20 pb-12 bg-background">
             <div className="container mx-auto px-4 max-w-4xl">
                 {/* Profile Header */}
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-lg relative overflow-visible">

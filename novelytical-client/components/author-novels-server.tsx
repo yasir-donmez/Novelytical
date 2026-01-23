@@ -3,7 +3,6 @@ import { getNovelsByAuthor } from '@/lib/data/novels';
 import { NovelCard } from '@/components/novel-card';
 import { ScrollableSection } from '@/components/scrollable-section';
 import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { NovelListDto } from '@/types/novel';
 
 export async function AuthorNovelsServer({ author, currentNovelId }: { author: string, currentNovelId: number | string }) {

@@ -230,7 +230,7 @@ export default function AuthorDetailPage() {
     }, [authorName]);
 
     if (loading) {
-        return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 space-y-8 min-h-screen">
+        return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 space-y-8 min-h-screen">
             <div className="flex gap-4 mb-8 items-center">
                 <Skeleton className="h-24 w-24 rounded-full" />
                 <div className="space-y-4">
@@ -254,7 +254,7 @@ export default function AuthorDetailPage() {
     }
 
     return (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 space-y-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 space-y-8">
             {/* Header Navigation */}
             <Button
                 variant="ghost"

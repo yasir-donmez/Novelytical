@@ -6,7 +6,7 @@ import { getNovelById } from '@/lib/data/novels';
 import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
 import { AuthorNovelsServer } from '@/components/author-novels-server';
 import { SimilarNovelsServer } from '@/components/similar-novels-server';
-import { Skeleton } from '@/components/ui/skeleton';
+import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
 import InteractionTabs from '@/components/interaction-tabs';
 
 interface PageProps {
@@ -55,13 +55,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 function AuthorNovelsFallback() {
     return (
         <div className="mt-12 border-t pt-8">
-            <Skeleton className="h-8 w-64 mb-6" />
+            <div className="h-8 w-64 mb-6 bg-muted/20 rounded-md animate-pulse" />
             <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className="w-40 flex-shrink-0">
-                        <Skeleton className="w-full aspect-[2/3] rounded-xl mb-3" />
-                        <Skeleton className="h-4 w-3/4 mb-1" />
-                        <Skeleton className="h-3 w-1/2" />
+                        <NovelCardSkeleton />
                     </div>
                 ))}
             </div>
@@ -73,15 +71,13 @@ function SimilarNovelsFallback() {
     return (
         <div className="mt-12 border-t pt-8 pb-8">
             <div className="flex items-center gap-3 mb-6">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-5 w-24 rounded-full" />
+                <div className="h-8 w-48 bg-muted/20 rounded-md animate-pulse" />
+                <div className="h-5 w-24 bg-muted/20 rounded-full animate-pulse" />
             </div>
             <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className="w-40 flex-shrink-0">
-                        <Skeleton className="w-full aspect-[2/3] rounded-xl mb-3" />
-                        <Skeleton className="h-4 w-3/4 mb-1" />
-                        <Skeleton className="h-3 w-1/2" />
+                        <NovelCardSkeleton />
                     </div>
                 ))}
             </div>
@@ -137,7 +133,7 @@ export default async function NovelDetailPage({ params }: PageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-background pb-12">
+        <div className="min-h-screen bg-background pb-12 pt-20">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

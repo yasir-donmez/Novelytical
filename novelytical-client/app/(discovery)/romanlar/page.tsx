@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
-import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
 import { NovelGridServer } from '@/components/novel-grid-server';
 import { HomeTags } from '@/components/home-tags';
 import { Library } from 'lucide-react';
 import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
+import { HeroSection } from '@/components/hero-section';
+import { fetchNovels } from '@/lib/data/novels';
 
 
 function TagsSkeleton() {
@@ -48,40 +49,54 @@ export default async function RomanlarPage({
     const minRating = typeof params.minRating === 'string' ? parseFloat(params.minRating) : null;
     const maxRating = typeof params.maxRating === 'string' ? parseFloat(params.maxRating) : null;
 
+    // Fetch novels for hero background (same as home page)
+    let heroNovels: any[] = [];
+    try {
+        const res = await fetchNovels({ pageSize: 24, sortOrder: 'rank_desc', revalidate: 3600 });
+        heroNovels = res.data || [];
+    } catch (error) {
+        console.error('Failed to fetch hero novels:', error);
+    }
+
     return (
-        <div className="space-y-4 min-h-screen pt-20">
-            {/* Visual Anchor Header - Matches Home Page Design */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 mb-2">
-                <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
-                    <Library className="h-6 w-6 text-blue-500 fill-blue-500/20" />
+        <>
+            {/* Hero Section with novel collage background */}
+            <HeroSection novels={heroNovels} />
+
+            <div className="space-y-4 min-h-screen">
+                {/* Visual Anchor Header - Matches Home Page Design */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 mb-2">
+                    <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
+                        <Library className="h-6 w-6 text-blue-500 fill-blue-500/20" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">
+                        Kütüphane & Arşiv
+                    </h2>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground/95">
-                    Kütüphane & Arşiv
-                </h2>
-            </div>
 
-            {/* Tags Section */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-                <Suspense fallback={<TagsSkeleton />}>
-                    <HomeTags />
-                </Suspense>
-            </div>
+                {/* Tags Section */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+                    <Suspense fallback={<TagsSkeleton />}>
+                        <HomeTags />
+                    </Suspense>
+                </div>
 
-            {/* Novel Grid */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <Suspense fallback={<NovelGridFallback />}>
-                    <NovelGridServer
-                        searchString={searchString}
-                        tags={tags}
-                        sortOrder={sortOrder}
-                        pageNumber={pageNumber}
-                        minChapters={minChapters}
-                        maxChapters={maxChapters}
-                        minRating={minRating}
-                        maxRating={maxRating}
-                    />
-                </Suspense>
+                {/* Novel Grid */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+                    <Suspense fallback={<NovelGridFallback />}>
+                        <NovelGridServer
+                            searchString={searchString}
+                            tags={tags}
+                            sortOrder={sortOrder}
+                            pageNumber={pageNumber}
+                            minChapters={minChapters}
+                            maxChapters={maxChapters}
+                            minRating={minRating}
+                            maxRating={maxRating}
+                        />
+                    </Suspense>
+                </div>
             </div>
-        </div>
+        </>
     );
 }

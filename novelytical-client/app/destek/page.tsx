@@ -30,7 +30,7 @@ export default function DestekPage() {
     };
 
     return (
-        <main className="container px-4 py-12 min-h-screen">
+        <main className="container px-4 pt-20 pb-12 min-h-screen">
             <div className="max-w-3xl mx-auto">
                 <h1 className="text-3xl font-bold mb-2">Destek</h1>
                 <p className="text-muted-foreground mb-12">
