@@ -20,7 +20,7 @@ import { RatingCriteriaTooltip } from "@/components/rating-criteria-tooltip";
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollableSection } from "@/components/scrollable-section";
-import Image from "next/image";
+import { SimpleImageLoader } from "@/components/simple-image-loader";
 
 interface AuthorStats {
     totalNovels: number;
@@ -103,17 +103,17 @@ export default function AuthorDetailPage() {
         }
 
         if (novels.length === 1) {
-            return <Image src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" fill sizes="128px" />;
+            return <SimpleImageLoader src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
         }
 
         if (novels.length === 2) {
             return (
                 <div className="w-full h-full flex relative">
                     <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
-                        <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="64px" />
+                        <SimpleImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-1/2 h-full overflow-hidden relative">
-                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="64px" />
+                        <SimpleImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
                     </div>
                 </div>
             );
@@ -123,14 +123,14 @@ export default function AuthorDetailPage() {
         return (
             <div className="w-full h-full flex flex-col relative">
                 <div className="h-1/2 w-full overflow-hidden border-b border-white/10 relative">
-                    <Image src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" fill sizes="128px" />
+                    <SimpleImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
                 </div>
                 <div className="h-1/2 w-full flex relative">
                     <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
-                        <Image src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" fill sizes="64px" />
+                        <SimpleImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-1/2 h-full overflow-hidden relative">
-                        <Image src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" fill sizes="64px" />
+                        <SimpleImageLoader src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </div>
