@@ -23,7 +23,7 @@ const nextConfig = {
                 hostname: "www.royalroadcdn.com",
             },
             {
-                protocol: "https", 
+                protocol: "https",
                 hostname: "royalroadcdn.com",
             },
             {
@@ -33,6 +33,10 @@ const nextConfig = {
             {
                 protocol: "https",
                 hostname: "novelfire.net",
+            },
+            {
+                protocol: "https",
+                hostname: "novelfire.me",
             },
             {
                 protocol: "https",
