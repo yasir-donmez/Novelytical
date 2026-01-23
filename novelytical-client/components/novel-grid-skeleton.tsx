@@ -3,8 +3,8 @@ import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
 export function NovelGridSkeleton() {
     return (
         <div>
-            {/* Controls Skeleton */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Controls Skeleton - MATCH FilterControls exactly */}
+            <div className="flex flex-wrap items-center justify-between gap-4 h-[68px] md:h-10">
                 <div className="h-6 w-32 bg-muted/20 rounded-md animate-pulse" />
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="h-10 w-28 bg-card/60 border border-white/5 rounded-md animate-pulse" /> {/* Category */}
@@ -14,7 +14,7 @@ export function NovelGridSkeleton() {
             </div>
 
             {/* Grid Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mt-6">
                 {Array.from({ length: 20 }).map((_, i) => (
                     <NovelCardSkeleton key={i} />
                 ))}

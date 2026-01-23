@@ -14,7 +14,7 @@ export function RankedNovelGrid({ novels, sortOrder }: RankedNovelGridProps) {
     // Backend now handles all rank calculation (syncing data from Firestore to PostgreSQL)
     // Just render the novels in the order received from backend
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mt-6">
             {novels.map((novel) => (
                 <NovelCard
                     key={novel.id}

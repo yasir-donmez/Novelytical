@@ -1,36 +1,29 @@
 import { Suspense } from 'react';
-import { Flame, Sparkles, Trophy, BookOpen } from 'lucide-react';
+import { Flame, Sparkles, Trophy } from 'lucide-react';
 import { GenericLane } from '@/components/lanes/generic-lane';
 import { TrendingLane } from '@/components/lanes/trending-lane';
 import { LaneSkeleton } from '@/components/lanes/lane-skeleton';
 import { BentoGridLane } from '@/components/lanes/bento-grid-lane';
 import { BentoLaneSkeleton } from '@/components/lanes/bento-lane-skeleton';
-import { HeroSection } from '@/components/hero-section';
-import { fetchNovels } from '@/lib/data/novels';
 
 export default async function HomePage() {
-    // Fetch novels for hero background
-    let heroNovels: any[] = [];
-    try {
-        const res = await fetchNovels({ pageSize: 24, sortOrder: 'rank_desc', revalidate: 3600 });
-        heroNovels = res.data || [];
-    } catch (error) {
-        console.error('Failed to fetch hero novels:', error);
-    }
-
     return (
-        <>
-            {/* Hero Section with novel collage background */}
-            <HeroSection novels={heroNovels} />
+        <div className="space-y-4 min-h-screen -mt-6">
+            {/* Spacer to match romanlar page header position */}
+            <div className="py-4 mb-2">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Empty spacer to align with romanlar page header */}
+                </div>
+            </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-20">{/* 1. Trending Lane (With Numbers) */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-20">
+                {/* 1. Trending Lane (With Numbers) */}
                 <Suspense fallback={<LaneSkeleton title="Haftanın Trendleri" icon={<Flame className="h-6 w-6 text-orange-500 fill-orange-500/20" />} variant="trending" hideBorder={true} />}>
                     <TrendingLane
                         title="Haftanın Trendleri"
                         icon={<Flame className="h-6 w-6 text-orange-500 fill-orange-500/20" />}
                     />
                 </Suspense>
-
                 {/* 2. New Arrivals Lane */}
                 <Suspense fallback={<BentoLaneSkeleton title="Son Güncellenenler" icon={<Sparkles className="h-6 w-6 text-yellow-400 fill-yellow-400/20" />} />}>
                     <BentoGridLane
@@ -48,16 +41,8 @@ export default async function HomePage() {
                     />
                 </Suspense>
 
-                {/* 4. Fantasy Lane */}
-                <Suspense fallback={<LaneSkeleton title="Fantastik Dünyalar" icon={<BookOpen className="h-6 w-6 text-blue-500" />} />}>
-                    <GenericLane
-                        title="Fantastik Dünyalar"
-                        icon={<BookOpen className="h-6 w-6 text-blue-500" />}
-                        params={{ pageSize: 12, tags: ['Fantastik'], revalidate: 3600 }}
-                    />
-                </Suspense>
+
             </div>
-        </>
+        </div>
     );
 }
-

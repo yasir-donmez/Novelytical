@@ -26,6 +26,7 @@ export function NovelCardSkeleton() {
                         <div className="flex gap-1">
                             <Skeleton className="h-5 w-12 rounded-md" />
                             <Skeleton className="h-5 w-14 rounded-md" />
+                            <Skeleton className="h-5 w-10 rounded-md" />
                         </div>
                     </div>
                 </div>
@@ -44,9 +45,9 @@ export function NovelCardSkeleton() {
                     <CardContent className="px-4 pb-2 pt-3 flex-grow">
                         {/* Title: 3.5rem total (2 lines * leading-7) */}
                         {/* We use a flex-col justify-center to mimic the vertical alignment of text lines */}
-                        <div className="min-h-[3.5rem] mb-2 flex flex-col justify-center gap-1.5">
-                            <Skeleton className="h-4 w-full rounded-sm opacity-60" />
-                            <Skeleton className="h-4 w-2/3 rounded-sm opacity-60" />
+                        <div className="min-h-[2.5rem] mb-2 flex flex-col justify-center gap-1">
+                            <Skeleton className="h-3.5 w-full rounded-sm opacity-60" />
+                            <Skeleton className="h-3.5 w-2/3 rounded-sm opacity-60" />
                         </div>
 
                         {/* Author: h-5 margin-bottom-2 */}
@@ -67,6 +68,7 @@ export function NovelCardSkeleton() {
                     <CardFooter className="px-4 pt-0 gap-2 mt-auto h-12 flex items-center overflow-hidden">
                         <Skeleton className="h-6 w-16 rounded-md opacity-30 flex-shrink-0" />
                         <Skeleton className="h-6 w-14 rounded-md opacity-30 flex-shrink-0" />
+                        <Skeleton className="h-6 w-12 rounded-md opacity-30 flex-shrink-0" />
                     </CardFooter>
                 </div>
             </div>

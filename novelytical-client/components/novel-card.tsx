@@ -321,7 +321,7 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                         </div>
                     )}
                     <CardContent className={cn("px-4 pb-2 pt-3 flex-grow", aspect === 'auto' && "hidden")}>
-                        <h3 className={cn("font-semibold text-base md:text-lg line-clamp-2 leading-7 min-h-[3.5rem] mb-2", aspect === 'auto' && "hidden")}>{novel.title}</h3>
+                        <h3 className={cn("font-semibold text-sm md:text-base line-clamp-2 leading-tight min-h-[2.5rem] mb-2", aspect === 'auto' && "hidden")}>{novel.title}</h3>
                         <p className="text-sm text-muted-foreground truncate h-5 flex items-center mb-2">{novel.author}</p>
                         <div className="flex items-center gap-2 text-sm h-5">
                             <span className="text-yellow-500">★</span>

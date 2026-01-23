@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming utils exists
+import { BentoLaneSkeleton } from './bento-lane-skeleton';
 import type { NovelListDto } from '@/types/novel';
 
 interface BentoGridLaneProps {
@@ -18,13 +19,17 @@ export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
         novels = res.data?.slice(0, 7) || [];
     } catch (error) {
         console.error(`Failed to fetch Bento Grid Lane:`, error);
-        return null;
+        // Show skeleton instead of error message - better UX
+        return <BentoLaneSkeleton title={title} icon={icon} />;
     }
 
-    if (novels.length === 0) return null;
+    if (novels.length === 0) {
+        // Show skeleton instead of empty state - user thinks data is loading
+        return <BentoLaneSkeleton title={title} icon={icon} />;
+    }
 
     return (
-        <section className="space-y-4 mt-12 pt-8 border-t border-white/5">
+        <section className="space-y-4 mt-12 pt-8 border-t border-white/5 min-h-[750px]">
             <div className="flex items-center justify-between px-1 mb-6">
                 <div className="flex items-center gap-4 select-none">
                     {icon && (

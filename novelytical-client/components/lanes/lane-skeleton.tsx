@@ -10,7 +10,7 @@ export function LaneSkeleton({ title, icon, variant = 'default', hideBorder = fa
         : "w-[160px] sm:w-[200px]";
 
     return (
-        <div className={`mt-12 pt-8 ${!hideBorder ? 'border-t' : ''}`}>
+        <div className={`mt-12 pt-8 min-h-[500px] ${!hideBorder ? 'border-t' : ''}`}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     {icon ? (
@@ -66,8 +66,10 @@ export function LaneSkeleton({ title, icon, variant = 'default', hideBorder = fa
                                             <Skeleton className="h-3 w-2/3 rounded-sm opacity-50" />
                                         </div>
                                         {/* Footer Section - px-4 h-12 */}
-                                        <div className="px-4 mt-auto h-12 flex items-center">
-                                            <Skeleton className="h-6 w-full rounded-md opacity-30" />
+                                        <div className="px-4 mt-auto h-12 flex items-center gap-2">
+                                            <Skeleton className="h-6 w-16 rounded-md opacity-30" />
+                                            <Skeleton className="h-6 w-14 rounded-md opacity-30" />
+                                            <Skeleton className="h-6 w-12 rounded-md opacity-30" />
                                         </div>
                                     </div>
                                 </div>
@@ -85,8 +87,10 @@ export function LaneSkeleton({ title, icon, variant = 'default', hideBorder = fa
                                     <Skeleton className="h-3 w-2/3 rounded-sm opacity-50" />
                                 </div>
                                 {/* Footer Section - px-4 h-12 */}
-                                <div className="px-4 mt-auto h-12 flex items-center">
-                                    <Skeleton className="h-6 w-full rounded-md opacity-30" />
+                                <div className="px-4 mt-auto h-12 flex items-center gap-2">
+                                    <Skeleton className="h-6 w-16 rounded-md opacity-30" />
+                                    <Skeleton className="h-6 w-14 rounded-md opacity-30" />
+                                    <Skeleton className="h-6 w-12 rounded-md opacity-30" />
                                 </div>
                             </div>
                         )}

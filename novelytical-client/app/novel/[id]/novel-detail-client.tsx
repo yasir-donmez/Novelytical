@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-import Image from 'next/image';
+import { ProductionImageLoader } from '@/components/production-image-loader';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -143,13 +143,14 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                     <div className="relative w-full group">
                         <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-border/10 z-10">
                             {novel.coverUrl ? (
-                                <Image
+                                <ProductionImageLoader
                                     src={novel.coverUrl}
                                     alt={novel.title}
                                     className="object-cover block"
                                     fill
                                     sizes="(max-width: 768px) 200px, 300px"
                                     priority
+                                    fallbackSrc="/images/book-placeholder.svg"
                                 />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-muted">

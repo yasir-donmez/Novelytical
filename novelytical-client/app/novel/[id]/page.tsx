@@ -58,7 +58,7 @@ function AuthorNovelsFallback() {
             <div className="h-8 w-64 mb-6 bg-muted/20 rounded-md animate-pulse" />
             <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="w-40 flex-shrink-0">
+                    <div key={i} className="w-[140px] sm:w-[190px] flex-none">
                         <NovelCardSkeleton />
                     </div>
                 ))}
@@ -76,7 +76,7 @@ function SimilarNovelsFallback() {
             </div>
             <div className="flex gap-4 overflow-hidden h-[350px] md:h-auto py-8">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="w-40 flex-shrink-0">
+                    <div key={i} className="w-[140px] sm:w-[190px] flex-none">
                         <NovelCardSkeleton />
                     </div>
                 ))}
@@ -133,7 +133,7 @@ export default async function NovelDetailPage({ params }: PageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-background pb-12 pt-20">
+        <div className="min-h-screen bg-background pb-12">
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

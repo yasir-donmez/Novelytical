@@ -3,8 +3,8 @@ import { Users } from "lucide-react";
 
 export default function Loading() {
     return (
-        <div className="container px-4 pb-8 md:pb-12 pt-20">
-            <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 md:pb-12">
+            <div className="w-full">
                 {/* Visual Anchor Header */}
                 <div className="flex items-center gap-4 mb-8">
                     <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">

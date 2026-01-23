@@ -1,9 +1,9 @@
 import { fetchNovels } from '@/lib/data/novels';
-import { NovelCard } from '@/components/novel-card';
 import { RankedNovelGrid } from '@/components/ranked-novel-grid';
 import { EmptyState } from '@/components/empty-state';
 import { FilterControls } from '@/components/filter-controls';
 import { PaginationClient } from '@/components/pagination-client';
+import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
 
 // Note: This is an async Server Component
 export async function NovelGridServer({
@@ -34,53 +34,20 @@ export async function NovelGridServer({
             tags,
             sortOrder,
             pageNumber: pageNumber || 1,
-            pageSize: 20,
+            pageSize: 24,
             minChapters,
             maxChapters,
             minRating,
             maxRating
         });
     } catch (error) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-destructive text-lg">
-                    Romanlar yüklenirken bir hata oluştu.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                    {(error as Error).message}
-                </p>
-            </div>
-        );
+        // Show skeleton instead of error message - better UX
+        return <NovelGridSkeleton />;
     }
 
     if (data.data.length === 0) {
-        return (
-            <>
-                <FilterControls totalRecords={0} searchString={searchString} />
-
-                <div className="mt-8">
-                    <EmptyState
-                        title="Roman Bulunamadı 🐲"
-                        description={searchString
-                            ? `"${searchString}" aramasıyla eşleşen bir hikaye bulamadık.`
-                            : "Bu kategoride henüz roman eklenmemiş olabilir."}
-                        icon="search"
-                        // We can't pass a function to Client component that uses router from Server component easily if it's just for navigation
-                        // But EmptyState uses an action.
-                        // We can pass a "reset" link or let the EmptyState handle it if it was a client component.
-                        // For now, let's look at EmptyState. Ideally it should be Client Component if it handles interactions.
-                        // Assuming EmptyState is a client component or reusable UI. 
-                        // To keep it simple, we might need to update EmptyState or wrap it.
-                        // Actually, for now let's use a simpler version or just omit the action if complex,
-                        // but the original code had a clear button.
-                        // Let's assume user finds "Clear Filters" button in FilterControls or SearchBar sufficient.
-                        // Or we can simple put a "Reset" link.
-                        actionLabel="Filtreleri Temizle"
-                        href="/romanlar" // Reset to novels page
-                    />
-                </div>
-            </>
-        );
+        // Show skeleton instead of empty state - user thinks data is loading
+        return <NovelGridSkeleton />;
     }
 
     return (

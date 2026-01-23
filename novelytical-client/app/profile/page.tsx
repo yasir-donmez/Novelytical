@@ -103,8 +103,8 @@ export default function ProfilePage() {
     const frameObj = LEVEL_FRAMES.find(f => f.id === frameId) || LEVEL_FRAMES[0];
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-background">
-            <div className="container mx-auto px-4 max-w-4xl">
+        <div className="min-h-screen pb-12 bg-background">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Profile Header */}
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-lg relative overflow-hidden">
 

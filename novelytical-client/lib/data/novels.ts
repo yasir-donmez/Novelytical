@@ -1,16 +1,14 @@
-import api from '../axios';
 import { handleError } from '../errors/handler';
 import { NetworkError } from '../errors/types';
 
 // Helper function to get API base URL (without /api suffix - that's added in fetch calls)
 const getApiUrl = () => {
     if (typeof window !== 'undefined') {
-        // Client-side: use empty string (relative URL /api/novels)
-        return '';
+        // Client-side: use NEXT_PUBLIC_API_URL or empty string for relative URLs
+        return process.env.NEXT_PUBLIC_API_URL || '';
     }
-    // Server-side (SSR): use direct backend URL
-    // Falls back to localhost for local development
-    return process.env.API_URL || 'http://localhost:5050';
+    // Server-side (SSR): use NEXT_PUBLIC_API_URL or API_URL or localhost fallback
+    return process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:5050';
 };
 
 export interface FetchNovelsParams {

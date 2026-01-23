@@ -127,7 +127,7 @@ export function HomeTags() {
     );
 
     return (
-        <div className="relative w-full py-2 min-h-[140px] flex items-center">
+        <div className="relative w-full py-2 h-[140px] flex items-center">
             {/* Unified Scroll Container */}
             <div
                 ref={containerRef}

@@ -12,6 +12,7 @@ import { ScrollManager } from "@/components/scroll-manager";
 import NotificationBell from "@/components/notifications/notification-bell";
 import { SiteHeader } from "@/components/site-header";
 import { ChatFloatingDialog } from "@/components/chat/chat-floating-dialog";
+import { PageWrapper } from "@/components/page-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -102,12 +103,13 @@ export default function RootLayout({
               storageKey="novelytical-theme"
               disableTransitionOnChange
             >
-              {/* Header with Theme Toggle */}
               <SiteHeader />
               <Toaster position="top-right" richColors />
               <ScrollManager />
-              <main className="min-h-screen">
-                {children}
+              <main className="min-h-screen flex flex-col">
+                <PageWrapper>
+                  {children}
+                </PageWrapper>
               </main>
               <Footer />
               <div className="h-16 md:hidden w-full flex-shrink-0" aria-hidden="true" />

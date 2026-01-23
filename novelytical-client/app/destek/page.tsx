@@ -30,8 +30,8 @@ export default function DestekPage() {
     };
 
     return (
-        <main className="container px-4 pt-20 pb-12 min-h-screen">
-            <div className="max-w-3xl mx-auto">
+        <div className="container px-4 pb-12 min-h-[calc(100vh-80px)]">
+            <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
                     <div className="inline-flex items-center justify-center p-4 rounded-full bg-blue-500/10 mb-4">
@@ -118,6 +118,6 @@ export default function DestekPage() {
                     </form>
                 </section>
             </div>
-        </main>
+        </div>
     );
 }

@@ -230,7 +230,7 @@ export default function AuthorDetailPage() {
     }, [authorName]);
 
     if (loading) {
-        return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 space-y-8 min-h-screen">
+        return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 space-y-8 min-h-screen">
             <div className="flex gap-4 mb-8 items-center">
                 <Skeleton className="h-24 w-24 rounded-full" />
                 <div className="space-y-4">
@@ -254,7 +254,7 @@ export default function AuthorDetailPage() {
     }
 
     return (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-8">
             {/* Header Navigation */}
             <Button
                 variant="ghost"
@@ -398,8 +398,8 @@ export default function AuthorDetailPage() {
                         sectionClassName="mt-0 pt-0 border-none"
                     >
                         {novels.map((novel) => (
-                            <div key={novel.id} className="w-36 sm:w-40 flex-shrink-0">
-                                <NovelCard novel={novel} showLastUpdated={false} />
+                            <div key={novel.id} className="w-full md:w-40 lg:w-[calc((100%-5rem)/6)] flex-shrink-0 snap-center md:snap-start flex flex-col">
+                                <NovelCard novel={novel} showLastUpdated={false} className="flex-grow h-full" />
                             </div>
                         ))}
                     </ScrollableSection>
@@ -425,13 +425,13 @@ export default function AuthorDetailPage() {
                         sectionClassName="mt-0 pt-0"
                     >
                         {recommended.map((novel) => (
-                            <div key={novel.id} className="w-36 sm:w-40 flex-shrink-0">
-                                <NovelCard novel={novel} showLastUpdated={false} />
+                            <div key={novel.id} className="w-full md:w-40 lg:w-[calc((100%-5rem)/6)] flex-shrink-0 snap-center md:snap-start flex flex-col">
+                                <NovelCard novel={novel} showLastUpdated={false} className="flex-grow h-full" />
                             </div>
                         ))}
                     </ScrollableSection>
                 </div>
             )}
-        </main>
+        </div>
     );
 }

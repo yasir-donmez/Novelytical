@@ -17,7 +17,7 @@ export async function AuthorNovelsServer({ author, currentNovelId }: { author: s
             {novels.map((novel: NovelListDto) => (
                 <div
                     key={novel.id}
-                    className="w-full md:w-40 lg:w-[calc((100%-6.25rem)/6)] flex-shrink-0 snap-center md:snap-start flex flex-col"
+                    className="w-full md:w-40 lg:w-[calc((100%-5rem)/6)] flex-shrink-0 snap-center md:snap-start flex flex-col"
                 >
                     <NovelCard
                         novel={novel}

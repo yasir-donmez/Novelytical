@@ -75,18 +75,8 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
             const { clientWidth, scrollLeft, scrollWidth } = scrollContainerRef.current;
             // Use slightly less than full width to ensure we see the 'next' item, but for 'full' step we likely want exactly one screen.
             // However, sticking to clientWidth is safest for paging.
-            const step = scrollStep === 'full' ? clientWidth : clientWidth / 2;
-
             const maxScroll = scrollWidth - clientWidth;
-            let targetScroll = direction === 'left' ? scrollLeft - step : scrollLeft + step;
-
-            // Smart snapping to edges
-            const tolerance = 50; // 50px tolerance to snap to edge
-            if (targetScroll <= tolerance) {
-                targetScroll = 0;
-            } else if (targetScroll >= maxScroll - tolerance) {
-                targetScroll = maxScroll;
-            }
+            let targetScroll = direction === 'left' ? 0 : maxScroll;
 
             scrollContainerRef.current.scrollTo({ left: targetScroll, behavior: 'smooth' });
 
@@ -151,29 +141,21 @@ export function ScrollableSection({ title, icon, children, scrollStep = 'half', 
                 </div>
             </div>
 
-            <div className="relative">
+            <div className="relative overflow-visible">
                 {/* Scroll Container */}
                 <div
                     ref={scrollContainerRef}
                     onScroll={checkScroll}
                     className={cn(
-                        "flex flex-row items-stretch overflow-x-auto h-auto py-12 md:py-8 gap-4 md:gap-4 pl-4 md:pl-4 pr-4 md:pr-0 snap-x snap-mandatory scroll-pl-4 scrollbar-none [&::-webkit-scrollbar]:hidden w-full relative",
+                        "flex flex-row items-stretch overflow-x-auto overflow-y-visible min-h-[400px] py-12 md:py-8 px-4 gap-4 snap-x snap-mandatory scrollbar-none [&::-webkit-scrollbar]:hidden w-full relative",
                         className
                     )}
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', scrollPadding: '0 1rem' }}
                 >
                     {children}
                 </div>
 
-                {/* Left Gradient Overlay (Desktop Only) - Hide when at start or no overflow */}
-                {hasOverflow && !isAtStart && !hideGradients && (
-                    <div className="hidden md:block absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-20 pointer-events-none" />
-                )}
-
-                {/* Right Gradient Overlay (Desktop Only) - Hide when at end or no overflow */}
-                {hasOverflow && !isAtEnd && !hideGradients && (
-                    <div className="hidden md:block absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-background to-transparent z-20 pointer-events-none" />
-                )}
+                {/* Kenar pusu (gradient) kaldırıldı */}
             </div>
         </section>
     );

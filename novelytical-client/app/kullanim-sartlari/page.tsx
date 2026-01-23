@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function KullanimSartlariPage() {
     return (
-        <main className="container px-4 pt-20 pb-12 min-h-screen">
+        <div className="container px-4 pb-12 md:pb-20">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
@@ -157,6 +157,6 @@ export default function KullanimSartlariPage() {
                     </a>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

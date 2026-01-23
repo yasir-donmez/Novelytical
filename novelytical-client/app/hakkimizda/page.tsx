@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function HakkimizdaPage() {
     return (
-        <main className="container px-4 pt-20 pb-12 min-h-screen">
-            <div className="max-w-3xl mx-auto">
+        <div className="container px-4 pb-12">
+            <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
                     <div className="inline-flex items-center justify-center p-4 rounded-full bg-purple-500/10 mb-4">
@@ -139,6 +139,6 @@ export default function HakkimizdaPage() {
                     </p>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

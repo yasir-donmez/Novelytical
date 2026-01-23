@@ -4,6 +4,7 @@ import { fetchNovels } from '@/lib/data/novels';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { LaneSkeleton } from './lane-skeleton';
 import type { NovelListDto } from '@/types/novel';
 
 interface TrendingLaneProps {
@@ -18,10 +19,12 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
         novels = res.data || [];
     } catch (error) {
         console.error(`Failed to fetch Trending Lane:`, error);
-        return null;
+        return <LaneSkeleton title={title} icon={icon} variant="trending" hideBorder={true} />;
     }
 
-    if (novels.length === 0) return null;
+    if (novels.length === 0) {
+        return <LaneSkeleton title={title} icon={icon} variant="trending" hideBorder={true} />;
+    }
 
     return (
         <ScrollableSection
@@ -39,25 +42,33 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
             }
         >
             {novels.map((novel, index) => (
-                <div key={novel.id} className="relative w-[210px] sm:w-[230px] flex-none group/rank">
-                    {/* Big Ranking Number */}
-                    <div className="absolute -left-2 bottom-4 z-10 font-bold text-[9rem] leading-none select-none pointer-events-none drop-shadow-md transition-all duration-300
-                        text-transparent bg-clip-text
-                        bg-gradient-to-b from-neutral-800 to-neutral-800/10 dark:from-neutral-200 dark:to-neutral-200/10
-                        [-webkit-text-stroke:2px_rgba(0,0,0,0.5)] dark:[-webkit-text-stroke:2px_rgba(255,255,255,0.5)]"
+                <div key={novel.id} className="relative w-full md:w-40 lg:w-[calc((102.5%-5rem)/5)] flex-shrink-0 snap-center md:snap-start flex flex-col group/rank">
+                    {/* Glass Outline Number - Behind Card */}
+                    <div
+                        className="absolute -left-2 bottom-4 z-0 font-black text-[9rem] leading-none select-none pointer-events-none 
+                        transition-all duration-500 ease-out
+                        group-hover/rank:-translate-x-2 group-hover/rank:-translate-y-2
+                        [--stroke-width:2px] [--stroke-opacity:0.15]
+                        group-hover/rank:[--stroke-width:4px] group-hover/rank:[--stroke-opacity:0.25]"
                         style={{
-                            fontFamily: 'Impact, sans-serif'
+                            fontFamily: 'Impact, sans-serif',
+                            color: 'transparent',
+                            WebkitTextStroke: 'var(--stroke-width) rgba(255, 255, 255, var(--stroke-opacity))',
+                            textShadow: `
+                                0 0 10px rgba(255, 255, 255, 0.1),
+                                0 0 20px rgba(255, 255, 255, 0.05)
+                            `,
                         }}>
                         {index + 1}
                     </div>
 
-                    {/* Novel Card */}
-                    <div className="relative z-20 h-full flex flex-col pl-8 pr-4 transform transition-transform duration-500 ease-out md:group-hover/rank:translate-x-4 md:group-hover/rank:-translate-y-2">
-                        <NovelCard novel={novel} aspect="portrait" className="h-full" showLastUpdated={false} />
+                    {/* Novel Card - In Front */}
+                    <div className="relative z-10 h-full flex flex-col pl-8 pr-4 transform transition-transform duration-500 ease-out 
+                        md:group-hover/rank:translate-x-4 md:group-hover/rank:-translate-y-2">
+                        <NovelCard novel={novel} aspect="portrait" className="flex-grow h-full" showLastUpdated={false} />
                     </div>
                 </div>
             ))}
         </ScrollableSection>
-
     );
 }
