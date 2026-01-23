@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, BookOpen, Star } from "lucide-react";
-import { SimpleImageLoader } from "@/components/simple-image-loader";
+import { ProductionImageLoader } from "@/components/production-image-loader";
 import { getNovelStats, calculateRank } from "@/services/novel-stats-service";
 import type { NovelListDto } from "@/types/novel";
 
@@ -94,17 +94,17 @@ export function AuthorsListClient({ initialAuthors, currentPage, pageSize }: Aut
         }
 
         if (novels.length === 1) {
-            return <SimpleImageLoader src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
+            return <ProductionImageLoader src={novels[0].coverUrl} alt="Cover" className="w-full h-full object-cover" />;
         }
 
         if (novels.length === 2) {
             return (
                 <div className="w-full h-full flex relative">
                     <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
-                        <SimpleImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                        <ProductionImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-1/2 h-full overflow-hidden relative">
-                        <SimpleImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                        <ProductionImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
                     </div>
                 </div>
             );
@@ -114,14 +114,14 @@ export function AuthorsListClient({ initialAuthors, currentPage, pageSize }: Aut
         return (
             <div className="w-full h-full flex flex-col relative">
                 <div className="h-1/2 w-full overflow-hidden border-b border-white/10 relative">
-                    <SimpleImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
+                    <ProductionImageLoader src={novels[0].coverUrl} alt="Cover 1" className="w-full h-full object-cover" />
                 </div>
                 <div className="h-1/2 w-full flex relative">
                     <div className="w-1/2 h-full overflow-hidden border-r border-white/10 relative">
-                        <SimpleImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
+                        <ProductionImageLoader src={novels[1].coverUrl} alt="Cover 2" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-1/2 h-full overflow-hidden relative">
-                        <SimpleImageLoader src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
+                        <ProductionImageLoader src={novels[2].coverUrl} alt="Cover 3" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </div>

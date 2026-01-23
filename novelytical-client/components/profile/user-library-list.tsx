@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { SimpleImageLoader } from "@/components/simple-image-loader";
+import { ProductionImageLoader } from "@/components/production-image-loader";
 import { getUserLibrary, LibraryItem, ReadingStatus, updateLibraryProgress } from "@/services/library-service";
 import { novelService } from "@/services/novelService";
 import { useAuth } from "@/contexts/auth-context";
@@ -362,7 +362,7 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
                             <div className="flex h-32 bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10 rounded-xl transition-all p-3 gap-3 hover:bg-black/10 dark:hover:bg-zinc-800/60">
                                 <div className="w-20 shrink-0 bg-muted rounded-lg overflow-hidden relative shadow-sm">
                                     {item.novel?.coverUrl && (
-                                        <SimpleImageLoader src={item.novel.coverUrl} className="object-cover w-full h-full" alt="" />
+                                        <ProductionImageLoader src={item.novel.coverUrl} className="object-cover w-full h-full" alt="" />
                                     )}
                                 </div>
                                 <div className="flex flex-col justify-between flex-1 py-1">
