@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export interface ProductionImageLoaderProps {
@@ -38,7 +37,7 @@ export function ProductionImageLoader({
 
   const handleImageError = useCallback(() => {
     console.error('Production Image Loader Error:', currentSrc);
-    
+
     // Try fallback if not already using it
     if (fallbackSrc && currentSrc !== fallbackSrc) {
       console.log('Trying fallback image:', fallbackSrc);
@@ -49,7 +48,7 @@ export function ProductionImageLoader({
     // Final error state
     setHasError(true);
     setIsLoading(false);
-    
+
     if (onError) {
       onError(new Error(`Failed to load image: ${src}`));
     }
@@ -58,7 +57,7 @@ export function ProductionImageLoader({
   const handleImageLoad = useCallback(() => {
     setIsLoading(false);
     setHasError(false);
-    
+
     if (onLoad) {
       onLoad();
     }
@@ -73,7 +72,7 @@ export function ProductionImageLoader({
             <span className="text-4xl">📚</span>
           </div>
         ) : (
-          <div 
+          <div
             className="flex items-center justify-center"
             style={{ width: width || '100%', height: height || '100%' }}
           >
@@ -84,31 +83,16 @@ export function ProductionImageLoader({
     );
   }
 
-  // Production optimized image props
-  const imageProps = {
-    src: currentSrc,
-    alt,
-    className: cn(className, isLoading && "opacity-50"),
-    onError: handleImageError,
-    onLoad: handleImageLoad,
-    priority,
-    sizes,
-    // Production için unoptimized kaldırıldı - Next.js optimization kullanılacak
-    quality: 85,
-    placeholder: 'blur' as const,
-    blurDataURL: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=',
-    ...props
-  };
-
-  if (fill) {
-    return <Image {...imageProps} fill />;
-  }
-
+  // Use native img tag instead of Next.js Image
   return (
-    <Image 
-      {...imageProps} 
-      width={width || 300} 
-      height={height || 400}
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={cn(className, isLoading && "opacity-50")}
+      onError={handleImageError}
+      onLoad={handleImageLoad}
+      style={fill ? { width: '100%', height: '100%', objectFit: 'cover' } : undefined}
+      {...props}
     />
   );
 }

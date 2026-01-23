@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import Image from "next/image";
+import { SimpleImageLoader } from "@/components/simple-image-loader";
 import { getReviewsByUserId, Review } from "@/services/review-service";
 import { getCommentsByUserId, Comment } from "@/services/comment-service";
 import { novelService } from "@/services/novelService";
@@ -207,7 +207,7 @@ export default function UserInteractionList({ userId }: { userId?: string }) {
                             <div className="flex h-32 bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10 rounded-xl transition-all p-3 gap-3 hover:bg-black/10 dark:hover:bg-zinc-800/60">
                                 <div className="w-20 shrink-0 bg-muted rounded-lg overflow-hidden relative shadow-sm">
                                     {item.novel?.coverUrl ? (
-                                        <Image src={item.novel.coverUrl} className="object-cover" fill sizes="80px" alt="" />
+                                        <SimpleImageLoader src={item.novel.coverUrl} className="object-cover w-full h-full" alt="" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
                                             <BookOpen size={24} />
