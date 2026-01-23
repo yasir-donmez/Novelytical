@@ -18,7 +18,7 @@ export function HeroSection({ novels = [] }: HeroSectionProps) {
                     {novels.slice(0, 15).map((novel) => (
                         <div key={novel.id} className="relative w-32 h-48 rounded-lg overflow-hidden grayscale blur-sm hover:grayscale-0 hover:blur-none transition-all duration-700 opacity-40">
                             <ProductionImageLoader
-                                src={novel.thumbnailUrl}
+                                src={novel.coverUrl || ''}
                                 alt={novel.title}
                                 fill
                                 className="object-cover"
