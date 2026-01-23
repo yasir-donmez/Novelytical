@@ -88,6 +88,8 @@ try
     {
         // Fallback to memory cache
         builder.Services.AddMemoryCache();
+        // Add IDistributedCache implementation using MemoryCache
+        builder.Services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache, Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache>();
     }
 
     // Add services to the container.
