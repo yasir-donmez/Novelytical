@@ -32,10 +32,16 @@ export default function DestekPage() {
     return (
         <main className="container px-4 pt-20 pb-12 min-h-screen">
             <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold mb-2">Destek</h1>
-                <p className="text-muted-foreground mb-12">
-                    Sorularınız veya önerileriniz için bizimle iletişime geçin.
-                </p>
+                {/* Header */}
+                <div className="text-center mb-12">
+                    <div className="inline-flex items-center justify-center p-4 rounded-full bg-blue-500/10 mb-4">
+                        <HelpCircle className="h-10 w-10 text-blue-500" />
+                    </div>
+                    <h1 className="text-3xl font-bold mb-2">Destek</h1>
+                    <p className="text-muted-foreground">
+                        Sorularınız veya önerileriniz için bizimle iletişime geçin.
+                    </p>
+                </div>
 
                 {/* Quick Links */}
                 <div className="grid gap-4 md:grid-cols-3 mb-12">
