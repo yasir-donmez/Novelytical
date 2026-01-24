@@ -26,7 +26,7 @@ export default async function RomanlarPage({
     const maxRating = typeof params.maxRating === 'string' ? parseFloat(params.maxRating) : null;
 
     return (
-        <div className="space-y-4 min-h-screen -mt-6">
+        <div className="space-y-4 min-h-screen -mt-20 relative z-10">
             {/* Visual Anchor Header - Matches Home Page Design */}
             <div className="relative z-10 bg-background/95 backdrop-blur-sm py-4 mb-2">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">

@@ -1,4 +1,4 @@
-import { HeroSection } from '@/components/hero-section';
+import { HeroServer } from '@/components/hero-server';
 
 export default function DiscoveryLayout({
     children,
@@ -7,9 +7,9 @@ export default function DiscoveryLayout({
 }) {
     return (
         <>
-            {/* Hero Section - Static, never changes */}
-            <HeroSection />
-            
+            {/* Hero Section - Server Component with ISR (Cached Dynamic Data) */}
+            <HeroServer />
+
             {/* Page-specific content */}
             {children}
         </>

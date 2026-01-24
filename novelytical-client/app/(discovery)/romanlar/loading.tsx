@@ -1,11 +1,10 @@
 import { Library } from 'lucide-react';
-import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
 import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
 
 export default function Loading() {
     return (
-        <div className="space-y-4 min-h-screen -mt-6">
-            {/* Visual Anchor Header */}
+        <div className="space-y-4 min-h-screen -mt-20 relative z-10">
+            {/* Visual Anchor Header - Matches RomanlarPage */}
             <div className="relative z-10 bg-background/95 backdrop-blur-sm py-4 mb-2">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
@@ -17,7 +16,7 @@ export default function Loading() {
                 </div>
             </div>
 
-            {/* Tags Section Skeleton - Matches HomeTags min-h-[140px] layout */}
+            {/* Tags Section Skeleton */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
                 <div className="relative w-full py-2 h-[140px] flex items-center justify-center">
                     <div className="w-full px-8 md:px-16 py-6 flex flex-col gap-3 items-center animate-pulse">
@@ -37,7 +36,7 @@ export default function Loading() {
                 </div>
             </div>
 
-            {/* Novel Grid Structure */}
+            {/* Novel Grid Skeleton */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 <NovelGridSkeleton />
             </div>

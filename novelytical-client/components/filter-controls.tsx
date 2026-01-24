@@ -35,7 +35,7 @@ export function FilterControls({ totalRecords, searchString }: { totalRecords?: 
                 <p className="text-sm font-medium text-muted-foreground animate-in fade-in duration-500">
                     {totalRecords !== undefined && (
                         <>
-                            <span key={totalRecords} className="text-lg font-bold text-primary inline-block animate-in fade-in slide-in-from-bottom-2 duration-300">{totalRecords}</span>
+                            <span key={totalRecords} className="text-lg font-bold text-primary inline-block animate-in fade-in duration-300">{totalRecords}</span>
                             {' '}roman bulundu
                         </>
                     )}

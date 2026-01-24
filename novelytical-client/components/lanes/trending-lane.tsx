@@ -10,9 +10,10 @@ import type { NovelListDto } from '@/types/novel';
 interface TrendingLaneProps {
     title: string;
     icon?: React.ReactNode;
+    className?: string;
 }
 
-export async function TrendingLane({ title, icon }: TrendingLaneProps) {
+export async function TrendingLane({ title, icon, className }: TrendingLaneProps) {
     let novels: NovelListDto[] = [];
     try {
         const res = await fetchNovels({ pageSize: 10, sortOrder: 'rank_desc', revalidate: 3600 });
@@ -31,6 +32,7 @@ export async function TrendingLane({ title, icon }: TrendingLaneProps) {
             title={title}
             icon={icon}
             hideBorder={true}
+            sectionClassName={className}
             scrollStep="full"
             hideGradients={true}
             headerAction={
