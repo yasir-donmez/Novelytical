@@ -3,7 +3,7 @@ import { Users } from "lucide-react";
 
 export default function Loading() {
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 md:pb-12">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
             <div className="w-full">
                 {/* Visual Anchor Header */}
                 <div className="flex items-center gap-4 mb-8">
@@ -20,27 +20,36 @@ export default function Loading() {
                     </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 w-full">
                     {Array.from({ length: 30 }).map((_, i) => (
-                        <div key={i} className="p-4 md:p-5 rounded-xl border h-full relative overflow-hidden bg-card">
-                            <div className="flex items-center gap-4">
-                                {/* Avatar Skeleton */}
-                                <Skeleton className="w-14 h-14 md:w-16 md:h-16 rounded-full shrink-0" />
+                        // Mimic Link wrapper
+                        <div key={i} className="block h-full">
+                            <div className="p-4 md:p-5 rounded-xl border border-border bg-card h-full relative overflow-hidden">
+                                {/* Rank Badge Skeleton */}
+                                <div className="absolute top-0 left-0 z-20">
+                                    <Skeleton className="w-8 h-8 md:w-10 md:h-10 rounded-br-2xl rounded-tl-none rounded-tr-none rounded-bl-none" />
+                                </div>
 
-                                <div className="flex-1 min-w-0 space-y-2">
-                                    {/* Name Skeleton */}
-                                    <Skeleton className="h-5 w-3/4" />
+                                <div className="flex items-center gap-4 mt-2 pl-2">
+                                    {/* Avatar Skeleton */}
+                                    <Skeleton className="w-14 h-14 md:w-16 md:h-16 rounded-full shrink-0 border border-border" />
 
-                                    {/* Stats Skeleton */}
-                                    <div className="flex gap-2">
-                                        <Skeleton className="h-3 w-16" />
-                                        <Skeleton className="h-3 w-16" />
-                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        {/* Name Skeleton - Match text-lg line-height (28px ~ h-7) */}
+                                        <Skeleton className="h-7 w-3/4 mb-1" />
 
-                                    {/* Rank Bar Skeleton */}
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Skeleton className="h-1.5 flex-1 rounded-full" />
-                                        <Skeleton className="h-3 w-8" />
+                                        {/* Stats Skeleton - Match text-xs line-height (16px ~ h-4) */}
+                                        <div className="flex gap-2 mb-3">
+                                            <Skeleton className="h-4 w-16" />
+                                            <Skeleton className="h-4 w-16" />
+                                        </div>
+
+                                        {/* Rank Bar Skeleton */}
+                                        <div className="flex items-center gap-2">
+                                            <Skeleton className="h-1.5 flex-1 rounded-full" />
+                                            {/* Score Text Skeleton - Match text-xs (16px ~ h-4) */}
+                                            <Skeleton className="h-4 w-12" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -48,9 +57,23 @@ export default function Loading() {
                     ))}
                 </div>
 
-                {/* Pagination Skeleton */}
-                <div className="mt-12 flex justify-center">
-                    <Skeleton className="h-10 w-64 rounded-md" />
+                {/* Pagination Skeleton - Matches NovelGridSkeleton */}
+                <div className="mt-12 space-y-4 flex flex-col items-center">
+                    {/* Page Info Text Skeleton */}
+                    <div className="h-4 w-48 bg-muted/20 rounded-md animate-pulse" />
+
+                    {/* Buttons Skeleton */}
+                    <div className="flex items-center gap-1">
+                        <div className="h-9 w-20 bg-muted/20 rounded-md border border-white/5 animate-pulse" /> {/* Previous */}
+                        <div className="flex items-center gap-1">
+                            <div className="h-9 w-9 bg-card/60 border border-white/5 rounded-md animate-pulse" /> {/* 1 */}
+                            <div className="h-9 w-9 bg-muted/20 border border-white/5 rounded-md animate-pulse" /> {/* 2 */}
+                            <div className="h-9 w-9 bg-muted/20 border border-white/5 rounded-md animate-pulse" /> {/* 3 */}
+                            <div className="h-9 w-9 bg-transparent flex items-center justify-center">...</div>
+                            <div className="h-9 w-9 bg-muted/20 border border-white/5 rounded-md animate-pulse" /> {/* Last */}
+                        </div>
+                        <div className="h-9 w-20 bg-muted/20 rounded-md border border-white/5 animate-pulse" /> {/* Next */}
+                    </div>
                 </div>
             </div>
         </div>

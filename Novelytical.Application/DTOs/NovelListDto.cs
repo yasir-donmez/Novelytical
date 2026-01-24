@@ -22,6 +22,9 @@ public class NovelListDto
     /// </summary>
     public int? RankPosition { get; set; }
 
+    public int CommentCount { get; set; }
+    public int ReviewCount { get; set; }
+
     /// <summary>
     /// Tag names only (not full Tag entities) for performance
     /// </summary>

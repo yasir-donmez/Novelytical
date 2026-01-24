@@ -13,6 +13,8 @@ export interface NovelListDto {
     coverUrl?: string;
     rankPosition?: number; // Global rank position (1 = highest)
     tags: string[];
+    commentCount?: number;
+    reviewCount?: number;
 }
 
 export interface NovelDetailDto extends NovelListDto {

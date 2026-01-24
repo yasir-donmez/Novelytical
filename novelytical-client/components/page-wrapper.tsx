@@ -7,7 +7,7 @@ export function PageWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     // Sayfa dikey boşluğundan (pt-20) muaf tutulacak rotalar
-    const excludedRoutes = ['/', '/romanlar'];
+    const excludedRoutes = ['/', '/romanlar', '/login', '/register'];
     const isExcluded = excludedRoutes.includes(pathname);
 
     return (

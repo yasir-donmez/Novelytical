@@ -459,7 +459,7 @@ export function CommunityPulse() {
 
     if (loading) {
         return (
-            <section className="w-full mt-32 py-20 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20 min-h-[800px]">
+            <section className="w-full mt-8 py-20 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20 min-h-[800px]">
                 <div className="w-full h-full flex items-center justify-center">
                     <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
                 </div>
@@ -468,8 +468,8 @@ export function CommunityPulse() {
     }
 
     return (
-        <section className="w-full mt-32 py-20 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20">
-            {/* Glowing Divider Line - The "Arrival" Signal */}
+        <section className="w-full mt-4 py-6 relative bg-gradient-to-b from-purple-500/10 via-background to-transparent border-t border-purple-500/20 rounded-xl overflow-hidden">
+            {/* Glowing Divider Line */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent shadow-[0_0_20px_2px_rgba(168,85,247,0.6)]" />
 
             {/* Ambient Top Glow */}
@@ -479,66 +479,44 @@ export function CommunityPulse() {
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-pink-500 to-transparent shadow-[0_0_20px_2px_rgba(236,72,153,0.6)]" />
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-40 bg-pink-500/20 blur-[120px] pointer-events-none rounded-[100%]" />
 
-            {/* Bottom Corner Hanging Spotlights (Ceiling Mounted) */}
-            {/* Left Lamp Fixture */}
+            {/* Lamps/Spotlights (Left & Right) */}
+            {/* Left */}
             <div className="absolute top-0 left-[-2rem] sm:left-0 z-10 pointer-events-none origin-top scale-50 sm:scale-75 flex flex-col items-center">
-                {/* Hanging Cord - extends to top */}
                 <div className="w-[2px] h-[700px] bg-neutral-800/60 shrink-0" />
-
-                {/* Lamp Head Assembly (Rotated to point right/inward) */}
                 <div className="origin-top rotate-0 relative z-10">
-                    {/* Cone Body */}
                     <div className="w-20 h-24 bg-neutral-900 mx-auto" style={{ clipPath: 'polygon(20% 0, 80% 0, 100% 100%, 0 100%)' }}>
                         <div className="w-full h-full bg-gradient-to-t from-neutral-800 to-black border-l border-r border-white/5" />
                     </div>
-
-                    {/* Lens */}
                     <div className="relative z-10 w-20 h-10 bg-neutral-800 mx-auto rounded-b-full flex items-start justify-center overflow-hidden border border-white/10 ring-1 ring-purple-500/30 -mt-[1px]">
                         <div className="absolute inset-0 bg-gradient-to-t from-purple-400/20 to-transparent" />
                         <div className="w-16 h-8 bg-purple-500 blur-md rounded-b-full opacity-60 mt-[-2px]" />
                     </div>
-
-                    {/* Ambient Glow - stays in corner */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-4 w-24 h-24 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-
                 </div>
             </div>
-
-            {/* Right Lamp Fixture */}
+            {/* Right */}
             <div className="absolute top-0 right-[-2rem] sm:right-0 z-10 pointer-events-none origin-top scale-50 sm:scale-75 flex flex-col items-center">
-                {/* Hanging Cord - extends to top */}
                 <div className="w-[2px] h-[300px] bg-neutral-800/60 shrink-0" />
-
-                {/* Lamp Head Assembly (Rotated to point left/inward) */}
                 <div className="origin-top rotate-0 relative z-10">
-                    {/* Cone Body */}
                     <div className="w-20 h-24 bg-neutral-900 mx-auto" style={{ clipPath: 'polygon(20% 0, 80% 0, 100% 100%, 0 100%)' }}>
                         <div className="w-full h-full bg-gradient-to-t from-neutral-800 to-black border-l border-r border-white/5" />
                     </div>
-
-                    {/* Lens */}
                     <div className="relative z-10 w-20 h-10 bg-neutral-800 mx-auto rounded-b-full flex items-start justify-center overflow-hidden border border-white/10 ring-1 ring-pink-500/30 -mt-[1px]">
                         <div className="absolute inset-0 bg-gradient-to-t from-pink-400/20 to-transparent" />
                         <div className="w-16 h-8 bg-pink-500 blur-md rounded-b-full opacity-60 mt-[-2px]" />
                     </div>
-
-                    {/* Ambient Glow - stays in corner */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-4 w-24 h-24 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
-
                 </div>
             </div>
 
-
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
-
-
+            {/* MAIN CONTENT WRAPPER - Force Full Width */}
+            <div className="w-full relative">
                 <div className="w-full">
-                    {/* 2. Main Feed Area (Fixed Screen Layout) */}
-                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto space-y-0">
-                        {/* New Header */}
-
+                    {/* Feed Container */}
+                    <div className="flex flex-col h-full w-full space-y-0">
+                        {/* Header Tabs */}
                         <Tabs defaultValue="feed" className="flex-1 flex flex-col min-h-0 w-full" onValueChange={setActiveTab}>
-                            <div className="flex items-center justify-between gap-4 mb-4 select-none">
+                            <div className="flex items-center justify-between gap-4 mb-4 select-none px-1">
                                 <TabsList className="bg-transparent p-0 gap-2 h-auto inline-flex border-0 rounded-none">
                                     <TabsTrigger
                                         value="feed"

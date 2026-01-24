@@ -22,10 +22,17 @@ async function getTopAuthors() {
         const data = await res.json();
         const novels: NovelListDto[] = data.data || data || [];
 
-        // ✅ Use only backend data for ranking (no Firebase calls during build)
+        // ✅ Calculate Rank Score for each novel
+        // Formula: (viewCount / 10000) + (commentCount * 20) + (reviewCount * 50)
+        // Matches calculateRank in novel-stats-service.ts
         const novelsWithRank = novels.map((novel) => {
-            // Simple ranking based on backend viewCount
-            const rankScore = novel.viewCount || 0;
+            // Scraped views are weighted less (1 point per 10k views)
+            const viewScore = Math.floor((novel.viewCount || 0) / 10000);
+            const commentScore = (novel.commentCount || 0) * 20;
+            const reviewScore = (novel.reviewCount || 0) * 50;
+
+            const rankScore = viewScore + commentScore + reviewScore;
+
             return { ...novel, rankScore };
         });
 
@@ -33,7 +40,9 @@ async function getTopAuthors() {
         const authorStats: Record<string, { count: number; totalChapters: number; totalRankScore: number; topNovels: { coverUrl: string; rankScore: number }[] }> = {};
 
         novelsWithRank.forEach((novel) => {
-            const author = novel.author || "Bilinmeyen";
+            // Normalize author name (trim whitespace)
+            const author = (novel.author || "Bilinmeyen").trim();
+
             if (!authorStats[author]) {
                 authorStats[author] = { count: 0, totalChapters: 0, totalRankScore: 0, topNovels: [] };
             }
@@ -54,7 +63,8 @@ async function getTopAuthors() {
                 const sortedTopNovels = stats.topNovels.sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
                 return { name, ...stats, topNovels: sortedTopNovels };
             })
-            .sort((a, b) => b.totalRankScore - a.totalRankScore); // Return all authors
+            // Filter out authors with 0 score if desired, or just sort
+            .sort((a, b) => b.totalRankScore - a.totalRankScore);
     } catch (error) {
         console.error("Failed to fetch authors:", error);
         return [];
@@ -73,9 +83,10 @@ export default async function YazarlarPage({ searchParams }: { searchParams: Pro
 
     // Get current page data
     const authors = allAuthors.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const maxScore = allAuthors[0]?.totalRankScore || 0;
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 md:pb-12">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
             <div className="w-full">
                 {/* Visual Anchor Header */}
                 <div className="flex items-center gap-4 mb-8">
@@ -102,6 +113,7 @@ export default async function YazarlarPage({ searchParams }: { searchParams: Pro
                             initialAuthors={authors}
                             currentPage={currentPage}
                             pageSize={pageSize}
+                            maxScore={maxScore}
                         />
 
                         {/* Pagination Control */}

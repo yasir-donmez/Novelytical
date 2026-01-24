@@ -20,6 +20,10 @@ export function SiteHeader() {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 10);
         };
+
+        // Check immediately on mount
+        handleScroll();
+
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
