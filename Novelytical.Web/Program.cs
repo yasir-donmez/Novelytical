@@ -223,8 +223,19 @@ try
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try {
-            // db.Database.Migrate();
-        } catch { /* Ignore migration errors */ }
+            // Check pending migrations and apply if any
+            var pendingMigrations = db.Database.GetPendingMigrations();
+            if (pendingMigrations.Any())
+            {
+                Log.Information($"Applying {pendingMigrations.Count()} pending migrations...");
+                db.Database.Migrate();
+                Log.Information("Database migration completed successfully.");
+            }
+        } catch (Exception ex) { 
+            Log.Error(ex, "Database migration failed."); 
+            // Don't swallow error, let it fail so we know
+            // throw; 
+        }
 
         // 🚑 EMERGENCY FIX: Removed
         // Manual SQL execution has been removed as per architectural review.
