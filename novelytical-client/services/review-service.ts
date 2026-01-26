@@ -95,7 +95,7 @@ const getApiUrl = () => {
     if (typeof window !== 'undefined') {
         return process.env.NEXT_PUBLIC_API_URL || '';
     }
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+    return process.env.NEXT_PUBLIC_API_URL || '';
 };
 
 export const reviewService = {

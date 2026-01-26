@@ -1,6 +1,6 @@
 import { BackendUser } from '../types/backend-user';
 
-const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5169/api';
+const API_Base = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const userService = {
     // 1. Sync User (Firebase -> Postgres)

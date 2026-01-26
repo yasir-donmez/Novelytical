@@ -71,13 +71,18 @@ export const initializeSignalR = async (
 ) => {
     if (connection) return connection;
 
-    const baseUrl = typeof window !== 'undefined' ? '' : (process.env.API_URL || 'http://localhost:5050');
-    // Adjust hub URL based on proxy or direct access. 
-    // Since we use /api proxy, we might need /hubs proxy or direct URL.
-    // Let's assume /hubs/community is proxied or we use absolute URL if dev.
-    // Simplest: Use relative path if client-side and let next.config handle rewrite if exists, or direct API URL.
-    // For now, let's try direct URL to avoid proxy issues with WebSockets.
-    const hubUrl = "http://localhost:5050/hubs/community";
+    // Use the API URL from environment files as base, defaulting to relative /api if not set
+    // Note: SignalR Hub connection string usually requires absolute path or same domain.
+    // If we use Next.js rewrites, '/hubs/community' might work.
+
+    // Ideally, connection string should match the API_URL but ending with /hubs/community
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+    // Remove /api suffix if present to get base host, or just append distinct route if configured that way.
+    // Assuming API_URL points to "http://host:port" or "https://domain". 
+    // If API_URL is "http://localhost:5050", hub is at "http://localhost:5050/hubs/community"
+
+    // Robust replacement:
+    const hubUrl = `${apiBase.replace(/\/api$/, '')}/hubs/community`;
 
     connection = new HubConnectionBuilder()
         .withUrl(hubUrl)

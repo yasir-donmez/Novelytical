@@ -1,4 +1,4 @@
-const API_Base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+const API_Base = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface UserLibraryDto {
     novelId: number;
