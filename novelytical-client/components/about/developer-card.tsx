@@ -74,7 +74,7 @@ export default function DeveloperCard() {
     const frameObj = LEVEL_FRAMES.find(f => f.id === frameId) || LEVEL_FRAMES[0];
 
     return (
-        <Link href={`/profile/${devProfile.uid}`} className="block transition-transform hover:scale-[1.01]">
+        <Link href={`/profil/${devProfile.uid}`} className="block transition-transform hover:scale-[1.01]">
             <div className="p-6 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 hover:border-purple-500/40 transition-colors group relative overflow-hidden">
 
                 {/* Decorative background element */}

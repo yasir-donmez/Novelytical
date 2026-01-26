@@ -120,7 +120,7 @@ export function UserHoverCard({ userId, username, image, frame, children, classN
     return (
         <HoverCard open={isOpen} onOpenChange={handleOpenChange} openDelay={200}>
             <HoverCardTrigger asChild>
-                <Link href={`/profile/${userId}`} className={className}>
+                <Link href={`/profil/${userId}`} className={className}>
                     {children}
                 </Link>
             </HoverCardTrigger>
@@ -152,7 +152,7 @@ export function UserHoverCard({ userId, username, image, frame, children, classN
                     </div>
 
                     <div className="mt-1.5 space-y-0.5 min-h-[52px]">
-                        <Link href={`/profile/${userId}`} className="font-bold text-base hover:underline decoration-primary block truncate">
+                        <Link href={`/profil/${userId}`} className="font-bold text-base hover:underline decoration-primary block truncate">
                             {displayName}
                         </Link>
                         {loading && !profile ? (

@@ -57,7 +57,7 @@ export const FollowService = {
                     'follow',
                     `${userProfile.username} sizi takip etti.`,
                     followerId, // sourceId is the user who followed
-                    `/profile/${followerId}`, // Link to their profile
+                    `/profil/${followerId}`, // Link to their profile
                     followerId,
                     userProfile.username,
                     userProfile.photoURL,

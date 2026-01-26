@@ -114,7 +114,7 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
                                             {followers.map(u => (
                                                 <div key={u.uid} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <Link href={`/profile/${u.uid}`} onClick={onClose} className="pt-5 pl-5 pr-1 pb-1">
+                                                        <Link href={`/profil/${u.uid}`} onClick={onClose} className="pt-5 pl-5 pr-1 pb-1">
                                                             <UserAvatar
                                                                 src={u.photoURL || undefined}
                                                                 alt={u.username}
@@ -123,7 +123,7 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
                                                             />
                                                         </Link>
                                                         <div className="flex flex-col">
-                                                            <Link href={`/profile/${u.uid}`} onClick={onClose} className="text-sm font-medium hover:underline">
+                                                            <Link href={`/profil/${u.uid}`} onClick={onClose} className="text-sm font-medium hover:underline">
                                                                 {u.username}
                                                             </Link>
                                                         </div>
@@ -148,7 +148,7 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
                                             {following.map(u => (
                                                 <div key={u.uid} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <Link href={`/profile/${u.uid}`} onClick={onClose} className="pt-5 pl-5 pr-1 pb-1">
+                                                        <Link href={`/profil/${u.uid}`} onClick={onClose} className="pt-5 pl-5 pr-1 pb-1">
                                                             <UserAvatar
                                                                 src={u.photoURL || undefined}
                                                                 alt={u.username}
@@ -157,7 +157,7 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
                                                             />
                                                         </Link>
                                                         <div className="flex flex-col">
-                                                            <Link href={`/profile/${u.uid}`} onClick={onClose} className="text-sm font-medium hover:underline">
+                                                            <Link href={`/profil/${u.uid}`} onClick={onClose} className="text-sm font-medium hover:underline">
                                                                 {u.username}
                                                             </Link>
                                                         </div>
@@ -182,6 +182,6 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
                     </div>
                 </Tabs>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }
