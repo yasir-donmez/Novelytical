@@ -90,7 +90,7 @@ export function UserNav() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/profile')}>
+                <DropdownMenuItem onClick={() => router.push('/profil')}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profilim</span>
                 </DropdownMenuItem>

@@ -13,9 +13,25 @@ import { PollVotersModal } from "@/components/community-section/poll-voters-moda
 
 import { Timestamp } from 'firebase/firestore';
 
-function timeAgo(date: Timestamp | null | undefined) {
+function timeAgo(date: Timestamp | Date | string | null | undefined) {
     if (!date) return '';
-    const seconds = Math.floor((new Date().getTime() - date.toDate().getTime()) / 1000);
+
+    let time: number;
+    if (typeof date === 'string') {
+        time = new Date(date).getTime();
+    } else if (date instanceof Date) {
+        time = date.getTime();
+    } else if (typeof (date as any).toDate === 'function') {
+        time = (date as Timestamp).toDate().getTime();
+    } else {
+        // Fallback for unexpected objects or timestamp-like objects
+        time = new Date(date as any).getTime();
+    }
+
+    // Check if invalid date
+    if (isNaN(time)) return '';
+
+    const seconds = Math.floor((new Date().getTime() - time) / 1000);
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + " yıl önce";
     interval = seconds / 2592000;
@@ -23,9 +39,9 @@ function timeAgo(date: Timestamp | null | undefined) {
     interval = seconds / 86400;
     if (interval > 1) return Math.floor(interval) + " gün önce";
     interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " saat önce";
+    if (interval > 1) return Math.floor(interval) + " sa";
     interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " dakika önce";
+    if (interval > 1) return Math.floor(interval) + " dk";
     return "Az önce";
 }
 
@@ -71,7 +87,7 @@ export default function SavedPollsList() {
         if (!user) return;
         try {
             await toggleSavePost(user.uid, postId);
-            setSavedPosts(prev => prev.filter(p => p.id !== postId));
+            setSavedPosts(prev => prev.filter(p => p.id.toString() !== postId));
             toast.success("Anket kaydedilenlerden kaldırıldı.");
         } catch (error) {
             toast.error("İşlem başarısız.");
@@ -164,14 +180,14 @@ export default function SavedPollsList() {
                             <div className="flex items-center gap-3 mb-3">
                                 <UserHoverCard
                                     userId={post.userId}
-                                    username={post.userName}
-                                    image={post.userImage}
+                                    username={post.userDisplayName}
+                                    image={post.userAvatarUrl}
                                     frame={post.userFrame}
                                     className="shrink-0"
                                 >
                                     <UserAvatar
-                                        src={post.userImage}
-                                        alt={post.userName}
+                                        src={post.userAvatarUrl}
+                                        alt={post.userDisplayName}
                                         frameId={post.userFrame}
                                         className="h-9 w-9 border border-border"
                                         fallbackClass="bg-primary/10 text-primary"
@@ -180,11 +196,11 @@ export default function SavedPollsList() {
                                 <div className="flex-1 min-w-0">
                                     <UserHoverCard
                                         userId={post.userId}
-                                        username={post.userName}
-                                        image={post.userImage}
+                                        username={post.userDisplayName}
+                                        image={post.userAvatarUrl}
                                         frame={post.userFrame}
                                     >
-                                        <p className="font-semibold text-sm truncate hover:underline decoration-primary cursor-pointer">{post.userName}</p>
+                                        <p className="font-semibold text-sm truncate hover:underline decoration-primary cursor-pointer">{post.userDisplayName}</p>
                                     </UserHoverCard>
                                     <p className="text-[10px] text-muted-foreground">{timeAgo(post.createdAt)}</p>
                                 </div>
@@ -193,7 +209,7 @@ export default function SavedPollsList() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 text-muted-foreground hover:text-primary"
-                                        onClick={() => setViewingPollId(post.id)}
+                                        onClick={() => setViewingPollId(post.id.toString())}
                                         title="Detaylar"
                                     >
                                         <BarChart2 size={14} />
@@ -204,7 +220,7 @@ export default function SavedPollsList() {
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7 text-primary hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleUnsave(post.id)}
+                                            onClick={() => handleUnsave(post.id.toString())}
                                             title="Kaydetmeyi Kaldır"
                                         >
                                             <Bookmark size={14} fill="currentColor" />
@@ -219,11 +235,11 @@ export default function SavedPollsList() {
                             )}
 
                             {/* Poll Options Preview */}
-                            {post.pollOptions && (
+                            {post.options && (
                                 <div className="space-y-1.5 mt-auto">
-                                    {post.pollOptions.slice(0, 4).map((opt, idx) => {
-                                        const totalVotes = post.pollOptions!.reduce((acc, curr) => acc + curr.votes, 0);
-                                        const percentage = totalVotes === 0 ? 0 : Math.round((opt.votes / totalVotes) * 100);
+                                    {post.options.slice(0, 4).map((opt, idx) => {
+                                        const totalVotes = post.options!.reduce((acc, curr) => acc + curr.voteCount, 0);
+                                        const percentage = totalVotes === 0 ? 0 : Math.round((opt.voteCount / totalVotes) * 100);
 
                                         // Vibrant Colors
                                         const colors = [
@@ -241,14 +257,14 @@ export default function SavedPollsList() {
                                                     style={{ width: `${percentage}%` }}
                                                 />
                                                 <div className="absolute inset-0 flex items-center justify-between px-2">
-                                                    <span className="text-[10px] font-medium truncate flex-1">{opt.novelTitle || opt.text}</span>
-                                                    {opt.votes > 0 && <span className={`text-[10px] font-bold ${color.text} ml-1`}>{opt.votes}</span>}
+                                                    <span className="text-[10px] font-medium truncate flex-1">{opt.relatedNovelTitle || opt.text}</span>
+                                                    {opt.voteCount > 0 && <span className={`text-[10px] font-bold ${color.text} ml-1`}>{opt.voteCount}</span>}
                                                 </div>
                                             </div>
                                         );
                                     })}
-                                    {post.pollOptions.length > 4 && (
-                                        <p className="text-[10px] text-center text-muted-foreground">+{post.pollOptions.length - 4} seçenek daha</p>
+                                    {post.options.length > 4 && (
+                                        <p className="text-[10px] text-center text-muted-foreground">+{post.options.length - 4} seçenek daha</p>
                                     )}
                                 </div>
                             )}
@@ -266,11 +282,17 @@ export default function SavedPollsList() {
                     {/* Header always visible */}
                     <div className="overflow-x-auto pb-2 scrollbar-hide">
                         <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                            <TabsTrigger value="saved" className="flex-none px-4">
-                                Anketler {savedLoaded && <span className="ml-1 font-bold">{savedPosts.length}</span>}
+                            <TabsTrigger value="saved" className="flex-none px-4 gap-2">
+                                Anketler
+                                <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${savedLoaded ? "opacity-100" : "opacity-50"}`}>
+                                    {savedLoaded ? savedPosts.length : "-"}
+                                </span>
                             </TabsTrigger>
-                            <TabsTrigger value="created" className="flex-none px-4">
-                                Geçmiş Anketler {createdLoaded && <span className="ml-1 font-bold">{createdPosts.length}</span>}
+                            <TabsTrigger value="created" className="flex-none px-4 gap-2">
+                                Geçmiş Anketler
+                                <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${createdLoaded ? "opacity-100" : "opacity-50"}`}>
+                                    {createdLoaded ? createdPosts.length : "-"}
+                                </span>
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -309,7 +331,7 @@ export default function SavedPollsList() {
                     isOpen={!!viewingPollId}
                     onClose={() => setViewingPollId(null)}
                     postId={viewingPollId}
-                    pollOptions={currentPosts.find(p => p.id === viewingPollId)?.pollOptions || []}
+                    pollOptions={currentPosts.find(p => p.id.toString() === viewingPollId)?.options || []}
                 />
             )}
         </>

@@ -17,5 +17,17 @@ public class User
     [MaxLength(100)]
     public string? DisplayName { get; set; }
 
+    [MaxLength(255)]
+    public string? AvatarUrl { get; set; }
+
+    [MaxLength(500)]
+    public string? Bio { get; set; }
+
+    [MaxLength(20)]
+    public string Role { get; set; } = "User"; // Admin, Moderator, User
+
+    public bool IsActive { get; set; } = true;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastLoginAt { get; set; }
 }

@@ -9,8 +9,8 @@ using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-
-
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -56,7 +56,7 @@ try
     
     // Add Redis health check with short timeout to prevent deploy timeouts
     var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrEmpty(redisConnectionString) && !redisConnectionString.Contains("localhost"))
+    if (!string.IsNullOrEmpty(redisConnectionString))
     {
         try
         {
@@ -70,7 +70,7 @@ try
     }
 
     // 🚀 Caching Strategy (Redis) - Upstash optimized with aggressive timeouts
-    if (!string.IsNullOrEmpty(redisConnectionString) && !redisConnectionString.Contains("localhost"))
+    if (!string.IsNullOrEmpty(redisConnectionString))
     {
         builder.Services.AddStackExchangeRedisCache(options =>
         {
@@ -83,6 +83,29 @@ try
             options.ConfigurationOptions.AbortOnConnectFail = false;
             options.ConfigurationOptions.ConnectRetry = 1;      // Only 1 retry
         });
+        
+        // 🎯 Direct Redis Access for Performance Optimization
+        builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
+        {
+            var config = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            config.ConnectTimeout = 2000;
+            config.SyncTimeout = 2000;
+            config.AbortOnConnectFail = false;
+            config.ConnectRetry = 1;
+            return StackExchange.Redis.ConnectionMultiplexer.Connect(config);
+        });
+        builder.Services.AddSingleton<Novelytical.Web.Services.IRedisService, Novelytical.Web.Services.RedisService>();
+        
+        // 🎯 Stats Batch Service (Memory accumulation)
+        builder.Services.AddSingleton<Novelytical.Web.Services.StatsBatchService>();
+        builder.Services.AddSingleton<Novelytical.Application.Interfaces.IStatsBatchService>(sp => sp.GetRequiredService<Novelytical.Web.Services.StatsBatchService>());
+        
+        // 🏆 Ranking Services
+        builder.Services.AddScoped<Novelytical.Web.Services.RankingService>();
+        builder.Services.AddScoped<Novelytical.Web.Jobs.UpdateRankingsJob>();
+        builder.Services.AddScoped<Novelytical.Web.Jobs.DailyStatsResetJob>();
+        
+
     }
     else
     {
@@ -90,10 +113,26 @@ try
         builder.Services.AddMemoryCache();
         // Add IDistributedCache implementation using MemoryCache
         builder.Services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache, Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache>();
+        
+        // Fallback Stats Service (Prevent crash if Redis is missing)
+        builder.Services.AddSingleton<Novelytical.Application.Interfaces.IStatsBatchService, Novelytical.Web.Services.NoOpStatsBatchService>();
     }
+
+    // 📡 Real-Time Service (Global)
+    builder.Services.AddScoped<Novelytical.Application.Interfaces.IRealTimeService, Novelytical.Web.Services.SignalRRealTimeService>();
+    
+    // 🔄 Hangfire (Background Jobs)
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_170)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseMemoryStorage());
+    
+    builder.Services.AddHangfireServer();
 
     // Add services to the container.
     builder.Services.AddControllers();
+    builder.Services.AddSignalR(); // 📡 Real-time support
 
 
 
@@ -184,7 +223,7 @@ try
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try {
-            db.Database.Migrate();
+            // db.Database.Migrate();
         } catch { /* Ignore migration errors */ }
 
         // 🚑 EMERGENCY FIX: Removed
@@ -234,8 +273,34 @@ try
 
     app.UseAuthentication(); // 🔐 Kimlik Doğrulama
     app.UseAuthorization();
+    
+    // 🔄 Hangfire Dashboard (Development only - no auth for simplicity)
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseHangfireDashboard("/hangfire");
+        
+        // 🎯 Schedule Background Jobs
+        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Services.StatsBatchService>(
+            "flush-stats-to-redis",
+            service => service.FlushToRedis(),
+            "*/5 * * * *" // Every 5 minutes
+        );
+        
+        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.UpdateRankingsJob>(
+            "update-rankings",
+            job => job.Execute(),
+            "0 * * * *" // Hourly
+        );
+        
+        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
+            "daily-stats-reset",
+            job => job.Execute(),
+            "0 0 * * *" // Daily at midnight
+        );
+    }
 
     app.MapControllers();
+    app.MapHub<Novelytical.Web.Hubs.CommunityHub>("/hubs/community"); // 📡 SignalR Hub
 
     // Health check endpoint'i
     app.MapHealthChecks("/health");

@@ -143,7 +143,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 "chapters_desc" => query.OrderByDescending(n => n.ChapterCount).ThenBy(n => n.Id),
                 "date_desc" => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id),
                 "rank_desc" => query
-                    .OrderByDescending(n => (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50))
+                    .OrderByDescending(n => n.TotalRankScore)
                     .ThenByDescending(n => n.ScrapedRating ?? n.Rating)
                     .ThenBy(n => n.Id),
                 _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
@@ -370,7 +370,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         var allNovelRanks = await _repository.GetOptimizedQuery()
             .Select(n => new { 
                 n.Id, 
-                RankScore = (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50),
+                RankScore = n.TotalRankScore,
                 Rating = n.ScrapedRating ?? n.Rating
             })
             .OrderByDescending(x => x.RankScore)

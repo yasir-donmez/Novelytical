@@ -43,15 +43,13 @@ export default function RegisterPage() {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
             if (result.user) {
-                // For Google login, we might want to create a user profile too if it doesn't exist
-                // But for now, let's keep it simple or maybe check if we can get a username from email
-                const generatedUsername = result.user.email?.split('@')[0] || "user_" + Math.floor(Math.random() * 10000);
+                // For Google login, create profile if not exists
+                const baseName = result.user.email?.split('@')[0] || "user";
+                const uniqueUsername = await UserService.generateUniqueUsername(baseName);
 
-                // Optimistically try to create profile if not exists (fire and forget or await)
+                // Optimistically try to create profile if not exists
                 try {
-                    // Check if profile exists first (optional but good practice)
-                    // For now, assuming standard flow
-                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "", result.user.photoURL || undefined);
+                    await UserService.createUserProfile(result.user.uid, uniqueUsername, result.user.email || "", result.user.photoURL || undefined);
                 } catch (e) {
                     // Ignore if already exists
                 }

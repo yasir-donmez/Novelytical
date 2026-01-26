@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Review, getReviewsPaginated } from "@/services/review-service";
+import { ReviewDto, Review, reviewService } from "@/services/review-service";
 import ReviewForm from "./review-form";
 import ReviewList from "./review-list";
 import { Badge } from "@/components/ui/badge";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { ArrowUpDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 
 interface ReviewSectionProps {
     novelId: number;
@@ -20,10 +16,10 @@ interface ReviewSectionProps {
 }
 
 export default function ReviewSection({ novelId, coverImage }: ReviewSectionProps) {
+    const { user } = useAuth();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
-    const [sortOption, setSortOption] = useState("newest");
-    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
@@ -31,74 +27,195 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
     useEffect(() => {
         const fetchInitial = async () => {
             setLoading(true);
-            const { reviews: newReviews, lastVisible } = await getReviewsPaginated(novelId, sortOption, 10, null);
-            setReviews(newReviews);
-            setLastDoc(lastVisible);
-            setHasMore(newReviews.length === 10);
+            setPage(1);
+            const newReviews = await reviewService.getReviews(novelId, 1, 5);
+
+            if (user && newReviews.length > 0) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    newReviews.forEach(r => {
+                        if (reactionMap[r.id]) {
+                            r.userReaction = reactionMap[r.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
+
+            // Map to Review
+            const mappedReviews: Review[] = newReviews.map(r => ({
+                id: r.id.toString(),
+                novelId: r.novelId.toString(),
+                userId: r.userId,
+                userName: r.userDisplayName,
+                userImage: r.userAvatarUrl,
+                content: r.content,
+                ratings: {
+                    story: r.ratingStory,
+                    characters: r.ratingCharacters,
+                    world: r.ratingWorld,
+                    flow: r.ratingFlow,
+                    grammar: r.ratingGrammar
+                },
+                averageRating: r.ratingOverall,
+                novelTitle: "",
+                novelCover: undefined,
+                createdAt: new Date(r.createdAt),
+                firebaseUid: r.firebaseUid,
+                likeCount: r.likeCount,
+                dislikeCount: r.dislikeCount,
+                userReaction: r.userReaction,
+                isSpoiler: r.isSpoiler
+            }));
+
+            setReviews(mappedReviews);
+            setHasMore(newReviews.length >= 5);
             setLoading(false);
         };
         fetchInitial();
-    }, [novelId, sortOption]);
+    }, [novelId, user]);
 
     // Load More Function
     const loadMore = async () => {
-        if (loadingMore || !hasMore || !lastDoc) return;
+        if (loadingMore || !hasMore) return;
         setLoadingMore(true);
-        const { reviews: newReviews, lastVisible } = await getReviewsPaginated(novelId, sortOption, 10, lastDoc);
+        const nextPage = page + 1;
+        const newReviews = await reviewService.getReviews(novelId, nextPage, 5);
 
         if (newReviews.length > 0) {
-            setReviews(prev => [...prev, ...newReviews]);
-            setLastDoc(lastVisible);
-            setHasMore(newReviews.length === 10);
+            if (user) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    newReviews.forEach(r => {
+                        if (reactionMap[r.id]) {
+                            r.userReaction = reactionMap[r.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
+
+            // Map to Review
+            const mappedReviews: Review[] = newReviews.map(r => ({
+                id: r.id.toString(),
+                novelId: r.novelId.toString(),
+                userId: r.userId,
+                userName: r.userDisplayName,
+                userImage: r.userAvatarUrl,
+                content: r.content,
+                ratings: {
+                    story: r.ratingStory,
+                    characters: r.ratingCharacters,
+                    world: r.ratingWorld,
+                    flow: r.ratingFlow,
+                    grammar: r.ratingGrammar
+                },
+                averageRating: r.ratingOverall,
+                novelTitle: "",
+                novelCover: undefined,
+                createdAt: new Date(r.createdAt),
+                firebaseUid: r.firebaseUid,
+                likeCount: r.likeCount,
+                dislikeCount: r.dislikeCount,
+                userReaction: r.userReaction,
+                isSpoiler: r.isSpoiler
+            }));
+
+            setReviews(prev => [...prev, ...mappedReviews]);
+            setPage(nextPage);
+            setHasMore(newReviews.length >= 5);
         } else {
             setHasMore(false);
         }
         setLoadingMore(false);
     };
 
-    // Intersection Observer for Infinite Scroll
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            entries => {
-                if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
-                    loadMore();
-                }
-            },
-            { threshold: 1.0 }
-        );
+    // Callback
+    const handleReviewAdded = () => {
+        const fetchInitial = async () => {
+            setPage(1);
+            const newReviews = await reviewService.getReviews(novelId, 1, 5);
+            if (user && newReviews.length > 0) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    newReviews.forEach(r => {
+                        if (reactionMap[r.id]) {
+                            r.userReaction = reactionMap[r.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
 
-        const sentinel = document.getElementById("review-sentinel");
-        if (sentinel) observer.observe(sentinel);
+            // Map to Review
+            const mappedReviews: Review[] = newReviews.map(r => ({
+                id: r.id.toString(),
+                novelId: r.novelId.toString(),
+                userId: r.userId,
+                userName: r.userDisplayName,
+                userImage: r.userAvatarUrl,
+                content: r.content,
+                ratings: {
+                    story: r.ratingStory,
+                    characters: r.ratingCharacters,
+                    world: r.ratingWorld,
+                    flow: r.ratingFlow,
+                    grammar: r.ratingGrammar
+                },
+                averageRating: r.ratingOverall,
+                novelTitle: "",
+                novelCover: undefined,
+                createdAt: new Date(r.createdAt),
+                firebaseUid: r.firebaseUid,
+                likeCount: r.likeCount,
+                dislikeCount: r.dislikeCount,
+                userReaction: r.userReaction,
+                isSpoiler: r.isSpoiler
+            }));
 
-        return () => observer.disconnect();
-    }, [loading, loadingMore, hasMore, lastDoc]);
+            setReviews(mappedReviews);
+            setHasMore(newReviews.length >= 5);
+        };
+        fetchInitial();
+    };
+
+    const userReview = user ? reviews.find(r => r.firebaseUid === user.uid) : undefined;
+
+    const handleDelete = async (id: string) => {
+        if (!user) return;
+        if (!confirm("Bunu silmek istediğinize emin misiniz?")) return;
+
+        try {
+            const token = await user.getIdToken();
+            const success = await reviewService.deleteReview(token, parseInt(id));
+            if (success) {
+                setReviews(prev => prev.filter(r => r.id !== id));
+                toast.success("Değerlendirme silindi.");
+            } else {
+                toast.error("Silme başarısız.");
+            }
+        } catch (e) {
+            toast.error("Bir hata oluştu.");
+        }
+    };
 
     return (
         <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-bold">Okur Değerlendirmeleri</h2>
-                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50">
-                        {reviews.length}
+                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        {reviews.length}{hasMore ? "+" : ""}
                     </Badge>
                 </div>
-                <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger className="w-[200px] h-9 text-xs font-medium bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-colors focus:ring-0">
-                        <div className="flex items-center gap-2">
-                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            <SelectValue placeholder="Sıralama" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent position="popper" align="end" sideOffset={5}>
-                        <SelectItem value="newest">En Yeni</SelectItem>
-                        <SelectItem value="oldest">En Eski</SelectItem>
-                        <SelectItem value="likes_desc">En Çok Beğenilenler</SelectItem>
-                        <SelectItem value="dislikes_desc">En Çok Beğenilmeyenler</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
 
-            <ReviewForm novelId={novelId} coverImage={coverImage} onReviewAdded={() => { }} />
+            <ReviewForm
+                novelId={novelId}
+                coverImage={coverImage}
+                onReviewAdded={handleReviewAdded}
+                existingReview={userReview}
+            />
 
             {loading ? (
                 <div className="flex justify-center py-12">
@@ -106,14 +223,20 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
                 </div>
             ) : (
                 <>
-                    <ReviewList reviews={reviews} onDelete={async (id) => {
-                        setReviews(prev => prev.filter(r => r.id !== id));
-                    }} />
+                    <ReviewList reviews={reviews} onDelete={handleDelete} />
 
-                    {/* Sentinel for Infinite Scroll */}
-                    <div id="review-sentinel" className="h-4 w-full flex justify-center mt-4">
-                        {loadingMore && <Loader2 className="animate-spin h-4 w-4 text-muted-foreground" />}
-                    </div>
+                    {hasMore && (
+                        <div className="flex justify-center mt-6">
+                            <Button
+                                variant="outline"
+                                onClick={loadMore}
+                                disabled={loadingMore}
+                            >
+                                {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Daha Fazla Yükle
+                            </Button>
+                        </div>
+                    )}
                 </>
             )}
         </div>

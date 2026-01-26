@@ -456,10 +456,30 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4 justify-between">
                 <div className="overflow-x-auto pb-2 scrollbar-hide flex-1">
                     <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {loading ? '' : allItems.length}</TabsTrigger>
-                        <TabsTrigger value="reading" className="gap-2 flex-none px-4"><BookOpen className="w-4 h-4" /> Okuyorum {loading ? '' : filterItems('reading').length}</TabsTrigger>
-                        <TabsTrigger value="completed" className="gap-2 flex-none px-4"><Check className="w-4 h-4" /> Okudum {loading ? '' : filterItems('completed').length}</TabsTrigger>
-                        <TabsTrigger value="plan_to_read" className="gap-2 flex-none px-4"><Calendar className="w-4 h-4" /> Okuyacağım {loading ? '' : filterItems('plan_to_read').length}</TabsTrigger>
+                        <TabsTrigger value="all" className="flex-none px-4 gap-2">
+                            Hepsi
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : allItems.length}
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="reading" className="gap-2 flex-none px-4">
+                            <BookOpen className="w-4 h-4" /> Okuyorum
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : filterItems('reading').length}
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="completed" className="gap-2 flex-none px-4">
+                            <Check className="w-4 h-4" /> Okudum
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : filterItems('completed').length}
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="plan_to_read" className="gap-2 flex-none px-4">
+                            <Calendar className="w-4 h-4" /> Okuyacağım
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : filterItems('plan_to_read').length}
+                            </span>
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 

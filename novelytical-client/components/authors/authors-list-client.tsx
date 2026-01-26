@@ -177,7 +177,7 @@ export function AuthorsListClient({ initialAuthors, currentPage, pageSize, maxSc
                                         <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
                                             <div
                                                 className={`h-full rounded-full ${displayRank <= 3 ? `bg-gradient-to-r ${styles.badge.split(' ').slice(0, 2).join(' ')}` : 'bg-gradient-to-r from-primary to-purple-500'}`}
-                                                style={{ width: `${Math.min(100, (author.totalRankScore / (maxScore || 1)) * 100)}%` }}
+                                                style={{ width: `${Math.min(100, (author.totalRankScore / (Number(maxScore) || 1)) * 100)}%` }}
                                             />
                                         </div>
                                         <span className={`text-xs font-bold ${displayRank <= 3 ? styles.icon : 'text-primary'}`}>

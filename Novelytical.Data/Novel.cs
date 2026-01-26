@@ -6,39 +6,49 @@ namespace Novelytical.Data
 {
     public class Novel
     {
+        // --- 1. Identity & Basic Info ---
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Author { get; set; }
+        public string Slug { get; set; } = string.Empty; // URL-friendly ID
         public string? Description { get; set; }
         public string? CoverUrl { get; set; }
         public string SourceUrl { get; set; } = string.Empty;
-        public string Slug { get; set; } = string.Empty; // URL-friendly ID
-        public decimal Rating { get; set; }
         
-        // Siteden çekilen veriler
-        public decimal? ScrapedRating { get; set; }
-        public int ViewCount { get; set; }
+        // --- 2. Content Details ---
         public string Status { get; set; } = "Unknown"; // Ongoing / Completed
-
         public int ChapterCount { get; set; }
         public DateTime LastUpdated { get; set; }
+        public List<NovelTag> NovelTags { get; set; } = new();
 
-        // --- Novelytical Stats ---
-        public int SiteViewCount { get; set; }
+        // --- 3. Ratings (Detailed) ---
+        public decimal Rating { get; set; } // Overall Average
+        
+        public decimal RatingStory { get; set; }
+        public decimal RatingCharacters { get; set; }
+        public decimal RatingWorld { get; set; }
+        public decimal RatingFlow { get; set; }
+        public decimal RatingGrammar { get; set; }
+
+        public decimal? ScrapedRating { get; set; } // Legacy/External
+
+        // --- 4. Statistics ---
+        public int ViewCount { get; set; } // Scraped/Total View
+        public int SiteViewCount { get; set; } // Internal View
         public int CommentCount { get; set; }
         public int ReviewCount { get; set; }
+        public int LibraryCount { get; set; }
+        public int TotalRankScore { get; set; }
 
-        // --- VEKTÖR KUTUSU (Vector Search) ---
-        // vector(384) -> Ücretsiz modeller için standart boyuttur.
+        // --- 5. System / Search (Postgres Vectors) ---
+        
+        // vector(384) -> Standard size for embeddings
         [Column(TypeName = "vector(384)")] 
         public Vector? DescriptionEmbedding { get; set; }
 
-        // --- FULL-TEXT SEARCH ---
-        // tsvector -> PostgreSQL Full-Text Search için
+        // tsvector -> Full-Text Search
         [Column(TypeName = "tsvector")]
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public NpgsqlTsVector? SearchVector { get; set; }
-
-        public List<NovelTag> NovelTags { get; set; } = new();
     }
 }

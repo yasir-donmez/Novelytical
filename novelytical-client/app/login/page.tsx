@@ -40,9 +40,41 @@ export default function LoginPage() {
             const result = await signInWithPopup(auth, provider);
             if (result.user) {
                 // Sync/Create user profile in Firestore
-                const generatedUsername = result.user.email?.split('@')[0] || "user_" + Math.floor(Math.random() * 10000);
+                // 1. Generate Unique Username from Email
+                const baseName = result.user.email?.split('@')[0] || "user";
+                const uniqueUsername = await UserService.generateUniqueUsername(baseName);
+
+                // 2. Use real name from Google if available, otherwise fallback to username
+                const displayName = result.user.displayName || uniqueUsername;
+
+                // Optimistically try to create profile
                 try {
-                    await UserService.createUserProfile(result.user.uid, generatedUsername, result.user.email || "", result.user.photoURL || undefined);
+                    await UserService.createUserProfile(result.user.uid, uniqueUsername, result.user.email || "", result.user.photoURL || undefined);
+                    // Update displayName if we just created/synced
+                    await UserService.updateUserProfile(result.user.uid, uniqueUsername, result.user.photoURL || undefined);
+                    // TODO: We probably should update displayName explicitly in a separate call or ensure createUserProfile handles it.
+                    // Actually UserService.createUserProfile sets displayName = username by default in my previous edit.
+                    // I should check if createUserProfile allows passing displayName or if I should update it after.
+                    // Looking at UserService.createUserProfile, it does NOT take displayName as arg.
+                    // It sets displayName: username.
+
+                    // So I should call updateUserProfile or ideally update createUserProfile to take displayName.
+                    // For now, let's just let it be username as per USER request?
+                    // User said: "sitede isim soyada istemek istemiyorum oyzuden kullanıcı adıistiyom"
+                    // "I don't want name surname on site, I want username"
+
+                    // AH! User said "I DON'T want name surname".
+                    // So displayName SHOULD be the username.
+
+                    // "ozman google ile giriş yapan birinini kullanıcı adı mailinde türetilsin"
+                    // "tabiyki aynı olmamalı herkesinki"
+
+                    // So:
+                    // Username = unique(email_prefix)
+                    // DisplayName = Username (because they don't want Real Name)
+
+                    // So I DON'T need to pass result.user.displayName.
+                    // I just need to ensure uniqueUsername.
                 } catch (e) {
                     // Ignore if already exists or fails (fail open)
                     console.log("Profile sync skipped or failed", e);

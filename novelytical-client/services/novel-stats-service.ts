@@ -1,19 +1,4 @@
-import { db } from "@/lib/firebase";
-import {
-    doc,
-    getDoc,
-    setDoc,
-    increment,
-    onSnapshot,
-    Unsubscribe,
-    collection,
-    query,
-    where,
-    getCountFromServer,
-    getDocs
-} from "firebase/firestore";
-
-const COLLECTION_NAME = "novel_stats";
+import { novelService } from "./novelService";
 
 export interface NovelStats {
     reviewCount: number;
@@ -38,101 +23,34 @@ export const calculateRank = (
     return scrapedScore + siteViewScore + commentScore + reviewScore;
 };
 
-/**
- * Calculate stats from actual collections (for migration/fallback)
- */
-const calculateStatsFromCollections = async (novelId: number): Promise<NovelStats> => {
-    try {
-        // Count reviews for this novel
-        const reviewsQuery = query(
-            collection(db, "reviews"),
-            where("novelId", "==", novelId)
-        );
-        const reviewsSnapshot = await getCountFromServer(reviewsQuery);
-        const reviewCount = reviewsSnapshot.data().count;
-
-        // Count library entries for this novel
-        const librariesQuery = query(
-            collection(db, "libraries"),
-            where("novelId", "==", novelId)
-        );
-        const librariesSnapshot = await getCountFromServer(librariesQuery);
-        const libraryCount = librariesSnapshot.data().count;
-
-        // Count comments for this novel
-        const commentsQuery = query(
-            collection(db, "comments"),
-            where("novelId", "==", novelId)
-        );
-        const commentsSnapshot = await getCountFromServer(commentsQuery);
-        const commentCount = commentsSnapshot.data().count;
-
-        return { reviewCount, libraryCount, viewCount: 0, commentCount };
-    } catch (error) {
-        console.error("Error calculating stats from collections:", error);
-        return { reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 };
-    }
-};
-
-// Import optimized cache manager
-import { getCacheManager, CacheKeys } from "@/lib/cache";
-
-// Legacy cache for backward compatibility (will be phased out)
+// Simple in-memory cache to avoid redundant API calls within short timeframe
 const statsCache = new Map<number, { data: NovelStats, timestamp: number }>();
-const STATS_CACHE_TTL = 60 * 60 * 1000; // 60 Minutes (optimized from 10 minutes)
+const CACHE_TTL = 60 * 1000; // 1 Minute
 
 /**
- * Get stats for a specific novel with optimized caching
+ * Get stats for a specific novel
+ * Now fetches directly from Backend API via novelService
  */
 export const getNovelStats = async (novelId: number): Promise<NovelStats> => {
-    const cacheManager = getCacheManager();
-    const cacheKey = CacheKeys.novelStats(novelId);
+    const now = Date.now();
+    const cached = statsCache.get(novelId);
+
+    if (cached && (now - cached.timestamp < CACHE_TTL)) {
+        return cached.data;
+    }
 
     try {
-        // Try optimized cache first
-        let stats = await cacheManager.get<NovelStats>(cacheKey, 'stats');
-        if (stats) {
-            return stats;
-        }
+        const novel = await novelService.getNovelById(novelId);
 
-        // Fallback to legacy cache for migration period
-        const cached = statsCache.get(novelId);
-        const now = Date.now();
-        if (cached && (now - cached.timestamp < STATS_CACHE_TTL)) {
-            // Migrate to new cache system
-            await cacheManager.set(cacheKey, cached.data, 'stats');
-            return cached.data;
-        }
+        // Map backend DTO to NovelStats
+        const stats: NovelStats = {
+            reviewCount: novel.ratingCount || 0,
+            libraryCount: 0,
+            viewCount: novel.siteViewCount || 0, // Correct: Use site-specific view count
+            commentCount: novel.commentCount || 0
+        };
 
-        // Fetch from Firestore
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            stats = {
-                reviewCount: data.reviewCount || 0,
-                libraryCount: data.libraryCount || 0,
-                viewCount: data.viewCount || 0,
-                commentCount: data.commentCount || 0
-            };
-        } else {
-            // Stats document doesn't exist - calculate from actual collections
-            stats = await calculateStatsFromCollections(novelId);
-
-            // Initialize the stats document for future use (async, don't wait)
-            if (stats.reviewCount > 0 || stats.libraryCount > 0) {
-                setDoc(docRef, stats, { merge: true }).catch(console.error);
-            }
-        }
-
-        // Cache in both systems during migration
-        await cacheManager.set(cacheKey, stats, 'stats');
-        statsCache.set(novelId, {
-            data: stats,
-            timestamp: now
-        });
-
+        statsCache.set(novelId, { data: stats, timestamp: now });
         return stats;
     } catch (error) {
         console.error("Error fetching novel stats:", error);
@@ -142,167 +60,40 @@ export const getNovelStats = async (novelId: number): Promise<NovelStats> => {
 
 /**
  * Subscribe to real-time stats updates for a novel
+ * REPLACED: No longer real-time via Firebase. 
+ * Returning a dummy unsubscribe function for compatibility.
  */
 export const subscribeToNovelStats = (
     novelId: number,
     callback: (stats: NovelStats) => void
-): Unsubscribe => {
-    const docRef = doc(db, COLLECTION_NAME, novelId.toString());
+): () => void => {
+    // Initial fetch
+    getNovelStats(novelId).then(callback);
 
-    return onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            callback({
-                reviewCount: data.reviewCount || 0,
-                libraryCount: data.libraryCount || 0,
-                viewCount: data.viewCount || 0,
-                commentCount: data.commentCount || 0
-            });
-        } else {
-            callback({ reviewCount: 0, libraryCount: 0, viewCount: 0, commentCount: 0 });
-        }
-    });
-};
+    // Optional: Poll every 30 seconds
+    const interval = setInterval(() => {
+        getNovelStats(novelId).then(callback);
+    }, 30000);
 
-import { novelService } from "./novelService";
-
-// Helper to calculate average rating
-const getAverageRating = async (novelId: number): Promise<number> => {
-    try {
-        const reviewsQuery = query(
-            collection(db, "reviews"),
-            where("novelId", "==", novelId)
-        );
-        const snapshot = await getDocs(reviewsQuery);
-        if (snapshot.empty) return 0;
-
-        let totalScore = 0;
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const r = data.ratings;
-            // Average of 5 criteria
-            const reviewAvg = (r.story + r.characters + r.world + r.flow + r.grammar) / 5;
-            totalScore += reviewAvg;
-        });
-
-        return totalScore / snapshot.size;
-    } catch (e) {
-        console.error("Error calculating average rating:", e);
-        return 0;
-    }
+    return () => clearInterval(interval);
 };
 
 /**
- * Increment review count for a novel
- */
-export const incrementReviewCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { reviewCount: increment(1) }, { merge: true });
-
-        // Sync to backend with new average
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            const count = docSnap.data().reviewCount || 0;
-            const avgRating = await getAverageRating(novelId);
-            await novelService.updateReviewCount(novelId, count, avgRating);
-        }
-    } catch (error) {
-        console.error("Error incrementing review count:", error);
-    }
-};
-
-/**
- * Decrement review count for a novel
- */
-export const decrementReviewCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { reviewCount: increment(-1) }, { merge: true });
-
-        // Sync to backend with new average
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            const count = docSnap.data().reviewCount || 0;
-            const avgRating = await getAverageRating(novelId);
-            await novelService.updateReviewCount(novelId, count, avgRating);
-        }
-    } catch (error) {
-        console.error("Error decrementing review count:", error);
-    }
-};
-
-/**
- * Increment library count for a novel
- */
-export const incrementLibraryCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { libraryCount: increment(1) }, { merge: true });
-    } catch (error) {
-        console.error("Error incrementing library count:", error);
-    }
-};
-
-/**
- * Decrement library count for a novel
- */
-export const decrementLibraryCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { libraryCount: increment(-1) }, { merge: true });
-    } catch (error) {
-        console.error("Error decrementing library count:", error);
-    }
-};
-
-/**
- * Increment view count for a novel (called when page is viewed)
+ * Increment view count for a novel
+ * Now calls Backend API directly
  */
 export const incrementViewCount = async (novelId: number): Promise<void> => {
     try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { viewCount: increment(1) }, { merge: true });
-
-        // Sync to backend
         await novelService.incrementSiteView(novelId);
     } catch (error) {
         console.error("Error incrementing view count:", error);
     }
 };
 
-/**
- * Increment comment count for a novel
- */
-export const incrementCommentCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { commentCount: increment(1) }, { merge: true });
-
-        // Sync to backend
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            await novelService.updateCommentCount(novelId, docSnap.data().commentCount || 0);
-        }
-    } catch (error) {
-        console.error("Error incrementing comment count:", error);
-    }
-};
-
-/**
- * Decrement comment count for a novel
- */
-export const decrementCommentCount = async (novelId: number): Promise<void> => {
-    try {
-        const docRef = doc(db, COLLECTION_NAME, novelId.toString());
-        await setDoc(docRef, { commentCount: increment(-1) }, { merge: true });
-
-        // Sync to backend
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            await novelService.updateCommentCount(novelId, docSnap.data().commentCount || 0);
-        }
-    } catch (error) {
-        console.error("Error decrementing comment count:", error);
-    }
-};
+// Deprecated / No-op functions (since Backend now handles these via their own endpoints/logic)
+export const incrementReviewCount = async (novelId: number): Promise<void> => { /* No-op */ };
+export const decrementReviewCount = async (novelId: number): Promise<void> => { /* No-op */ };
+export const incrementLibraryCount = async (novelId: number): Promise<void> => { /* No-op */ };
+export const decrementLibraryCount = async (novelId: number): Promise<void> => { /* No-op */ };
+export const incrementCommentCount = async (novelId: number): Promise<void> => { /* No-op */ };
+export const decrementCommentCount = async (novelId: number): Promise<void> => { /* No-op */ };

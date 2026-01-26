@@ -216,19 +216,40 @@ export const getCommentsByNovelId = async (novelId: number, sortBy: string = 'ne
 
 export const getCommentsByUserId = async (userId: string): Promise<Comment[]> => {
     try {
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            where("userId", "==", userId),
-            orderBy("createdAt", "desc")
-        );
+        const api = (await import("@/lib/axios")).default;
+        // Backend endpoint: api/reviews/user/{uid}/comments
+        // Lib axios base: /api
+        // Request: /reviews/user/${userId}/comments
+        const response = await api.get(`/reviews/user/${userId}/comments`);
 
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Comment));
+        // Map backend response 
+        // Assuming backend returns a list of comments with SQL field names (PascalCase or camelCase)
+        // We map them to the Comment interface expected by the frontend
+        return response.data.map((c: any) => ({
+            id: c.id.toString(), // SQL ID is likely number
+            novelId: c.novelId,
+            userId: c.userId,
+            userName: c.userName || "Unknown", // Fallbacks
+            userImage: c.userImage,
+            userFrame: c.userFrame,
+            content: c.content,
+            parentId: c.parentId ? c.parentId.toString() : null,
+            isSpoiler: c.isSpoiler || false,
+            likeCount: c.likeCount || 0,
+            dislikeCount: c.dislikeCount || 0,
+            // Handle Date mapping: SQL usually sends ISO string. Convert to Firestore Timestamp-like object or Date
+            // The frontend expects Timestamp object with toDate(), so we mock it or convert if interface allows Date
+            // Wait, the interface says 'timestamp: Timestamp'. 
+            // We should probably update the interface to allow Date | Timestamp, or convert here.
+            // Let's create a partial mock for Timestamp to avoid breaking UI that calls .toDate()
+            createdAt: {
+                toDate: () => new Date(c.createdAt),
+                seconds: new Date(c.createdAt).getTime() / 1000,
+                nanoseconds: 0
+            }
+        }));
     } catch (error) {
-        console.error("Error fetching user comments:", error);
+        console.error("Error fetching user comments from API:", error);
         return [];
     }
 };

@@ -15,8 +15,8 @@ export default function DeveloperCard() {
     useEffect(() => {
         const fetchDev = async () => {
             try {
-                // Fetch Yasir's profile by username
-                const uid = await UserService.getUserIdByUsername("ZuGaiKoTsu");
+                // Fetch the first registered user (Developer)
+                const uid = await UserService.getFirstAdminUser();
                 if (uid) {
                     const profile = await UserService.getUserProfile(uid);
                     setDevProfile(profile);
@@ -32,12 +32,17 @@ export default function DeveloperCard() {
 
     if (loading) {
         return (
-            <div className="p-6 rounded-xl border bg-card animate-pulse">
-                <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-muted"></div>
-                    <div className="space-y-2">
-                        <div className="h-4 w-32 bg-muted rounded"></div>
-                        <div className="h-3 w-48 bg-muted rounded"></div>
+            <div className="p-6 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 animate-pulse">
+                <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-full bg-purple-500/20 shrink-0"></div>
+                    <div className="w-full">
+                        <div className="h-6 w-32 bg-purple-500/20 rounded mb-1"></div>
+                        <div className="h-4 w-24 bg-purple-500/10 rounded mb-3"></div>
+                        <div className="space-y-2">
+                            <div className="h-3 w-full bg-purple-500/10 rounded"></div>
+                            <div className="h-3 w-[95%] bg-purple-500/10 rounded"></div>
+                            <div className="h-3 w-[65%] bg-purple-500/10 rounded"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -47,7 +52,7 @@ export default function DeveloperCard() {
     if (!devProfile) {
         // Fallback if not found (Static)
         return (
-            <div className="p-6 rounded-xl border bg-card">
+            <div className="p-6 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5">
                 <div className="flex items-start gap-4">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shrink-0">
                         Y
@@ -70,19 +75,22 @@ export default function DeveloperCard() {
 
     return (
         <Link href={`/profile/${devProfile.uid}`} className="block transition-transform hover:scale-[1.01]">
-            <div className="p-6 rounded-xl border bg-card hover:bg-muted/50 transition-colors group relative overflow-hidden">
+            <div className="p-6 rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 hover:border-purple-500/40 transition-colors group relative overflow-hidden">
+
+                {/* Decorative background element */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none" />
 
                 <div className="flex items-start gap-4 relative z-10">
                     <UserAvatar
                         src={devProfile.photoURL}
-                        alt={devProfile.username}
+                        alt={devProfile.displayName || devProfile.username}
                         frameId={frameId}
                         size="xl"
-                        className="h-16 w-16"
+                        className="h-16 w-16 shrink-0"
                     />
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">{devProfile.username}</h3>
+                            <h3 className="font-semibold text-lg">{devProfile.displayName || devProfile.username}</h3>
                             {frameObj.id !== 'default' && (
                                 <span className={cn("text-[10px] px-2 py-0.5 rounded-full border bg-background/50 backdrop-blur-sm", frameObj.color)}>
                                     {frameObj.name}
@@ -92,8 +100,7 @@ export default function DeveloperCard() {
                         </div>
                         <p className="text-sm text-muted-foreground mb-3 font-medium">Kurucu & Geliştirici</p>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            Yazılım geliştirmeyi öğrenen, yapay zeka ve web teknolojilerine ilgi duyan bir öğrenciyim.
-                            Bu proje, öğrenme sürecimin bir parçası ve aynı zamanda roman okuma hobimin dijital bir yansıması.
+                            {devProfile.bio || "Yazılım geliştirmeyi öğrenen, yapay zeka ve web teknolojilerine ilgi duyan bir öğrenciyim. Bu proje, öğrenme sürecimin bir parçası ve aynı zamanda roman okuma hobimin dijital bir yansıması."}
                         </p>
                     </div>
                 </div>

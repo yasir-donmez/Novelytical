@@ -7,12 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, ShieldCheck, Lock, MessageCircle, Users } from "lucide-react";
+import { FollowService } from "@/services/follow-service";
 import { FollowListDialog } from "@/components/profile/follow-list-dialog";
 
 export default function ConnectionsForm() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showFollowDialog, setShowFollowDialog] = useState(false);
+
+    // Stats
+    const [followerCount, setFollowerCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
 
     const [privacy, setPrivacy] = useState({
         allowMessagesFromNonFollowers: false,
@@ -22,9 +27,13 @@ export default function ConnectionsForm() {
         hideLibrary: false
     });
 
-    // Load real settings on mount
+    // Load real settings & stats on mount
     useEffect(() => {
         if (!user) return;
+
+        let unsubFollowers: () => void;
+        let unsubFollowing: () => void;
+
         const loadSettings = async () => {
             try {
                 const profile = await import("@/services/user-service").then(m => m.UserService.getUserProfile(user.uid));
@@ -35,11 +44,21 @@ export default function ConnectionsForm() {
                         hideLibrary: profile.privacySettings.hideLibrary || false
                     });
                 }
+
+                // Subscribe to stats
+                unsubFollowers = FollowService.subscribeToFollowerCount(user.uid, setFollowerCount);
+                unsubFollowing = FollowService.subscribeToFollowingCount(user.uid, setFollowingCount);
+
             } catch (error) {
                 console.error(error);
             }
         };
         loadSettings();
+
+        return () => {
+            if (unsubFollowers) unsubFollowers();
+            if (unsubFollowing) unsubFollowing();
+        };
     }, [user]);
 
     const handleSave = async (e: React.FormEvent) => {
@@ -168,15 +187,20 @@ export default function ConnectionsForm() {
                         <Users className="h-4 w-4" />
                         <h4 className="text-sm font-semibold">Bağlantılar</h4>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-center sm:justify-between flex-wrap gap-4">
                         <Label className="flex flex-col gap-1">
                             <span>Takipçileri ve Takip Edilenleri Yönet</span>
                             <span className="font-normal text-xs text-muted-foreground">
                                 Listenizi görüntüleyin, takipçi çıkarın veya takipten çıkın.
                             </span>
+                            <div className="flex gap-4 mt-2 text-xs font-medium text-muted-foreground bg-black/20 w-fit px-3 py-1.5 rounded-md border border-white/5">
+                                <span><span className="text-foreground font-bold">{followerCount}</span> Takipçi</span>
+                                <span className="w-px h-3 bg-white/10 self-center"></span>
+                                <span><span className="text-foreground font-bold">{followingCount}</span> Takip Edilen</span>
+                            </div>
                         </Label>
                         <Button type="button" variant="outline" onClick={() => setShowFollowDialog(true)}>
-                            Yönet
+                            Listeyi Yönet
                         </Button>
                     </div>
                 </div>

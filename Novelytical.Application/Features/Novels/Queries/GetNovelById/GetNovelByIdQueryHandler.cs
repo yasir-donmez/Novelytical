@@ -55,6 +55,7 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
             Rating = novel.Rating,
             ScrapedRating = novel.ScrapedRating,
             ViewCount = novel.ViewCount,
+            SiteViewCount = novel.SiteViewCount,
             Status = novel.Status,
             ChapterCount = novel.ChapterCount,
             LastUpdated = novel.LastUpdated,

@@ -3,19 +3,24 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { BackendUser } from "@/types/backend-user";
+import { userService } from "@/services/userService";
 
 interface AuthContextType {
     user: User | null;
+    backendUser: BackendUser | null;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
+    backendUser: null,
     loading: true,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [backendUser, setBackendUser] = useState<BackendUser | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -24,8 +29,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Auth persistence error:", err)
         );
 
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            setUser(firebaseUser);
+
+            if (firebaseUser) {
+                // 🚀 Sync with Postgres
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    const syncedUser = await userService.syncUser(token, {
+                        email: firebaseUser.email,
+                        displayName: firebaseUser.displayName,
+                        avatarUrl: firebaseUser.photoURL
+                    });
+                    setBackendUser(syncedUser);
+                } catch (error) {
+                    console.error("Backend sync failed:", error);
+                }
+            } else {
+                setBackendUser(null);
+            }
+
             setLoading(false);
         });
 
@@ -54,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [user]);
 
     return (
-        <AuthContext.Provider value={{ user, loading }}>
+        <AuthContext.Provider value={{ user, backendUser, loading }}>
             {children}
         </AuthContext.Provider>
     );

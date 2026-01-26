@@ -10,80 +10,40 @@ export const metadata: Metadata = {
     description: "Novelytical'daki popüler yazarları keşfedin.",
 };
 
-async function getTopAuthors() {
+async function getTopAuthors(page: number) {
     try {
-        // Fetch a larger dataset (1000) to get a better representation of "Top Authors"
-        const res = await fetch(`${process.env.API_URL || 'http://localhost:5050'}/api/novels?pageSize=1000`, {
-            next: { revalidate: 3600 } // Cache for 1 hour
+        const res = await fetch(`${process.env.API_URL || 'http://localhost:5050'}/api/authors/top?page=${page}&pageSize=30`, {
+            next: { revalidate: 60 } // Cache for 1 minute (Redis is fast)
         });
 
-        if (!res.ok) return [];
+        if (!res.ok) return { authors: [], maxScore: 0, totalCount: 0 };
 
         const data = await res.json();
-        const novels: NovelListDto[] = data.data || data || [];
-
-        // ✅ Calculate Rank Score for each novel
-        // Formula: (viewCount / 10000) + (commentCount * 20) + (reviewCount * 50)
-        // Matches calculateRank in novel-stats-service.ts
-        const novelsWithRank = novels.map((novel) => {
-            // Scraped views are weighted less (1 point per 10k views)
-            const viewScore = Math.floor((novel.viewCount || 0) / 10000);
-            const commentScore = (novel.commentCount || 0) * 20;
-            const reviewScore = (novel.reviewCount || 0) * 50;
-
-            const rankScore = viewScore + commentScore + reviewScore;
-
-            return { ...novel, rankScore };
-        });
-
-        // Aggregate per author
-        const authorStats: Record<string, { count: number; totalChapters: number; totalRankScore: number; topNovels: { coverUrl: string; rankScore: number }[] }> = {};
-
-        novelsWithRank.forEach((novel) => {
-            // Normalize author name (trim whitespace)
-            const author = (novel.author || "Bilinmeyen").trim();
-
-            if (!authorStats[author]) {
-                authorStats[author] = { count: 0, totalChapters: 0, totalRankScore: 0, topNovels: [] };
-            }
-            authorStats[author].count++;
-            authorStats[author].totalChapters += novel.chapterCount || 0;
-            authorStats[author].totalRankScore += novel.rankScore;
-
-            // Collect novel info for avatar
-            if (novel.coverUrl) {
-                authorStats[author].topNovels.push({ coverUrl: novel.coverUrl, rankScore: novel.rankScore });
-            }
-        });
-
-        // Sort by Total Rank Score and process top novels
-        return Object.entries(authorStats)
-            .map(([name, stats]) => {
-                // Sort top novels by rank score desc and take top 3
-                const sortedTopNovels = stats.topNovels.sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
-                return { name, ...stats, topNovels: sortedTopNovels };
-            })
-            // Filter out authors with 0 score if desired, or just sort
-            .sort((a, b) => b.totalRankScore - a.totalRankScore);
+        return {
+            authors: data.authors || [],
+            maxScore: data.maxScore || 0,
+            totalCount: data.totalCount || 0
+        };
     } catch (error) {
         console.error("Failed to fetch authors:", error);
-        return [];
+        return { authors: [], maxScore: 0, totalCount: 0 };
     }
 }
 
 export default async function YazarlarPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-    const allAuthors = await getTopAuthors();
-
     // Pagination Logic
     const params = await searchParams;
     const currentPage = Number(params?.page) || 1;
     const pageSize = 30;
-    const totalAuthors = allAuthors.length;
-    const totalPages = Math.ceil(totalAuthors / pageSize);
 
-    // Get current page data
-    const authors = allAuthors.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-    const maxScore = allAuthors[0]?.totalRankScore || 0;
+    const { authors, maxScore, totalCount } = await getTopAuthors(currentPage);
+
+    // Total pages calculation requires total count from backend (SortedSet length)
+    // For now assuming 200 authors as per plan or infinite scroll
+    // Let's assume 10 pages max for now or fetch total count
+    // AuthorsController currently returns paginated list but no total count.
+
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
@@ -121,7 +81,7 @@ export default async function YazarlarPage({ searchParams }: { searchParams: Pro
                             totalPages={totalPages}
                             currentPage={currentPage}
                             pageSize={pageSize}
-                            totalRecords={totalAuthors}
+                            totalRecords={totalCount}
                         />
                     </>
                 )}

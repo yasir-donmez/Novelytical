@@ -10,7 +10,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import UserInteractionList from "@/components/profile/user-interaction-list";
 import UserLibraryList from "@/components/profile/user-library-list";
 import SavedPollsList from "@/components/profile/saved-polls-list";
-import { BookOpen, Mail, CalendarDays, MessageSquare, BarChart2, UserPlus, UserMinus, MessageCircle, Lock } from "lucide-react";
+import { BookOpen, Mail, CalendarDays, MessageSquare, BarChart2, UserPlus, UserMinus, MessageCircle, Lock, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LevelService, UserLevelData, LEVEL_FRAMES } from "@/services/level-service";
 import { FollowService } from "@/services/follow-service";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FollowListDialog } from "@/components/profile/follow-list-dialog";
 import { openChatWithUser } from "@/components/chat/chat-floating-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function UserProfilePage() {
     const { user: currentUser } = useAuth();
@@ -185,12 +186,9 @@ export default function UserProfilePage() {
                     <div className="flex-1 w-full text-center md:text-left space-y-4 z-10">
                         <div>
                             <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
-                                <h1 className="text-2xl md:text-3xl font-bold text-foreground">{targetUser.username}</h1>
-                                {frameObj.id !== 'default' && (
-                                    <span className={cn("text-xs px-2 py-0.5 rounded-full border bg-background/50 backdrop-blur-sm w-fit mx-auto md:mx-0", frameObj.color)}>
-                                        {frameObj.name}
-                                    </span>
-                                )}
+                                <h1 className={cn("text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400", frameObj.color)}>
+                                    {targetUser.username}
+                                </h1>
                             </div>
                             <p className="text-muted-foreground flex items-center justify-center md:justify-start gap-2">
                                 <Mail size={14} />
@@ -258,6 +256,24 @@ export default function UserProfilePage() {
                                 <CalendarDays size={16} className="text-purple-400" />
                                 <span>Katılma: {joinDate}</span>
                             </div>
+
+                            {/* Level with Title Tooltip */}
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <div className={cn("flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 text-sm hover:bg-white/10 transition-colors cursor-help", frameObj.color)}>
+                                            <Trophy size={16} />
+                                            <span className="text-foreground/80">
+                                                Seviye {levelData?.level || 1} <span className="text-xs text-muted-foreground">({levelData?.xp || 0} XP)</span>
+                                            </span>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p className="font-bold">{frameObj.name}</p>
+                                        <p className="text-xs text-muted-foreground">Mevcut Lakap</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     </div>
                 </div>

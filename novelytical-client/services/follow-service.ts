@@ -179,9 +179,25 @@ export const FollowService = {
 
         // Fetch user profiles (in batches if necessary, simply done here)
         const profiles: UserProfile[] = [];
-        for (const id of userIds) {
-            const profile = await UserService.getUserProfile(id);
-            if (profile) profiles.push(profile);
+        for (const targetId of userIds) {
+            const profile = await UserService.getUserProfile(targetId);
+            if (profile) {
+                profiles.push(profile);
+            } else {
+                // Self-Healing: If user profile is null, verify existence and cleanup orphaned follow
+                try {
+                    const userRef = doc(db, "users", targetId);
+                    const userSnap = await getDoc(userRef);
+
+                    if (!userSnap.exists()) {
+                        console.warn(`[Self-Healing] Removing orphaned following record: ${uid} -> ${targetId}`);
+                        const docId = `${uid}_${targetId}`;
+                        await deleteDoc(doc(db, FOLLOWS_COLLECTION, docId));
+                    }
+                } catch (e) {
+                    console.error("Error during self-healing (following):", e);
+                }
+            }
         }
         return profiles;
     },
@@ -201,9 +217,25 @@ export const FollowService = {
         if (userIds.length === 0) return [];
 
         const profiles: UserProfile[] = [];
-        for (const id of userIds) {
-            const profile = await UserService.getUserProfile(id);
-            if (profile) profiles.push(profile);
+        for (const sourceId of userIds) {
+            const profile = await UserService.getUserProfile(sourceId);
+            if (profile) {
+                profiles.push(profile);
+            } else {
+                // Self-Healing: If user profile is null, verify existence and cleanup orphaned follow
+                try {
+                    const userRef = doc(db, "users", sourceId);
+                    const userSnap = await getDoc(userRef);
+
+                    if (!userSnap.exists()) {
+                        console.warn(`[Self-Healing] Removing orphaned follower record: ${sourceId} -> ${uid}`);
+                        const docId = `${sourceId}_${uid}`;
+                        await deleteDoc(doc(db, FOLLOWS_COLLECTION, docId));
+                    }
+                } catch (e) {
+                    console.error("Error during self-healing (follower):", e);
+                }
+            }
         }
         return profiles;
     },

@@ -10,6 +10,7 @@ namespace Novelytical.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            /*
             migrationBuilder.AddColumn<int>(
                 name: "CommentCount",
                 table: "Novels",
@@ -30,6 +31,7 @@ namespace Novelytical.Data.Migrations
                 type: "integer",
                 nullable: false,
                 defaultValue: 0);
+            */
         }
 
         /// <inheritdoc />

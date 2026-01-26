@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Novelytical;
 using Novelytical.Application.DTOs;
 using Novelytical.Application.Interfaces;
+using Novelytical.Application.Wrappers;
+using Microsoft.Extensions.Caching.Memory;
 
 using MediatR;
 using Novelytical.Application.Features.Novels.Queries.GetNovelById;
@@ -22,11 +25,18 @@ public class NovelsController : ControllerBase
 
     public NovelsController(
         IMediator mediator, 
-        Data.Interfaces.INovelRepository novelRepository)
+        Data.Interfaces.INovelRepository novelRepository,
+        Novelytical.Web.Services.IRedisService redisService,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache memoryCache)
     {
         _mediator = mediator;
         _novelRepository = novelRepository;
+        _redisService = redisService;
+        _memoryCache = memoryCache;
     }
+
+    private readonly Novelytical.Web.Services.IRedisService _redisService;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _memoryCache;
 
     /// <summary>
     /// Get paginated list of novels with optional search and sorting
@@ -53,6 +63,61 @@ public class NovelsController : ControllerBase
     {
         if (pageNumber < 1 || pageSize < 1)
             return BadRequest("Page number and page size must be greater than 0");
+
+        // Special handling for Ranking System (Redis)
+        // Only use if fetching generic list (no search/filter)
+        /*
+        if (sortOrder == "rank_desc" && string.IsNullOrEmpty(searchString) && (tags == null || tags.Count == 0))
+        {
+            try 
+            {
+                var cacheKey = $"novels_rank_desc_{pageNumber}_{pageSize}";
+                PagedResponse<NovelDto>? cachedResult = null;
+
+                if (_memoryCache.TryGetValue(cacheKey, out object? rawResult) && rawResult is PagedResponse<NovelDto> typedResult)
+                {
+                    cachedResult = typedResult;
+                }
+                else
+                {
+                    // Not in memory, fetch from Redis
+                    var start = (pageNumber - 1) * pageSize;
+                    var end = start + pageSize - 1;
+                    
+                    var novelIds = await _redisService.SortedSetRangeByRankAsync("novels:rankings", start, end, descending: true);
+                    
+                    if (novelIds.Any())
+                    {
+                        var ids = novelIds.Select(id => int.TryParse(id, out var i) ? i : 0).Where(i => i > 0).ToList();
+                        
+                        var tasks = ids.Select(id => _mediator.Send(new GetNovelByIdQuery(id.ToString())));
+                        var results = await Task.WhenAll(tasks);
+                        
+                        List<NovelDto> novels = results
+                            .Where(r => r.Succeeded && r.Data != null)
+                            .Select(r => r.Data!)
+                            .ToList();
+                            
+                        var totalCount = await _redisService.SortedSetLengthAsync("novels:rankings");
+                        
+                        cachedResult = new PagedResponse<NovelDto>(novels, pageNumber, pageSize, (int)totalCount);
+                        
+                        // Save to Memory Cache for 5 minutes
+                        _memoryCache.Set(cacheKey, cachedResult, TimeSpan.FromMinutes(5));
+                    }
+                }
+                
+                if (cachedResult != null)
+                {
+                    return Ok(cachedResult);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Redis fetch failed: {ex.Message}. Falling back to DB.");
+            }
+        }
+        */
 
         Console.WriteLine($"[DEBUG] GetNovels: Search='{searchString}', Tags='{string.Join(",", tags ?? new List<string>())}'");
 
@@ -158,7 +223,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> IncrementView(int id)
     {
-        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.IncrementSiteViewCommand { NovelId = id });
+        await _mediator.Send(new global::Novelytical.Application.Features.Novels.Commands.UpdateStats.IncrementSiteViewCommand { NovelId = id });
         return Ok();
     }
 
@@ -169,7 +234,7 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateCommentCount(int id, [FromBody] int count)
     {
-        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.UpdateCommentCountCommand { NovelId = id, Count = count });
+        await _mediator.Send(new global::Novelytical.Application.Features.Novels.Commands.UpdateStats.UpdateCommentCountCommand { NovelId = id, Count = count });
         return Ok();
     }
 
@@ -180,14 +245,37 @@ public class NovelsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateReviewCount(int id, [FromBody] UpdateReviewStatsRequest request)
     {
-        await _mediator.Send(new Application.Features.Novels.Commands.UpdateStats.UpdateReviewCountCommand 
+        await _mediator.Send(new global::Novelytical.Application.Features.Novels.Commands.UpdateStats.UpdateReviewCountCommand 
         { 
             NovelId = id, 
             Count = request.Count,
-            AverageRating = request.AverageRating
+            AverageRating = request.AverageRating,
+            RatingStory = request.RatingStory,
+            RatingCharacters = request.RatingCharacters,
+            RatingWorld = request.RatingWorld,
+            RatingFlow = request.RatingFlow,
+            RatingGrammar = request.RatingGrammar
         });
+        return Ok();
+    }
+    /// <summary>
+    /// Update library count (sync from Firestore)
+    /// </summary>
+    [HttpPost("{id}/library-count")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateLibraryCount(int id, [FromBody] int count)
+    {
+        await _mediator.Send(new global::Novelytical.Application.Features.Novels.Commands.UpdateStats.UpdateLibraryCountCommand { NovelId = id, Count = count });
         return Ok();
     }
 }
 
-public record UpdateReviewStatsRequest(int Count, double? AverageRating);
+public record UpdateReviewStatsRequest(
+    int Count, 
+    double? AverageRating,
+    double? RatingStory,
+    double? RatingCharacters,
+    double? RatingWorld,
+    double? RatingFlow,
+    double? RatingGrammar
+);

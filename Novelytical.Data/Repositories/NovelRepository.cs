@@ -72,15 +72,40 @@ public class NovelRepository : INovelRepository
         await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"CommentCount\" = {count} WHERE \"Id\" = {id}");
     }
 
-    public async Task UpdateReviewStatsAsync(int id, int count, double? avgRating)
+    public async Task UpdateReviewStatsAsync(int id, int count, double? avgRating, double? rStory = null, double? rChar = null, double? rWorld = null, double? rFlow = null, double? rGrammar = null)
     {
         if (avgRating.HasValue)
         {
-            await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"ReviewCount\" = {count}, \"Rating\" = {avgRating.Value} WHERE \"Id\" = {id}");
+            var story = rStory ?? 0;
+            var chars = rChar ?? 0;
+            var world = rWorld ?? 0;
+            var flow = rFlow ?? 0;
+            var grammar = rGrammar ?? 0;
+
+            await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                UPDATE ""Novels"" 
+                SET ""ReviewCount"" = {count}, 
+                    ""Rating"" = {avgRating.Value},
+                    ""RatingStory"" = {story},
+                    ""RatingCharacters"" = {chars},
+                    ""RatingWorld"" = {world},
+                    ""RatingFlow"" = {flow},
+                    ""RatingGrammar"" = {grammar}
+                WHERE ""Id"" = {id}");
         }
         else
         {
             await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"ReviewCount\" = {count} WHERE \"Id\" = {id}");
         }
+    }
+
+    public async Task UpdateLibraryCountAsync(int id, int count)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"LibraryCount\" = {count} WHERE \"Id\" = {id}");
+    }
+
+    public async Task UpdateRankScoreAsync(int id, int score)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Novels\" SET \"TotalRankScore\" = {score} WHERE \"Id\" = {id}");
     }
 }

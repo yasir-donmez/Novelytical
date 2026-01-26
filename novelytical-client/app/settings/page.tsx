@@ -24,27 +24,36 @@ export default function SettingsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen pb-12 bg-background">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
+        <div className="min-h-screen pb-12 bg-background pt-24 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-500/50 via-purple-500/50 to-amber-500/50"></div>
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold">Ayarlar</h1>
                         <p className="text-muted-foreground mt-2">Profilinizi ve uygulama tercihlerinizi yönetin.</p>
                     </div>
 
                     <Tabs defaultValue="profile" className="space-y-6">
-                        <TabsList className="bg-black/20 p-1 border border-white/5 w-full justify-start overflow-x-auto">
-                            <TabsTrigger value="profile" className="gap-2 px-6">
-                                <User className="h-4 w-4" /> Profil
+                        <TabsList className="w-full grid w-full grid-cols-4 bg-zinc-900/50 p-1 mb-6">
+                            <TabsTrigger value="profile" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-blue-400 gap-2">
+                                <User className="h-4 w-4 md:block hidden" />
+                                <span className="hidden sm:inline">Profil</span>
+                                <span className="sm:hidden">Profil</span>
                             </TabsTrigger>
-                            <TabsTrigger value="connections" className="gap-2 px-6">
-                                <Users className="h-4 w-4" /> Bağlantılar
+                            <TabsTrigger value="connections" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-purple-400 gap-2">
+                                <Users className="h-4 w-4 md:block hidden" />
+                                <span className="hidden sm:inline">Bağlantılar</span>
+                                <span className="sm:hidden">Bağ</span>
                             </TabsTrigger>
-                            <TabsTrigger value="account" className="gap-2 px-6">
-                                <Shield className="h-4 w-4" /> Hesap
+                            <TabsTrigger value="account" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-green-400 gap-2">
+                                <Shield className="h-4 w-4 md:block hidden" />
+                                <span className="hidden sm:inline">Hesap</span>
+                                <span className="sm:hidden">Hesap</span>
                             </TabsTrigger>
-                            <TabsTrigger value="notifications" className="gap-2 px-6">
-                                <Bell className="h-4 w-4" /> Bildirimler
+                            <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-amber-400 gap-2">
+                                <Bell className="h-4 w-4 md:block hidden" />
+                                <span className="hidden sm:inline">Bildirimler</span>
+                                <span className="sm:hidden">Bild.</span>
                             </TabsTrigger>
                         </TabsList>
 

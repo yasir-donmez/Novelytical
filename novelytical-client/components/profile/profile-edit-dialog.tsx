@@ -4,14 +4,11 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect } from "react";
 import { updateProfile, sendPasswordResetEmail } from "firebase/auth";
-import { updateUserIdentityInReviews } from "@/services/review-service";
-import { updateUserIdentityInComments } from "@/services/comment-service";
 import { auth } from "@/lib/firebase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { UserService } from "@/services/user-service";
 import { LevelService, LEVEL_FRAMES, UserLevelData } from "@/services/level-service";
-import { updateUserIdentityInCommunityPosts } from "@/services/feed-service";
 import {
     Dialog,
     DialogContent,
@@ -134,10 +131,8 @@ export default function ProfileEditDialog() {
             // Sync with past data (Fire and forget, or await if critical)
             // We await to ensure consistency before reload
             // We await to ensure consistency before reload
+            // We await to ensure consistency before reload
             await Promise.all([
-                updateUserIdentityInReviews(user.uid, displayName, photoURL, selectedFrame),
-                updateUserIdentityInComments(user.uid, displayName, photoURL, selectedFrame),
-                updateUserIdentityInCommunityPosts(user.uid, displayName, photoURL, selectedFrame),
                 LevelService.updateSelectedFrame(user.uid, selectedFrame)
             ]);
 

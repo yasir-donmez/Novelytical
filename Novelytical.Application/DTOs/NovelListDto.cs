@@ -12,6 +12,7 @@ public class NovelListDto
     public decimal Rating { get; set; }
     public decimal? ScrapedRating { get; set; } // New field
     public int ViewCount { get; set; } // New field
+    public int SiteViewCount { get; set; } // Internal View Count
     public string Status { get; set; } = "Unknown"; // New field
     public int ChapterCount { get; set; }
     public DateTime LastUpdated { get; set; }

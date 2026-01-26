@@ -13,13 +13,15 @@ import { NovelListDto } from "@/types/novel";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// ... imports
+
 interface InteractionSummary {
-    novelId: number;
-    novel?: NovelListDto; // Will serve as detail container
-    userReview?: Review;  // Restore userReview
-    slug?: string;        // Add slug
+    novelId: number; // Normalized to number
+    novel?: NovelListDto;
+    userReview?: Review;
+    slug?: string;
     commentCount: number;
-    lastInteraction: Date;
+    lastInteraction: Date; // Always a Date object
 }
 
 export default function UserInteractionList({ userId }: { userId?: string }) {
@@ -41,40 +43,52 @@ export default function UserInteractionList({ userId }: { userId?: string }) {
                     getCommentsByUserId(targetUserId)
                 ]);
 
+
+
                 // Map to group by Novel ID
                 const interactionMap = new Map<number, InteractionSummary>();
 
                 // Process Reviews
                 reviews.forEach(review => {
-                    if (!interactionMap.has(review.novelId)) {
-                        interactionMap.set(review.novelId, {
-                            novelId: review.novelId,
+                    const nId = parseInt(review.novelId); // Convert string to number
+                    if (isNaN(nId)) return;
+
+                    if (!interactionMap.has(nId)) {
+                        interactionMap.set(nId, {
+                            novelId: nId,
                             commentCount: 0,
-                            lastInteraction: review.createdAt?.toDate() || new Date()
+                            lastInteraction: review.createdAt || new Date()
                         });
                     }
-                    const summary = interactionMap.get(review.novelId)!;
+                    const summary = interactionMap.get(nId)!;
                     summary.userReview = review;
-                    if (review.createdAt?.toDate() > summary.lastInteraction) {
-                        summary.lastInteraction = review.createdAt.toDate();
+                    const reviewDate = review.createdAt || new Date();
+                    if (reviewDate > summary.lastInteraction) {
+                        summary.lastInteraction = reviewDate;
                     }
                 });
 
                 // Process Comments
                 comments.forEach(comment => {
-                    if (!interactionMap.has(comment.novelId)) {
-                        interactionMap.set(comment.novelId, {
-                            novelId: comment.novelId,
+                    const nId = comment.novelId; // Already number
+                    // console.log("Processing comment for novelId:", nId, comment.id); 
+                    if (!interactionMap.has(nId)) {
+                        const commentDate = comment.createdAt ? comment.createdAt.toDate() : new Date();
+                        interactionMap.set(nId, {
+                            novelId: nId,
                             commentCount: 0,
-                            lastInteraction: comment.createdAt?.toDate() || new Date()
+                            lastInteraction: commentDate
                         });
                     }
-                    const summary = interactionMap.get(comment.novelId)!;
+                    const summary = interactionMap.get(nId)!;
                     summary.commentCount++;
-                    if (comment.createdAt?.toDate() > summary.lastInteraction) {
-                        summary.lastInteraction = comment.createdAt.toDate();
+                    const commentDate = comment.createdAt ? comment.createdAt.toDate() : new Date();
+                    if (commentDate > summary.lastInteraction) {
+                        summary.lastInteraction = commentDate;
                     }
                 });
+
+                // console.log("Interaction Map size:", interactionMap.size);
 
                 const summaryList = Array.from(interactionMap.values());
 
@@ -84,10 +98,14 @@ export default function UserInteractionList({ userId }: { userId?: string }) {
                 const summariesWithNovels = await Promise.all(summaryList.map(async (item) => {
                     try {
                         const novelData = await novelService.getNovelById(item.novelId);
+                        if (!novelData) {
+                            console.warn(`Novel data found empty for ID ${item.novelId}`);
+                            return null;
+                        }
                         return { ...item, novel: novelData as unknown as NovelListDto };
                     } catch (e) {
                         // Novel might be deleted or API error
-                        console.warn(`Could not load details for novel ${item.novelId}, skipping interaction.`);
+                        console.warn(`Could not load details for novel ${item.novelId}, skipping interaction.`, e);
                         return null; // Return null to filter out
                     }
                 }));
@@ -260,9 +278,24 @@ export default function UserInteractionList({ userId }: { userId?: string }) {
             <div className="flex items-center gap-4 mb-4">
                 <div className="overflow-x-auto pb-2 scrollbar-hide">
                     <TabsList className="inline-flex w-max justify-start h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10">
-                        <TabsTrigger value="all" className="flex-none px-4">Hepsi {loading ? '' : interactions.length}</TabsTrigger>
-                        <TabsTrigger value="reviews" className="flex-none px-4 gap-2"><Star className="w-4 h-4" /> Değerlendirmelerim {loading ? '' : filterItems('reviews').length}</TabsTrigger>
-                        <TabsTrigger value="comments" className="flex-none px-4 gap-2"><MessageCircle className="w-4 h-4" /> Yorumlarım {loading ? '' : filterItems('comments').length}</TabsTrigger>
+                        <TabsTrigger value="all" className="flex-none px-4 gap-2">
+                            Hepsi
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : interactions.length}
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="reviews" className="flex-none px-4 gap-2">
+                            <Star className="w-4 h-4" /> Değerlendirmelerim
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : filterItems('reviews').length}
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="comments" className="flex-none px-4 gap-2">
+                            <MessageCircle className="w-4 h-4" /> Yorumlarım
+                            <span className={`font-bold min-w-[1.5ch] text-center inline-block transition-opacity ${!loading ? "opacity-100" : "opacity-50"}`}>
+                                {loading ? "-" : filterItems('comments').length}
+                            </span>
+                        </TabsTrigger>
                     </TabsList>
                 </div>
                 {!loading && interactions.length > 3 && (

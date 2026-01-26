@@ -170,7 +170,26 @@ export function UserHoverCard({ userId, username, image, frame, children, classN
                                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground h-3">
                                         <CalendarDays className="w-3 h-3 shrink-0" />
                                         <span>
-                                            {format(profile.createdAt.toDate(), "d MMMM yyyy", { locale: tr })}
+                                            {(() => {
+                                                const date = profile.createdAt;
+                                                let dateObj: Date;
+
+                                                if (!date) return "";
+
+                                                if (typeof date === "string") {
+                                                    dateObj = new Date(date);
+                                                } else if (date instanceof Date) {
+                                                    dateObj = date;
+                                                } else if (typeof (date as any).toDate === "function") {
+                                                    dateObj = (date as any).toDate();
+                                                } else {
+                                                    dateObj = new Date(date as any);
+                                                }
+
+                                                if (isNaN(dateObj.getTime())) return "";
+
+                                                return format(dateObj, "d MMMM yyyy", { locale: tr });
+                                            })()}
                                         </span>
                                     </div>
                                 )}

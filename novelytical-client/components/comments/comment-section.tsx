@@ -1,32 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { deleteComment, Comment, getCommentsPaginated } from "@/services/comment-service";
+import { reviewService, CommentDto } from "@/services/review-service";
 import CommentForm from "./comment-form";
 import CommentList from "./comment-list";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { ArrowUpDown, Loader2 } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy } from "firebase/firestore";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface CommentSectionProps {
     novelId: number;
 }
 
 export default function CommentSection({ novelId }: CommentSectionProps) {
-    const [comments, setComments] = useState<Comment[]>([]);
+    const [comments, setComments] = useState<CommentDto[]>([]);
     const [loading, setLoading] = useState(true);
-    const [sortOption, setSortOption] = useState("newest");
-    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const { user } = useAuth();
@@ -35,58 +26,106 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
     useEffect(() => {
         const fetchInitial = async () => {
             setLoading(true);
-            const { comments: newComments, lastVisible } = await getCommentsPaginated(novelId, sortOption, 10, null);
+            setPage(1);
+            const newComments = await reviewService.getComments(novelId, 1, 10);
+
+            if (user && newComments.length > 0) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    // Merge reactions
+                    newComments.forEach(c => {
+                        if (reactionMap[c.id]) {
+                            c.userReaction = reactionMap[c.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
+
             setComments(newComments);
-            setLastDoc(lastVisible);
-            setHasMore(newComments.length === 10);
+            setHasMore(newComments.length >= 10);
             setLoading(false);
         };
         fetchInitial();
-    }, [novelId, sortOption]);
+    }, [novelId, user]);
 
     // Load More
     const loadMore = async () => {
-        if (loadingMore || !hasMore || !lastDoc) return;
+        if (loadingMore || !hasMore) return;
         setLoadingMore(true);
-        const { comments: newComments, lastVisible } = await getCommentsPaginated(novelId, sortOption, 10, lastDoc);
+        const nextPage = page + 1;
+        const newComments = await reviewService.getComments(novelId, nextPage, 10);
 
         if (newComments.length > 0) {
+            if (user) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    newComments.forEach(c => {
+                        if (reactionMap[c.id]) {
+                            c.userReaction = reactionMap[c.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
+
             setComments(prev => [...prev, ...newComments]);
-            setLastDoc(lastVisible);
-            setHasMore(newComments.length === 10);
+            setPage(nextPage);
+            setHasMore(newComments.length >= 10);
         } else {
             setHasMore(false);
         }
         setLoadingMore(false);
     };
 
-    // Infinite Scroll Observer
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            entries => {
-                if (entries[0].isIntersecting && !loading && !loadingMore && hasMore) {
-                    loadMore();
-                }
-            },
-            { threshold: 1.0 }
-        );
+    // Callback when a new comment is added
+    const handleCommentAdded = () => {
+        // Refresh list: reload first page
+        const fetchInitial = async () => {
+            setPage(1);
+            const newComments = await reviewService.getComments(novelId, 1, 10);
+            if (user && newComments.length > 0) {
+                try {
+                    const token = await user.getIdToken();
+                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    newComments.forEach(c => {
+                        if (reactionMap[c.id]) {
+                            c.userReaction = reactionMap[c.id];
+                        }
+                    });
+                } catch (e) { console.error(e); }
+            }
+            setComments(newComments);
+            setHasMore(newComments.length >= 10);
+        };
+        fetchInitial();
+    };
 
-        const sentinel = document.getElementById("comment-sentinel");
-        if (sentinel) observer.observe(sentinel);
-
-        return () => observer.disconnect();
-    }, [loading, loadingMore, hasMore, lastDoc]);
+    // Recursive helper to remove comment from tree
+    const deleteCommentFromTree = (list: CommentDto[], targetId: number): CommentDto[] => {
+        return list
+            .filter(c => c.id !== targetId) // Filter from current level
+            .map(c => ({
+                ...c,
+                replies: c.replies ? deleteCommentFromTree(c.replies, targetId) : [] // Recurse
+            }));
+    };
 
     const handleDelete = async (commentId: string) => {
-        if (!confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;
+        if (!user) return;
+        if (!confirm("Bunu silmek istediğinize emin misiniz?")) return;
 
         try {
-            await deleteComment(commentId);
-            setComments(prev => prev.filter(c => c.id !== commentId));
-            toast.success("Yorum silindi.");
-        } catch (error) {
-            console.error(error);
-            toast.error("Silme işlemi başarısız.");
+            const token = await user.getIdToken();
+            const success = await reviewService.deleteComment(token, parseInt(commentId));
+            if (success) {
+                setComments(prev => deleteCommentFromTree(prev, parseInt(commentId)));
+                toast.success("Yorum silindi.");
+            } else {
+                toast.error("Silme işlemi başarısız.");
+            }
+        } catch (e) {
+            toast.error("Bir hata oluştu.");
         }
     };
 
@@ -95,27 +134,14 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-bold">Yorumlar</h2>
-                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50">
-                        {comments.length}
+                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        {comments.length}{hasMore ? "+" : ""}
                     </Badge>
                 </div>
-                <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger className="w-[200px] h-9 text-xs font-medium bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50 transition-colors focus:ring-0">
-                        <div className="flex items-center gap-2">
-                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            <SelectValue placeholder="Sıralama" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent position="popper" align="end" sideOffset={5}>
-                        <SelectItem value="newest">En Yeni</SelectItem>
-                        <SelectItem value="oldest">En Eski</SelectItem>
-                        <SelectItem value="likes_desc">En Çok Beğenilenler</SelectItem>
-                        <SelectItem value="dislikes_desc">En Çok Beğenilmeyenler</SelectItem>
-                    </SelectContent>
-                </Select>
+                {/* Sorting removed as API currently doesn't support generic sort params easily mapped */}
             </div>
 
-            <CommentForm novelId={novelId} onCommentAdded={() => { }} />
+            <CommentForm novelId={novelId} onCommentAdded={handleCommentAdded} />
 
             {loading ? (
                 <div className="flex justify-center py-12">
@@ -123,12 +149,25 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
                 </div>
             ) : (
                 <>
-                    <CommentList comments={comments} onDelete={handleDelete} onReplyAdded={() => { }} />
+                    <CommentList
+                        comments={comments}
+                        novelId={novelId}
+                        onDelete={handleDelete}
+                        onReplyAdded={handleCommentAdded}
+                    />
 
-                    {/* Sentinel for Infinite Scroll */}
-                    <div id="comment-sentinel" className="h-4 w-full flex justify-center mt-4">
-                        {loadingMore && <Loader2 className="animate-spin h-4 w-4 text-muted-foreground" />}
-                    </div>
+                    {hasMore && (
+                        <div className="flex justify-center mt-6">
+                            <Button
+                                variant="outline"
+                                onClick={loadMore}
+                                disabled={loadingMore}
+                            >
+                                {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Daha Fazla Yükle
+                            </Button>
+                        </div>
+                    )}
                 </>
             )}
         </div>

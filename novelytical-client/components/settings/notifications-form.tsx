@@ -19,7 +19,6 @@ import { Bell, Mail, Smartphone, Loader2, Clock } from "lucide-react";
 export default function NotificationsForm() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [pageLoading, setPageLoading] = useState(true);
 
     const [settings, setSettings] = useState<NotificationSettings>({
         emailReplies: true,
@@ -41,8 +40,6 @@ export default function NotificationsForm() {
                 }
             } catch (error) {
                 console.error(error);
-            } finally {
-                setPageLoading(false);
             }
         };
         loadSettings();
@@ -71,9 +68,7 @@ export default function NotificationsForm() {
         }
     };
 
-    if (pageLoading) {
-        return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-    }
+
 
     return (
         <form onSubmit={handleSave} className="space-y-8">
@@ -83,7 +78,7 @@ export default function NotificationsForm() {
                     <p className="text-sm text-muted-foreground">Hangi konularda bildirim almak istediğinizi seçin.</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/5 rounded-xl p-6 space-y-8">
+                <div className="bg-white/5 border border-white/5 rounded-xl p-6 space-y-8 relative">
                     {/* Email Notifications */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-primary pb-2 border-b border-white/5">

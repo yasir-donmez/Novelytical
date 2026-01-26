@@ -1,250 +1,197 @@
-"use client";
-
-import { Comment, addComment, toggleCommentVote, getUserVoteForComment } from "@/services/comment-service";
+import { CommentDto, reviewService } from "@/services/review-service";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useAuth } from "@/contexts/auth-context";
-import { Trash2, MessageCircle, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
-import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserAvatar } from "@/components/ui/user-avatar";
-import { UserHoverCard } from "@/components/ui/user-hover-card";
+import { Trash2, ThumbsUp, ThumbsDown, AlertTriangle, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 interface CommentItemProps {
-    comment: Comment;
+    comment: CommentDto;
+    novelId: number;
     onDelete: (id: string) => void;
-    allComments: Comment[];
-    onReplyAdded: () => void;
-    depth?: number; // Track nesting depth
+    onReplyAdded?: () => void;
 }
 
-const MAX_VISIBLE_REPLIES = 2;
-
 // Helper to format name (strip email domain)
-const formatDisplayName = (name: string, email?: string) => {
-    if (name.includes('@')) {
+const formatDisplayName = (name: string) => {
+    if (name && name.includes('@')) {
         return name.split('@')[0];
     }
-    return name;
+    return name || "Anonim";
 };
 
-export default function CommentItem({ comment, onDelete, allComments, onReplyAdded, depth = 0 }: CommentItemProps) {
+export default function CommentItem({ comment, novelId, onDelete, onReplyAdded }: CommentItemProps) {
     const { user } = useAuth();
-    const isOwner = user?.uid === comment.userId;
-    const canDelete = isOwner;
+    // Use firebaseUid for accurate ownership check
+    const isOwner = user?.uid === comment.firebaseUid;
 
-    // Avatar Logic:
-    // 1. If it's the current user, prefer their live photoURL (so they see their new pic instantly).
-    // 2. If not, try the stored userImage from the comment doc.
-    // 3. Fallback to DiceBear initials.
-    const avatarSrc = (isOwner && user?.photoURL)
-        ? user.photoURL
-        : (comment.userImage || `https://api.dicebear.com/7.x/initials/svg?seed=${comment.userName}`);
-    const isDeleted = comment.userId === "deleted"; // Check if it's a ghost comment
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false);
+
+    // Reply State
     const [isReplying, setIsReplying] = useState(false);
     const [replyContent, setReplyContent] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [showAllReplies, setShowAllReplies] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [showSpoiler, setShowSpoiler] = useState(false);
-    const [userVote, setUserVote] = useState<'like' | 'dislike' | null>(null);
-    const [isVoting, setIsVoting] = useState(false);
+    const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
-    // Local state for optimistic updates
-    const [likes, setLikes] = useState(Math.max(0, comment.likeCount || 0));
-    const [dislikes, setDislikes] = useState(Math.max(0, comment.dislikeCount || 0));
-
-    // Sync with server changes
-    useEffect(() => {
-        setLikes(Math.max(0, comment.likeCount || 0));
-    }, [comment.likeCount]);
-
-    useEffect(() => {
-        setDislikes(Math.max(0, comment.dislikeCount || 0));
-    }, [comment.dislikeCount]);
-
-    useEffect(() => {
-        if (user && comment.id) {
-            getUserVoteForComment(comment.id, user.uid).then(setUserVote);
-        }
-    }, [user, comment.id]);
-
-    const handleVote = async (action: 'like' | 'dislike') => {
+    const handleReplySubmit = async () => {
         if (!user) {
-            toast.error("Oy vermek için giriş yapmalısınız.");
+            toast.error("Giriş yapmalısınız.");
             return;
         }
-        if (isVoting) return; // Prevent rapid clicks
+        setIsSubmittingReply(true);
+        try {
+            const token = await user.getIdToken();
+            const result = await reviewService.addComment(
+                token,
+                novelId,
+                replyContent,
+                false, // IsSpoiler
+                comment.id // ParentId: We are replying to THIS comment.
+            );
+
+            if (result.succeeded) {
+                toast.success("Yanıt eklendi!");
+                setIsReplying(false);
+                setReplyContent("");
+                onReplyAdded?.();
+            } else {
+                toast.error(result.message || "Bir hata oluştu.");
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Bir hata oluştu.");
+        } finally {
+            setIsSubmittingReply(false);
+        }
+    };
+
+    // ... rest of state
+    const [likes, setLikes] = useState(comment.likeCount || 0);
+    const [dislikes, setDislikes] = useState(comment.dislikeCount || 0);
+    const [userReaction, setUserReaction] = useState<'like' | 'dislike' | null>(
+        comment.userReaction === 1 ? 'like' : comment.userReaction === -1 ? 'dislike' : null
+    );
+    const [isVoting, setIsVoting] = useState(false);
+
+    useEffect(() => {
+        setLikes(comment.likeCount || 0);
+        setDislikes(comment.dislikeCount || 0);
+        setUserReaction(comment.userReaction === 1 ? 'like' : comment.userReaction === -1 ? 'dislike' : null);
+    }, [comment]);
+
+    // Avatar Logic
+    const avatarSrc = (comment.userAvatarUrl)
+        ? comment.userAvatarUrl
+        : "/images/profile-placeholder.svg";
+
+    const MAX_COMMENT_LENGTH = 300;
+    const isLongComment = comment.content.length > MAX_COMMENT_LENGTH;
+    const isBlurry = comment.isSpoiler && !isRevealed;
+
+    // If blurry, we might want to hide text completely or show a generic message initially
+    const displayContent = isExpanded || !isLongComment
+        ? comment.content
+        : comment.content.substring(0, MAX_COMMENT_LENGTH) + "...";
+
+    const formattedDate = comment.createdAt
+        ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: tr })
+        : "Bilinmiyor";
+
+    const displayName = formatDisplayName(comment.userDisplayName);
+
+    const handleReaction = async (type: 'like' | 'dislike') => {
+        if (!user) {
+            toast.error("Giriş yapmalısınız!");
+            return;
+        }
+        if (isVoting) return;
         setIsVoting(true);
 
-        const previousVote = userVote;
-        const previousLikes = likes;
-        const previousDislikes = dislikes;
+        const previousState = { likes, dislikes, userReaction };
 
         // Optimistic Update
-        if (userVote === action) {
+        let newReaction: 'like' | 'dislike' | null = type;
+
+        if (userReaction === type) {
             // Toggle off
-            setUserVote(null);
-            if (action === 'like') setLikes(prev => Math.max(0, prev - 1));
-            else setDislikes(prev => Math.max(0, prev - 1));
+            newReaction = null;
+            if (type === 'like') setLikes(l => Math.max(0, l - 1));
+            else setDislikes(d => Math.max(0, d - 1));
         } else {
-            // Change vote or New vote
-            setUserVote(action);
-            if (action === 'like') {
-                setLikes(prev => prev + 1);
-                if (userVote === 'dislike') setDislikes(prev => Math.max(0, prev - 1));
-            } else {
-                setDislikes(prev => prev + 1);
-                if (userVote === 'like') setLikes(prev => Math.max(0, prev - 1));
-            }
+            // Switch or Add
+            if (userReaction === 'like') setLikes(l => Math.max(0, l - 1));
+            else if (userReaction === 'dislike') setDislikes(d => Math.max(0, d - 1));
+
+            if (type === 'like') setLikes(l => l + 1);
+            else setDislikes(d => d + 1);
         }
+        setUserReaction(newReaction);
 
         try {
-            await toggleCommentVote(
-                comment.id,
-                user.uid,
-                action,
-                comment.novelId,
-                user.displayName || formatDisplayName(user.email || "Okur"),
-                user.photoURL || undefined,
-                undefined // senderFrame (will be fetched by service)
-            );
+            const token = await user.getIdToken();
+            const reactionValue = newReaction === 'like' ? 1 : newReaction === 'dislike' ? -1 : 0; // 0 for remove?
+            // API expects 1 or -1. If toggle off (0), we just send the SAME type again?
+            // Backend logic: "if existing.ReactionType == reactionType -> Remove".
+            // So if I was Like and I click Like, I send 1. Backend removes it.
+            // If I was Like and I click Dislike, I send -1. Backend switches.
+            // So I should always send the clicked type (1 or -1).
+
+            const typeToSend = type === 'like' ? 1 : -1;
+            await reviewService.toggleCommentReaction(token, comment.id, typeToSend);
         } catch (error) {
-            // Revert on error
-            setUserVote(previousVote);
-            setLikes(previousLikes);
-            setDislikes(previousDislikes);
-            toast.error("İşlem başarısız oldu.");
+            // Revert
+            setLikes(previousState.likes);
+            setDislikes(previousState.dislikes);
+            setUserReaction(previousState.userReaction);
+            console.error(error);
         } finally {
             setIsVoting(false);
         }
     };
 
-    const MAX_COMMENT_LENGTH = 300;
-    const isLongComment = comment.content.length > MAX_COMMENT_LENGTH;
-    const displayContent = isExpanded || !isLongComment
-        ? comment.content
-        : comment.content.substring(0, MAX_COMMENT_LENGTH) + "...";
-
-    const replies = useMemo(() =>
-        allComments.filter(c => c.parentId === comment.id),
-        [allComments, comment.id]
-    );
-
-    const formattedDate = comment.createdAt
-        ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: tr })
-        : "Bilinmiyor";
-
-    const displayName = formatDisplayName(comment.userName);
-
-    const handleReplySubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !replyContent.trim()) return;
-
-        setLoading(true);
-
-        // Close form immediately for smooth UX
-        setIsReplying(false);
-
-        try {
-            await addComment(
-                comment.novelId,
-                user.uid,
-                user.displayName || formatDisplayName(user.email || "Okur"),
-                user.photoURL, // Add user image
-                undefined, // userFrame (will be fetched by service)
-                replyContent,
-                comment.id
-            );
-            toast.success("Yanıtınız eklendi!");
-            setReplyContent("");
-            onReplyAdded();
-        } catch (error) {
-            toast.error("Yanıt eklenirken hata oluştu.");
-            // Reopen form on error
-            setIsReplying(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const visibleReplies = showAllReplies ? replies : replies.slice(0, MAX_VISIBLE_REPLIES);
-    const hiddenRepliesCount = replies.length - MAX_VISIBLE_REPLIES;
-
     return (
         <div className="group">
             {/* Main Comment Card */}
             <div className={cn(
-                "rounded-xl p-3 transition-colors shadow-sm border",
-                isDeleted
-                    ? "bg-muted/10 border-dashed border-muted/30"
-                    : "bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10"
+                "rounded-xl p-3 transition-colors shadow-sm border bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border-white/20 dark:border-white/10"
             )}>
                 <div className="flex gap-3">
                     {/* Avatar */}
-                    {isDeleted ? (
-                        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-muted/20 flex items-center justify-center">
-                            <Trash2 size={14} className="text-muted-foreground/50" />
-                        </div>
-                    ) : (
-                        <UserHoverCard
-                            userId={comment.userId}
-                            username={comment.userName}
-                            image={avatarSrc}
-                            frame={comment.userFrame}
-                            className="h-8 w-8 flex-shrink-0 shadow-sm"
-                        >
-                            <UserAvatar
-                                src={avatarSrc}
-                                alt={displayName}
-                                frameId={comment.userFrame}
-                                className="h-8 w-8 transition-transform hover:scale-105"
-                                fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold"
-                            />
-                        </UserHoverCard>
-                    )}
+                    <div className="h-8 w-8 flex-shrink-0 shadow-sm">
+                        <UserAvatar
+                            src={avatarSrc}
+                            alt={displayName}
+                            className="h-8 w-8 transition-transform hover:scale-105"
+                            fallbackClass="bg-gradient-to-tr from-purple-500 to-indigo-500 text-white text-[10px] font-bold"
+                        />
+                    </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
-                            {isDeleted ? (
-                                <span className="font-semibold text-sm text-muted-foreground italic">
-                                    {displayName}
-                                </span>
-                            ) : (
-                                <UserHoverCard
-                                    userId={comment.userId}
-                                    username={comment.userName}
-                                    image={avatarSrc}
-                                    frame={comment.userFrame}
-                                >
-                                    <span className="font-semibold text-sm text-foreground/95 hover:underline decoration-primary transition-all cursor-pointer">
-                                        {displayName}
-                                    </span>
-                                </UserHoverCard>
-                            )}
-                            {!isDeleted && (
-                                <>
-                                    <span className="text-[10px] text-muted-foreground/80">•</span>
-                                    <span className="text-[10px] text-muted-foreground/80 uppercase font-medium tracking-wide">
-                                        {formattedDate}
-                                    </span>
-                                </>
-                            )}
+                            <span className="font-semibold text-sm text-foreground/95 hover:underline decoration-primary transition-all cursor-pointer">
+                                {displayName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/80">•</span>
+                            <span className="text-[10px] text-muted-foreground/80 uppercase font-medium tracking-wide">
+                                {formattedDate}
+                            </span>
                         </div>
 
                         {comment.isSpoiler && (
-                            <div className="mb-2 flex items-center gap-2 text-xs">
-                                <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded border border-yellow-500/20 font-medium text-[10px]">⚠️ Spoiler</span>
-                                {!showSpoiler && (
+                            <div className="mb-2 flex items-center gap-1.5">
+                                <span className="bg-red-500/10 text-red-500 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-500/20 flex items-center gap-1">
+                                    <AlertTriangle size={10} /> SPOILER
+                                </span>
+                                {!isRevealed && (
                                     <button
-                                        onClick={() => setShowSpoiler(true)}
-                                        className="text-purple-400/80 hover:text-purple-400 font-medium transition-colors text-[10px]"
+                                        onClick={() => setIsRevealed(true)}
+                                        className="text-[10px] font-medium text-purple-400 hover:text-purple-300 underline"
                                     >
                                         Göster
                                     </button>
@@ -253,151 +200,118 @@ export default function CommentItem({ comment, onDelete, allComments, onReplyAdd
                         )}
 
                         <p className={cn(
-                            "text-sm leading-relaxed whitespace-pre-wrap break-words mb-2",
-                            isDeleted ? "text-muted-foreground/50 italic" : "text-foreground/90",
-                            comment.isSpoiler && !showSpoiler && "blur-sm select-none"
+                            "text-sm leading-relaxed whitespace-pre-wrap break-words mb-2 transition-all duration-300",
+                            isBlurry && "blur-md select-none opacity-50",
+                            comment.isDeleted ? "text-muted-foreground italic" : "text-foreground/90"
                         )}>
                             {displayContent}
                         </p>
 
-                        {/* Read More/Less Button */}
-                        {isLongComment && !isDeleted && (
-                            <button
-                                onClick={() => setIsExpanded(!isExpanded)}
-                                className="text-[11px] font-medium text-purple-400/80 hover:text-purple-400 transition-colors mb-2"
-                            >
-                                {isExpanded ? "Daha az göster" : "Devamını gör"}
-                            </button>
-                        )}
-
-                        {/* Actions */}
-                        {!isDeleted && (
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 mr-2">
+                        {!comment.isDeleted && (
+                            <>
+                                {/* Read More/Less Button */}
+                                {isLongComment && !isBlurry && (
                                     <button
-                                        onClick={() => handleVote('like')}
+                                        onClick={() => setIsExpanded(!isExpanded)}
+                                        className="text-[11px] font-medium text-purple-400/80 hover:text-purple-400 transition-colors mb-2"
+                                    >
+                                        {isExpanded ? "Daha az göster" : "Devamını gör"}
+                                    </button>
+                                )}
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => handleReaction('like')}
                                         className={cn(
-                                            "text-[10px] font-medium flex items-center gap-1 transition-colors",
-                                            userVote === 'like' ? "text-green-500" : "text-muted-foreground hover:text-foreground"
+                                            "flex items-center gap-1 text-[11px] font-medium transition-colors",
+                                            userReaction === 'like' ? "text-green-500" : "text-muted-foreground hover:text-green-500"
                                         )}
                                     >
-                                        <ThumbsUp size={12} className={cn(userVote === 'like' && "fill-current")} />
-                                        <span className="tabular-nums min-w-[14px] text-center">{likes}</span>
+                                        <ThumbsUp size={13} className={cn(userReaction === 'like' && "fill-current")} />
+                                        <span>{likes}</span>
                                     </button>
+
                                     <button
-                                        onClick={() => handleVote('dislike')}
+                                        onClick={() => handleReaction('dislike')}
                                         className={cn(
-                                            "text-[10px] font-medium flex items-center gap-1 transition-colors",
-                                            userVote === 'dislike' ? "text-red-500" : "text-muted-foreground hover:text-foreground"
+                                            "flex items-center gap-1 text-[11px] font-medium transition-colors",
+                                            userReaction === 'dislike' ? "text-red-500" : "text-muted-foreground hover:text-red-500"
                                         )}
                                     >
-                                        <ThumbsDown size={12} className={cn(userVote === 'dislike' && "fill-current")} />
-                                        <span className="tabular-nums min-w-[14px] text-center">{dislikes}</span>
+                                        <ThumbsDown size={13} className={cn(userReaction === 'dislike' && "fill-current")} />
+                                        <span>{dislikes}</span>
                                     </button>
-                                </div>
 
-                                {user && (
                                     <button
                                         onClick={() => setIsReplying(!isReplying)}
                                         className="text-[11px] font-medium text-muted-foreground hover:text-purple-400 transition-colors flex items-center gap-1"
                                     >
-                                        <MessageCircle size={13} />
+                                        <MessageSquare size={13} />
                                         Yanıtla
                                     </button>
-                                )}
 
-                                {isOwner && (
-                                    <button
-                                        onClick={() => onDelete(comment.id)}
-                                        className="text-[11px] font-medium text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1"
-                                    >
-                                        <Trash2 size={13} />
-                                        Sil
-                                    </button>
-                                )}
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => onDelete(comment.id.toString())}
+                                            className="ml-auto text-[11px] font-medium text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1"
+                                        >
+                                            <Trash2 size={13} />
+                                            Sil
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Reply Form */}
+                        {isReplying && (
+                            <div className="mt-3 animate-in slide-in-from-top-2 fade-in duration-200">
+                                <div className="flex gap-3">
+                                    <div className="flex-1">
+                                        <Textarea
+                                            value={replyContent}
+                                            onChange={(e) => setReplyContent(e.target.value)}
+                                            placeholder="Yanıtınız..."
+                                            className="min-h-[60px] text-sm bg-black/20 border-white/10 resize-none mb-2"
+                                            autoFocus
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsReplying(false)}>
+                                                İptal
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="h-7 text-xs bg-purple-600 hover:bg-purple-700"
+                                                onClick={handleReplySubmit}
+                                                disabled={!replyContent.trim() || isSubmittingReply}
+                                            >
+                                                {isSubmittingReply ? "..." : "Yanıtla"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Reply Form */}
-            {isReplying && (
-                <div className="mt-2 ml-4 pl-4 border-l-2 border-white/20 dark:border-white/10 rounded-bl-xl">
-                    <div className="bg-white/5 dark:bg-zinc-800/30 backdrop-blur-sm border border-white/10 dark:border-white/5 rounded-xl p-3">
-                        <form onSubmit={handleReplySubmit} className="space-y-2">
-                            <Textarea
-                                className="min-h-[60px] text-sm resize-none bg-black/10 dark:bg-black/20 border-white/10 focus-visible:ring-purple-500/30 placeholder:text-muted-foreground/50 text-foreground"
-                                placeholder={`${displayName} kullanıcısına yanıt ver...`}
-                                value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleReplySubmit(e as unknown as React.FormEvent);
-                                    }
-                                }}
-                                autoFocus
-                            />
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setIsReplying(false)}
-                                    className="h-7 text-xs hover:bg-white/5"
-                                >
-                                    İptal
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    disabled={loading || !replyContent.trim()}
-                                    className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs px-4"
-                                >
-                                    {loading ? "..." : "Yanıtla"}
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {/* Nested Replies */}
+            {comment.replies && comment.replies.length > 0 && (
+                <div className="ml-6 md:ml-12 mt-3 space-y-3 relative">
+                    {/* Visual guide line */}
+                    <div className="absolute left-[-15px] top-0 bottom-4 w-[2px] bg-white/10 dark:bg-white/5 rounded-full"></div>
 
-            {/* Nested Replies Tree */}
-            {replies.length > 0 && (
-                <div className="mt-2 ml-4 pl-4 border-l-2 border-white/20 dark:border-white/10 rounded-bl-2xl space-y-2 relative">
-                    {visibleReplies.map(reply => (
-                        <div key={reply.id} className="relative mt-2">
-                            {/* Curved Connector - only for first level */}
-                            <div className="absolute -left-[17px] top-4 w-4 h-4 border-l-2 border-b-2 border-white/20 dark:border-white/10 rounded-bl-lg pointer-events-none" />
-
-                            <CommentItem
-                                comment={reply}
-                                onDelete={onDelete}
-                                onReplyAdded={onReplyAdded}
-                                allComments={allComments}
-                                depth={depth + 1}
-                            />
-                        </div>
+                    {comment.replies.map(reply => (
+                        <CommentItem
+                            key={reply.id}
+                            comment={reply}
+                            novelId={novelId}
+                            onDelete={onDelete}
+                            onReplyAdded={onReplyAdded}
+                        />
                     ))}
-
-                    {/* Show More Actions */}
-                    {(hiddenRepliesCount > 0 && !showAllReplies) || (showAllReplies && replies.length > MAX_VISIBLE_REPLIES) ? (
-                        <div className="relative mt-2">
-                            <div className="absolute -left-[17px] top-3 w-4 h-4 border-l-2 border-b-2 border-white/20 dark:border-white/10 rounded-bl-lg pointer-events-none" />
-
-                            <button
-                                onClick={() => setShowAllReplies(!showAllReplies)}
-                                className="text-[11px] font-medium text-purple-400/80 hover:text-purple-400 flex items-center gap-1 ml-0.5 transition-colors"
-                            >
-                                {showAllReplies ? (
-                                    <><ChevronUp size={12} /> Daha az göster</>
-                                ) : (
-                                    <><ChevronDown size={12} /> Diğer {hiddenRepliesCount} yanıtı gör</>
-                                )}
-                            </button>
-                        </div>
-                    ) : null}
                 </div>
             )}
         </div>

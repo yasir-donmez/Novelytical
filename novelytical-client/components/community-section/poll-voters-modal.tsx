@@ -85,7 +85,7 @@ export function PollVotersModal({ isOpen, onClose, postId, pollOptions }: PollVo
                                 <TabsContent key={opt.id} value={opt.id.toString()} className="mt-0">
                                     <div className="mb-3 px-1">
                                         <h4 className="text-sm font-medium text-foreground/80 truncate">
-                                            {opt.novelTitle || opt.text}
+                                            {opt.relatedNovelTitle || opt.text}
                                         </h4>
                                     </div>
                                     <ScrollArea className="h-[300px] w-full pr-4">

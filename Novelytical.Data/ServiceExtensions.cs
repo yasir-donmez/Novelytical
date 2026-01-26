@@ -15,9 +15,12 @@ public static class ServiceExtensions
             options.UseNpgsql(connectionString, o => o.UseVector())
                    .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
-        // Repositories
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<INovelRepository, NovelRepository>();
-
+        services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<ILibraryRepository, LibraryRepository>();
+        services.AddScoped<ICommunityRepository, CommunityRepository>();
+        
         return services;
     }
 }

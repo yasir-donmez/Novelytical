@@ -20,5 +20,7 @@ public interface INovelRepository
     // Stats updates
     Task IncrementSiteViewAsync(int id);
     Task UpdateCommentCountAsync(int id, int count);
-    Task UpdateReviewStatsAsync(int id, int count, double? avgRating);
+    Task UpdateLibraryCountAsync(int id, int count);
+    Task UpdateReviewStatsAsync(int id, int count, double? avgRating, double? rStory = null, double? rChar = null, double? rWorld = null, double? rFlow = null, double? rGrammar = null);
+    Task UpdateRankScoreAsync(int id, int score);
 }

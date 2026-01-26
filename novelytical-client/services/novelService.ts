@@ -66,8 +66,23 @@ export const novelService = {
         });
     },
 
-    updateReviewCount: async (id: number, count: number, averageRating?: number): Promise<void> => {
-        await api.post(`/novels/${id}/review-count`, { count, averageRating }, {
+    updateReviewCount: async (
+        id: number,
+        count: number,
+        averageRating?: number,
+        details?: {
+            ratingStory: number;
+            ratingCharacters: number;
+            ratingWorld: number;
+            ratingFlow: number;
+            ratingGrammar: number;
+        }
+    ): Promise<void> => {
+        await api.post(`/novels/${id}/review-count`, {
+            count,
+            averageRating,
+            ...details
+        }, {
             headers: { 'Content-Type': 'application/json' }
         });
     },

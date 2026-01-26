@@ -7,12 +7,14 @@ export interface NovelListDto {
     rating: number;
     scrapedRating?: number; // New field
     viewCount?: number;     // New field
+    siteViewCount?: number; // New field
     status?: string;        // New field
     chapterCount: number;
     lastUpdated: string;
     coverUrl?: string;
     rankPosition?: number; // Global rank position (1 = highest)
     tags: string[];
+    // New stats for ranking
     commentCount?: number;
     reviewCount?: number;
 }

@@ -9,7 +9,9 @@ import {
     query,
     where,
     getDocs,
-    serverTimestamp
+    serverTimestamp,
+    orderBy,
+    limit
 } from "firebase/firestore";
 
 const USERS_COLLECTION = "users";
@@ -27,6 +29,8 @@ export interface UserProfile {
     email: string;
     createdAt: any;
     photoURL?: string;
+    displayName?: string; // Added displayName
+    bio?: string; // Added bio
     frame?: string;
     notificationSettings?: NotificationSettings;
     privacySettings?: PrivacySettings;
@@ -83,6 +87,7 @@ export const UserService = {
             username_lower: username.toLowerCase().trim(), // For case-insensitive search
             email,
             photoURL: photoURL || null,
+            displayName: username, // Default displayName to username
             createdAt: serverTimestamp()
         };
 
@@ -92,14 +97,19 @@ export const UserService = {
     /**
      * Updates an existing user profile.
      */
-    async updateUserProfile(uid: string, username: string, photoURL?: string): Promise<void> {
+    async updateUserProfile(uid: string, username: string, photoURL?: string, bio?: string, displayName?: string): Promise<void> {
         const userRef = doc(db, USERS_COLLECTION, uid);
 
-        await updateDoc(userRef, {
+        const updateData: any = {
             username: username.trim(),
             username_lower: username.toLowerCase().trim(),
             photoURL: photoURL || null
-        });
+        };
+
+        if (displayName) updateData.displayName = displayName.trim();
+        if (bio !== undefined) updateData.bio = bio;
+
+        await updateDoc(userRef, updateData);
     },
 
     /**
@@ -130,6 +140,32 @@ export const UserService = {
     },
 
     /**
+     * Generates a unique username based on the provided base username.
+     * Appends random numbers if the base username is taken.
+     */
+    async generateUniqueUsername(baseUsername: string): Promise<string> {
+        let candidate = baseUsername.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+        // Ensure at least 3 chars
+        if (candidate.length < 3) {
+            candidate = candidate + Math.floor(Math.random() * 1000);
+        }
+
+        let isAvailable = await this.checkUsernameAvailability(candidate);
+        if (isAvailable) return candidate;
+
+        // Try up to 5 times with random suffixes
+        for (let i = 0; i < 5; i++) {
+            const suffix = Math.floor(Math.random() * 10000).toString();
+            const newCandidate = `${candidate}${suffix}`;
+            isAvailable = await this.checkUsernameAvailability(newCandidate);
+            if (isAvailable) return newCandidate;
+        }
+
+        // Fallback: use timestamp
+        return `${candidate}${Date.now()}`;
+    },
+
+    /**
      * Resolves a username to a User ID.
      * Returns the uid if found, or null.
      */
@@ -143,6 +179,26 @@ export const UserService = {
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
             return snapshot.docs[0].id;
+        }
+        return null;
+    },
+
+    /**
+     * Fetches the very first registered user (assumed to be the Developer/Admin).
+     */
+    async getFirstAdminUser(): Promise<string | null> {
+        try {
+            const q = query(
+                collection(db, USERS_COLLECTION),
+                orderBy("createdAt", "asc"),
+                limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                return snapshot.docs[0].id;
+            }
+        } catch (error) {
+            console.error("Error fetching first user:", error);
         }
         return null;
     },
@@ -181,6 +237,8 @@ export const UserService = {
                     username: data.username,
                     email: data.email,
                     photoURL: data.photoURL,
+                    displayName: data.displayName || data.username, // Read displayName
+                    bio: data.bio || undefined, // Map bio
                     frame: data.selectedFrame,
                     createdAt: data.createdAt,
                     privacySettings: data.privacySettings,
@@ -234,5 +292,22 @@ export const UserService = {
     async updatePrivacySettings(uid: string, settings: PrivacySettings): Promise<void> {
         const userRef = doc(db, USERS_COLLECTION, uid);
         await updateDoc(userRef, { privacySettings: settings });
+    },
+
+    /**
+     * Syncs user profile with the backend (Postgres).
+     */
+    async syncUserProfileToBackend(displayName: string, avatarUrl?: string, bio?: string): Promise<void> {
+        const api = (await import("@/lib/axios")).default;
+        try {
+            await api.put('/users/profile', {
+                displayName,
+                avatarUrl,
+                bio
+            });
+        } catch (error) {
+            console.error("Error syncing profile to backend:", error);
+            throw error;
+        }
     }
 };

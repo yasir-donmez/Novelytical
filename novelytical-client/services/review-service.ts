@@ -1,225 +1,335 @@
-
-import { db } from "@/lib/firebase";
-import { UserService } from "./user-service";
-import {
-    collection,
-    addDoc,
-    query,
-    where,
-    orderBy,
-    getDocs,
-    deleteDoc,
-    doc,
-    serverTimestamp,
-    Timestamp,
-    updateDoc,
-    increment,
-    getDoc,
-    setDoc,
-    limit,
-    runTransaction
-} from "firebase/firestore";
-import { LevelService, XP_RULES } from "./level-service";
-import { createNotification } from "./notification-service";
-import { incrementReviewCount, decrementReviewCount } from "./novel-stats-service";
+// import { handleApiError } from "@/lib/api-utils";
 
 export interface Ratings {
-    story: number;     // Kurgu
-    characters: number; // Karakterler
-    world: number;     // Dünya
-    flow: number;      // Akıcılık
-    grammar: number;   // Dilbilgisi
+    story: number;
+    characters: number;
+    world: number;
+    flow: number;
+    grammar: number;
 }
 
+export interface CommentDto {
+    id: number;
+    userId: string;
+    firebaseUid: string;
+    content: string;
+    isSpoiler: boolean;
+    likeCount: number;
+    dislikeCount: number;
+    userDisplayName: string;
+    userAvatarUrl?: string;
+    createdAt: string;
+    // Client-side enriched
+    userReaction?: number; // 1: Like, -1: Dislike
+    parentId?: number;
+    replies?: CommentDto[];
+    isDeleted?: boolean;
+}
+
+export interface ReviewDto {
+    id: number;
+    novelId: number; // Added novelId
+    userId: string;
+    firebaseUid: string;
+    content: string;
+    isSpoiler: boolean;
+    likeCount: number;
+    dislikeCount: number;
+    userDisplayName: string;
+    userAvatarUrl?: string;
+    ratingOverall: number;
+    ratingStory: number;
+    ratingCharacters: number;
+    ratingWorld: number;
+    ratingFlow: number;
+    ratingGrammar: number;
+    createdAt: string;
+    // Client-side enriched
+    userReaction?: number;
+}
+// ... (existing code) ...
+
+export const getReviewsByUserId = async (userId: string): Promise<Review[]> => {
+    // Fetch from backend API
+    const res = await fetch(`${getApiUrl()}/api/reviews/user/${userId}/reviews`, {
+        cache: 'no-store'
+    });
+
+    if (!res.ok) return [];
+
+    const dtos: ReviewDto[] = await res.json();
+
+    // Map DTO to UI Model
+    return dtos.map(r => ({
+        id: r.id.toString(),
+        novelId: r.novelId.toString(), // Convert number to string for frontend compatibility if needed, or keep number if UI expects number.
+        // Comment interface has novelId: number. Review interface has novelId: string.
+        // Let's decide on ONE.
+        // Since NovelListDto uses Id: number usually in this app (DB is int), but existing frontend 'Review' interface used string.
+        // I will keep it string HERE in Review interface to match existing usages, but coerce it.
+        userId: r.userId,
+        userName: r.userDisplayName,
+        userImage: r.userAvatarUrl,
+        content: r.content,
+        ratings: {
+            story: r.ratingStory,
+            characters: r.ratingCharacters,
+            world: r.ratingWorld,
+            flow: r.ratingFlow,
+            grammar: r.ratingGrammar
+        },
+        averageRating: r.ratingOverall,
+        createdAt: new Date(r.createdAt),
+        novelTitle: "Yükleniyor...",
+        novelCover: undefined,
+        firebaseUid: r.firebaseUid,
+        likeCount: r.likeCount,
+        dislikeCount: r.dislikeCount,
+        userReaction: r.userReaction,
+        isSpoiler: r.isSpoiler
+    }));
+};
+
+// Helper to get API URL
+const getApiUrl = () => {
+    if (typeof window !== 'undefined') {
+        return process.env.NEXT_PUBLIC_API_URL || '';
+    }
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+};
+
+export const reviewService = {
+    async getComments(novelId: number, page: number = 1, pageSize: number = 10): Promise<CommentDto[]> {
+        const res = await fetch(`${getApiUrl()}/api/reviews/novel/${novelId}/comments?page=${page}&pageSize=${pageSize}`, {
+            cache: 'no-store'
+        });
+        if (!res.ok) return [];
+        return await res.json();
+    },
+
+    async getReviews(novelId: number, page: number = 1, pageSize: number = 5): Promise<ReviewDto[]> {
+        const res = await fetch(`${getApiUrl()}/api/reviews/novel/${novelId}/reviews?page=${page}&pageSize=${pageSize}`, {
+            cache: 'no-store'
+        });
+        if (!res.ok) return [];
+        return await res.json();
+    },
+
+    async addComment(token: string, novelId: number, content: string, isSpoiler: boolean, parentId?: number) {
+        try {
+            const res = await fetch(`${getApiUrl()}/api/reviews/comment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ novelId, content, isSpoiler, parentId })
+            });
+
+            if (!res.ok) {
+                const error = await res.text();
+                return { succeeded: false, message: error };
+            }
+
+            return { succeeded: true };
+        } catch (error) {
+            console.error("Add comment failed", error);
+            return { succeeded: false, message: "Bağlantı hatası" };
+        }
+    },
+
+    async addReview(token: string, novelId: number, content: string, ratings: Ratings, isSpoiler: boolean) {
+        // ... (existing logic works as upsert now)
+        // Wraps endpoint
+        return this._postReview(token, novelId, content, ratings, isSpoiler);
+    },
+
+    async _postReview(token: string, novelId: number, content: string, ratings: Ratings, isSpoiler: boolean) {
+        try {
+            const res = await fetch(`${getApiUrl()}/api/reviews/review`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    novelId,
+                    content,
+                    isSpoiler,
+                    ratingOverall: (ratings.story + ratings.characters + ratings.world + ratings.flow + ratings.grammar) / 5,
+                    ratingStory: ratings.story,
+                    ratingCharacters: ratings.characters,
+                    ratingWorld: ratings.world,
+                    ratingFlow: ratings.flow,
+                    ratingGrammar: ratings.grammar
+                })
+            });
+
+            if (!res.ok) {
+                const error = await res.text();
+                return { succeeded: false, message: error };
+            }
+
+            return { succeeded: true };
+        } catch (error) {
+            console.error("Add review failed", error);
+            return { succeeded: false, message: "Bağlantı hatası" };
+        }
+    },
+
+    async deleteComment(token: string, commentId: number) {
+        try {
+            const res = await fetch(`${getApiUrl()}/api/reviews/comment/${commentId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return res.ok;
+        } catch (e) { return false; }
+    },
+
+    async deleteReview(token: string, reviewId: number) {
+        try {
+            const res = await fetch(`${getApiUrl()}/api/reviews/review/${reviewId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return res.ok;
+        } catch (e) { return false; }
+    },
+
+    async toggleCommentReaction(token: string, commentId: number, reactionType: number) {
+        const res = await fetch(`${getApiUrl()}/api/reviews/comment/${commentId}/reaction`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ reactionType })
+        });
+        if (!res.ok) throw new Error("Reaction failed");
+        return await res.json();
+    },
+
+    async toggleReviewReaction(token: string, reviewId: number, reactionType: number) {
+        const res = await fetch(`${getApiUrl()}/api/reviews/review/${reviewId}/reaction`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ reactionType })
+        });
+        if (!res.ok) throw new Error("Reaction failed");
+        return await res.json();
+    },
+
+    async getCommentReactions(token: string, commentIds: number[]) {
+        const res = await fetch(`${getApiUrl()}/api/reviews/comments/reactions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(commentIds)
+        });
+        if (!res.ok) return {};
+        return await res.json();
+    },
+
+    async getReviewReactions(token: string, reviewIds: number[]) {
+        const res = await fetch(`${getApiUrl()}/api/reviews/reviews/reactions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(reviewIds)
+        });
+        if (!res.ok) return {};
+        return await res.json();
+    },
+
+    // Legacy Wrappers (if needed for older components not yet updated)
+    getReviewsByNovelId: async (novelId: number) => {
+        // This is a minimal shim to prevent crashes if other parts of the app call this.
+        // It fetches reviews using the new API but maps them to a shape compatible with old code if possible.
+        // For now returning empty array or minimal mapped data.
+        const dtos = await reviewService.getReviews(novelId, 1, 100);
+        return dtos.map(r => ({
+            id: r.id.toString(),
+            novelId: novelId,
+            userId: r.userId,
+            userName: r.userDisplayName,
+            userImage: r.userAvatarUrl,
+            content: r.content,
+            ratings: {
+                story: r.ratingStory,
+                characters: r.ratingCharacters,
+                world: r.ratingWorld,
+                flow: r.ratingFlow,
+                grammar: r.ratingGrammar
+            },
+            averageRating: r.ratingOverall,
+            likes: r.likeCount,
+            unlikes: r.dislikeCount,
+            createdAt: new Date(r.createdAt) // Convert string to Date object if old code expects Date or Firebase Timestamp
+        }));
+    }
+};
+
+export const getReviewsByNovelId = reviewService.getReviewsByNovelId;
+export const deleteReview = reviewService.deleteReview;
+
+// Community Pulse Compatibility Types and Functions
 export interface Review {
     id: string;
-    novelId: number;
+    novelId: string;
     userId: string;
     userName: string;
     userImage?: string;
-    userFrame?: string; // Added userFrame
-    ratings: Ratings;
-    averageRating: number;
     content: string;
-    likes: number;
-    unlikes: number;
-    isSpoiler?: boolean;
-    createdAt: Timestamp;
+    ratings: {
+        story: number;
+        characters: number;
+        world: number;
+        flow: number;
+        grammar: number;
+    };
+    averageRating: number;
     novelTitle?: string;
     novelCover?: string;
+    createdAt?: Date;
+    firebaseUid?: string;
+    likeCount?: number;
+    dislikeCount?: number;
+    userReaction?: number;
+    isSpoiler?: boolean;
 }
-
-const COLLECTION_NAME = "reviews";
-const INTERACTIONS_COLLECTION = "review_interactions"; // To track user likes/unlikes
-
-export const addReview = async (
-    novelId: number,
-    userId: string,
-    userName: string,
-    userImage: string | null,
-    userFrame: string | null, // Added userFrame
-    ratings: Ratings,
-    content: string,
-    isSpoiler: boolean = false
-) => {
-    try {
-        // Calculate simple average
-        const values = Object.values(ratings);
-        const averageRating = values.reduce((a, b) => a + b, 0) / values.length;
-
-        // Fetch userFrame if not provided (fallback)
-        if (!userFrame) {
-            const levelData = await LevelService.getUserLevelData(userId);
-            userFrame = levelData?.selectedFrame || null;
-        }
-
-        await addDoc(collection(db, COLLECTION_NAME), {
-            novelId,
-            userId,
-            userName,
-            userImage,
-            userFrame: userFrame || null, // Store userFrame
-            ratings,
-            averageRating: parseFloat(averageRating.toFixed(1)), // 4.2 format
-            content,
-            isSpoiler,
-            likes: 0,
-            unlikes: 0,
-            createdAt: serverTimestamp()
-        });
-
-        // Award XP
-        await LevelService.gainXp(userId, XP_RULES.REVIEW);
-
-        // Update novel stats
-        await incrementReviewCount(novelId);
-
-        // Parse mentions and notify
-        const mentionRegex = /@(\w+)/g;
-        const mentions = content.match(mentionRegex);
-
-        if (mentions) {
-            const mentionedUsers = new Set<string>();
-            for (const mention of mentions) {
-                const username = mention.substring(1); // Remove @
-                // Avoid notifying self if they mention themselves
-                if (username.toLowerCase() === userName.toLowerCase()) continue;
-
-                const mentionedUserId = await UserService.getUserIdByUsername(username);
-                if (mentionedUserId && !mentionedUsers.has(mentionedUserId)) {
-                    mentionedUsers.add(mentionedUserId);
-                    await createNotification(
-                        mentionedUserId,
-                        'system', // or 'mention' if added to types
-                        `${userName} değerlendirmesinde sizden bahsetti.`,
-                        novelId.toString(), // Redirect to novel mainly
-                        `/novel/${novelId}`,
-                        userId,
-                        userName,
-                        userImage || undefined
-                    );
-                }
-            }
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error("Error adding review:", error);
-        throw error;
-    }
-};
-
-
-export const getReviewsPaginated = async (
-    novelId: number,
-    sortBy: string = 'newest',
-    limitCount: number = 10,
-    lastDoc: any = null
-): Promise<{ reviews: Review[], lastVisible: any }> => {
-    try {
-        let q = query(
-            collection(db, COLLECTION_NAME),
-            where("novelId", "==", novelId)
-        );
-
-        if (sortBy === 'newest') {
-            q = query(q, orderBy("createdAt", "desc"));
-        } else if (sortBy === 'oldest') {
-            q = query(q, orderBy("createdAt", "asc"));
-        } else if (sortBy === 'likes_desc') {
-            q = query(q, orderBy("likes", "desc"));
-        } else if (sortBy === 'dislikes_desc') {
-            q = query(q, orderBy("unlikes", "desc"));
-        } else {
-            q = query(q, orderBy("createdAt", "desc"));
-        }
-
-        if (lastDoc) {
-            const { startAfter } = await import("firebase/firestore");
-            q = query(q, startAfter(lastDoc));
-        }
-
-        // Add limit
-        q = query(q, limit(limitCount));
-
-        const querySnapshot = await getDocs(q);
-        const reviews = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Review));
-
-        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-
-        return { reviews, lastVisible };
-    } catch (error) {
-        console.error("Error fetching paginated reviews:", error);
-        return { reviews: [], lastVisible: null };
-    }
-};
-
-export const getReviewsByNovelId = async (novelId: number, sortBy: string = 'newest'): Promise<Review[]> => {
-    try {
-        let q = query(
-            collection(db, COLLECTION_NAME),
-            where("novelId", "==", novelId)
-        );
-
-        if (sortBy === 'newest') {
-            q = query(q, orderBy("createdAt", "desc"));
-        } else if (sortBy === 'oldest') {
-            q = query(q, orderBy("createdAt", "asc"));
-        } else if (sortBy === 'highest-rating') {
-            q = query(q, orderBy("averageRating", "desc"));
-        } else if (sortBy === 'lowest-rating') {
-            q = query(q, orderBy("averageRating", "asc"));
-        } else {
-            q = query(q, orderBy("createdAt", "desc"));
-        }
-
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Review));
-    } catch (error) {
-        console.error("Error fetching reviews:", error);
-        return [];
-    }
-};
 
 export const getLatestReviews = async (count: number = 5): Promise<Review[]> => {
     try {
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            orderBy("createdAt", "desc"),
-            limit(count)
-        );
+        const res = await fetch(`${getApiUrl()}/api/reviews/latest?count=${count}`);
+        if (!res.ok) return [];
+        const dtos: ReviewDto[] = await res.json();
 
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Review));
+        return dtos.map(r => ({
+            id: r.id.toString(),
+            novelId: r.novelId.toString(),
+            userId: r.userId,
+            userName: r.userDisplayName,
+            userImage: r.userAvatarUrl,
+            content: r.content,
+            ratings: {
+                story: r.ratingStory,
+                characters: r.ratingCharacters,
+                world: r.ratingWorld,
+                flow: r.ratingFlow,
+                grammar: r.ratingGrammar
+            },
+            averageRating: r.ratingOverall,
+            novelTitle: "Novel " + r.novelId, // Ideally backend returns Title
+            novelCover: undefined // Backend currently doesn't populate Novel Title/Cover in DTO?
+        }));
     } catch (error) {
         console.error("Error fetching latest reviews:", error);
         return [];
@@ -227,204 +337,3 @@ export const getLatestReviews = async (count: number = 5): Promise<Review[]> => 
 };
 
 
-
-export const interactWithReview = async (
-    reviewId: string,
-    userId: string,
-    action: 'like' | 'unlike',
-    senderName: string,
-    senderImage: string | undefined, // Allow undefined to match User type
-    senderFrame: string | undefined,
-    recipientId: string,
-    novelId: number
-) => {
-    try {
-        const interactionId = `${reviewId}_${userId}`;
-        const interactionRef = doc(db, INTERACTIONS_COLLECTION, interactionId);
-        const reviewRef = doc(db, COLLECTION_NAME, reviewId);
-
-        let result = '';
-
-        await runTransaction(db, async (transaction) => {
-            const reviewDoc = await transaction.get(reviewRef);
-            const interactionDoc = await transaction.get(interactionRef);
-
-            if (!reviewDoc.exists()) {
-                throw "Review does not exist!";
-            }
-
-            const data = reviewDoc.data();
-            // Sanitize current counts (treat negative as 0)
-            let currentLikess = Math.max(0, data.likes || 0);
-            let currentUnlikes = Math.max(0, data.unlikes || 0);
-
-            if (interactionDoc.exists()) {
-                const currentAction = interactionDoc.data().action;
-                if (currentAction === action) {
-                    // Remove interaction (toggle off)
-                    transaction.delete(interactionRef);
-                    if (action === 'like') currentLikess--;
-                    else currentUnlikes--;
-                    result = 'removed';
-                } else {
-                    // Change interaction (e.g., like -> unlike)
-                    transaction.set(interactionRef, { action, userId, reviewId });
-                    if (currentAction === 'like') {
-                        currentLikess--;
-                        currentUnlikes++;
-                    } else {
-                        currentUnlikes--;
-                        currentLikess++;
-                    }
-                    result = 'changed';
-                }
-            } else {
-                // New interaction
-                transaction.set(interactionRef, { action, userId, reviewId });
-                if (action === 'like') currentLikess++;
-                else currentUnlikes++;
-                result = 'added';
-            }
-
-            // Ensure we never go below 0 on write
-            transaction.update(reviewRef, {
-                likes: Math.max(0, currentLikess),
-                unlikes: Math.max(0, currentUnlikes)
-            });
-        });
-
-        if (userId !== recipientId && (result === 'added' || result === 'changed')) {
-            const message = action === 'like'
-                ? `${senderName} değerlendirmenizi beğendi.`
-                : `${senderName} değerlendirmenizi beğenmedi.`;
-
-            // Fetch senderFrame if not provided (fallback)
-            if (!senderFrame) {
-                const levelData = await LevelService.getUserLevelData(userId);
-                senderFrame = levelData?.selectedFrame;
-            }
-
-            await createNotification(
-                recipientId,
-                action === 'like' ? 'like' : 'dislike',
-                message,
-                reviewId,
-                `/novel/${novelId}`,
-                userId,
-                senderName,
-                senderImage,
-                senderFrame
-            );
-        }
-
-        return result;
-
-    } catch (error) {
-        console.error("Error interacting with review:", error);
-        throw error;
-    }
-};
-
-export const getReviewsByUserId = async (userId: string): Promise<Review[]> => {
-    try {
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            where("userId", "==", userId),
-            orderBy("createdAt", "desc")
-        );
-
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Review));
-    } catch (error) {
-        console.error("Error fetching user reviews:", error);
-        return [];
-    }
-};
-
-export const deleteReview = async (reviewId: string, novelId?: number) => {
-    try {
-        await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
-
-        // Update novel stats if novelId provided
-        if (novelId) {
-            await decrementReviewCount(novelId);
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error("Error deleting review:", error);
-        throw error;
-    }
-};
-
-export const updateReview = async (reviewId: string, data: Partial<Review>) => {
-    try {
-        const reviewRef = doc(db, COLLECTION_NAME, reviewId);
-        await updateDoc(reviewRef, {
-            ...data,
-        });
-        return { success: true };
-    } catch (error) {
-        console.error("Error updating review:", error);
-        throw error;
-    }
-};
-
-export const getUserReviewForNovel = async (novelId: number, userId: string): Promise<Review | null> => {
-    try {
-        const q = query(
-            collection(db, COLLECTION_NAME),
-            where("novelId", "==", novelId),
-            where("userId", "==", userId),
-            limit(1)
-        );
-
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) return null;
-
-        const docSnapshot = querySnapshot.docs[0];
-        return {
-            id: docSnapshot.id,
-            ...docSnapshot.data()
-        } as Review;
-    } catch (error) {
-        console.error("Error checking user review:", error);
-        return null;
-    }
-};
-
-export const updateUserIdentityInReviews = async (userId: string, userName: string, userImage: string | null, userFrame: string | null) => {
-    try {
-        const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
-        const snapshot = await getDocs(q);
-
-        const updatePromises = snapshot.docs.map(doc =>
-            updateDoc(doc.ref, { userName, userImage, userFrame })
-        );
-
-        await Promise.all(updatePromises);
-        return { success: true, count: snapshot.size };
-    } catch (error) {
-        console.error("Error syncing user identity in reviews:", error);
-        throw error;
-    }
-};
-
-export const getUserInteractionForReview = async (reviewId: string, userId: string): Promise<'like' | 'unlike' | null> => {
-    try {
-        const interactionId = `${reviewId}_${userId}`;
-        const interactionRef = doc(db, INTERACTIONS_COLLECTION, interactionId);
-        const interactionDoc = await getDoc(interactionRef);
-
-        if (interactionDoc.exists()) {
-            return interactionDoc.data().action as 'like' | 'unlike';
-        }
-        return null;
-    } catch (error) {
-        console.error("Error checking user interaction:", error);
-        return null;
-    }
-};

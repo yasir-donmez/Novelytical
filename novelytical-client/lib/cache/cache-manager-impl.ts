@@ -561,9 +561,11 @@ export class CacheManagerImpl implements CacheManager {
 
   private getOptimizedTTL(key: string, dataType: string): number {
     // Try to get optimized TTL first
-    const optimizedTTL = this.ttlOptimizer.optimizeTTL(key, dataType);
-    if (optimizedTTL) {
-      return optimizedTTL;
+    if (this.ttlOptimizer) {
+      const optimizedTTL = this.ttlOptimizer.optimizeTTL(key, dataType);
+      if (optimizedTTL) {
+        return optimizedTTL;
+      }
     }
 
     // Fallback to default TTL

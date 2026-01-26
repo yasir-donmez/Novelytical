@@ -35,6 +35,7 @@ public class GetNovelsByAuthorQueryHandler : IRequestHandler<GetNovelsByAuthorQu
                     Rating = n.Rating,
                     ScrapedRating = n.ScrapedRating,
                     ViewCount = n.ViewCount,
+                    SiteViewCount = n.SiteViewCount,
                     ChapterCount = n.ChapterCount,
                     LastUpdated = n.LastUpdated,
                     CoverUrl = n.CoverUrl,
