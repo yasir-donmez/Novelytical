@@ -297,17 +297,22 @@ export const UserService = {
     /**
      * Syncs user profile with the backend (Postgres).
      */
-    async syncUserProfileToBackend(displayName: string, avatarUrl?: string, bio?: string): Promise<void> {
+    /**
+     * Syncs user profile with the backend (Postgres).
+     * Call this after Firebase Auth login/signup to ensure DB consistency.
+     */
+    async syncUser(email: string, displayName: string, avatarUrl?: string): Promise<void> {
         const api = (await import("@/lib/axios")).default;
         try {
-            await api.put('/users/profile', {
-                displayName,
-                avatarUrl,
-                bio
+            // Backend endpoint: POST /api/users/sync
+            await api.post('/users/sync', {
+                email,
+                displayName: displayName || email.split('@')[0],
+                avatarUrl
             });
         } catch (error) {
-            console.error("Error syncing profile to backend:", error);
-            throw error;
+            console.error("Error syncing user to backend:", error);
+            // Don't throw to prevent blocking the UI, but log it.
         }
     }
 };

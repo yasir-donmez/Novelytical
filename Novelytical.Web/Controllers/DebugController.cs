@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Novelytical.Data;
 using Microsoft.EntityFrameworkCore;
 using Novelytical.Web.Services;
+using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Web.Controllers;
 

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged, setPersistence, browserLocalPersistence, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { BackendUser } from "@/types/backend-user";
-import { userService } from "@/services/userService";
+import { UserService as userService } from "@/services/user-service";
 
 interface AuthContextType {
     user: User | null;
@@ -35,13 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (firebaseUser) {
                 // 🚀 Sync with Postgres
                 try {
-                    const token = await firebaseUser.getIdToken();
-                    const syncedUser = await userService.syncUser(token, {
-                        email: firebaseUser.email,
-                        displayName: firebaseUser.displayName,
-                        avatarUrl: firebaseUser.photoURL
-                    });
-                    setBackendUser(syncedUser);
+                    await userService.syncUser(
+                        firebaseUser.email!,
+                        firebaseUser.displayName || firebaseUser.email!.split('@')[0],
+                        firebaseUser.photoURL || undefined
+                    );
+
+                    // Fetch backend user details if needed for context
+                    // const details = await userService.getBackendUser();
+                    // setBackendUser(details);
                 } catch (error) {
                     console.error("Backend sync failed:", error);
                 }

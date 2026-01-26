@@ -1,6 +1,7 @@
 using Novelytical.Data;
 using Novelytical.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Web.Jobs;
 

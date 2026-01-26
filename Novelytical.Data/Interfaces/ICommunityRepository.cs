@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Novelytical.Data.Entities; 
 using Novelytical.Data;
 
 namespace Novelytical.Data.Interfaces;

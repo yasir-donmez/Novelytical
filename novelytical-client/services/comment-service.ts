@@ -217,15 +217,13 @@ export const getCommentsByNovelId = async (novelId: number, sortBy: string = 'ne
 export const getCommentsByUserId = async (userId: string): Promise<Comment[]> => {
     try {
         const api = (await import("@/lib/axios")).default;
-        // Backend endpoint: api/reviews/user/{uid}/comments
-        // Lib axios base: /api
-        // Request: /reviews/user/${userId}/comments
-        const response = await api.get(`/reviews/user/${userId}/comments`);
+        // Backend endpoint: /api/reviews/user/{uid}/comments
+        const { data } = await api.get(`/reviews/user/${userId}/comments`);
 
         // Map backend response 
         // Assuming backend returns a list of comments with SQL field names (PascalCase or camelCase)
         // We map them to the Comment interface expected by the frontend
-        return response.data.map((c: any) => ({
+        return data.data.map((c: any) => ({
             id: c.id.toString(), // SQL ID is likely number
             novelId: c.novelId,
             userId: c.userId,

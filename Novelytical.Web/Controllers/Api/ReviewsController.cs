@@ -1,8 +1,20 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Novelytical.Application.Interfaces;
-using Novelytical.Application.DTOs;
+using MediatR;
 using System.Security.Claims;
+using Novelytical.Application.Features.Reviews.Commands.AddComment;
+using Novelytical.Application.Features.Reviews.Commands.AddReview;
+using Novelytical.Application.Features.Reviews.Queries.GetComments;
+using Novelytical.Application.Features.Reviews.Queries.GetReviews;
+using Novelytical.Application.Features.Reviews.Queries.GetLatestReviews;
+using Novelytical.Application.Features.Reviews.Queries.GetCommentsByUser;
+using Novelytical.Application.Features.Reviews.Queries.GetReviewsByUser;
+using Novelytical.Application.Features.Reviews.Commands.ToggleCommentReaction;
+using Novelytical.Application.Features.Reviews.Commands.ToggleReviewReaction;
+using Novelytical.Application.Features.Reviews.Queries.GetUserCommentReactions;
+using Novelytical.Application.Features.Reviews.Queries.GetUserReviewReactions;
+using Novelytical.Application.Features.Reviews.Commands.DeleteComment;
+using Novelytical.Application.Features.Reviews.Commands.DeleteReview;
 
 namespace Novelytical.Web.Controllers.Api;
 
@@ -10,11 +22,11 @@ namespace Novelytical.Web.Controllers.Api;
 [Route("api/[controller]")]
 public class ReviewsController : ControllerBase
 {
-    private readonly IReviewService _reviewService;
+    private readonly IMediator _mediator;
 
-    public ReviewsController(IReviewService reviewService)
+    public ReviewsController(IMediator mediator)
     {
-        _reviewService = reviewService;
+        _mediator = mediator;
     }
 
     [HttpPost("comment")]
@@ -24,14 +36,15 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var commentRequest = new CommentRequest 
-        { 
-            Content = request.Content, 
+        var result = await _mediator.Send(new AddCommentCommand
+        {
+            FirebaseUid = uid,
+            NovelId = request.NovelId,
+            Content = request.Content,
             IsSpoiler = request.IsSpoiler,
             ParentId = request.ParentId
-        };
+        });
 
-        var result = await _reviewService.AddCommentAsync(uid, request.NovelId, commentRequest);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result);
@@ -44,8 +57,10 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var reviewRequest = new ReviewRequest
+        var result = await _mediator.Send(new AddReviewCommand
         {
+            FirebaseUid = uid,
+            NovelId = request.NovelId,
             Content = request.Content,
             IsSpoiler = request.IsSpoiler,
             RatingOverall = request.RatingOverall,
@@ -54,9 +69,8 @@ public class ReviewsController : ControllerBase
             RatingWorld = request.RatingWorld,
             RatingFlow = request.RatingFlow,
             RatingGrammar = request.RatingGrammar
-        };
+        });
 
-        var result = await _reviewService.AddReviewAsync(uid, request.NovelId, reviewRequest);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result);
@@ -65,35 +79,35 @@ public class ReviewsController : ControllerBase
     [HttpGet("novel/{novelId}/comments")]
     public async Task<IActionResult> GetComments(int novelId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var result = await _reviewService.GetCommentsAsync(novelId, page, pageSize);
+        var result = await _mediator.Send(new GetCommentsQuery { NovelId = novelId, Page = page, PageSize = pageSize });
         return Ok(result.Data);
     }
 
     [HttpGet("novel/{novelId}/reviews")]
     public async Task<IActionResult> GetReviews(int novelId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5)
     {
-        var result = await _reviewService.GetReviewsAsync(novelId, page, pageSize);
+        var result = await _mediator.Send(new GetReviewsQuery { NovelId = novelId, Page = page, PageSize = pageSize });
         return Ok(result.Data);
     }
 
     [HttpGet("latest")]
     public async Task<IActionResult> GetLatestReviews([FromQuery] int count = 5)
     {
-        var result = await _reviewService.GetLatestReviewsAsync(count);
+        var result = await _mediator.Send(new GetLatestReviewsQuery { Count = count });
         return Ok(result.Data);
     }
 
     [HttpGet("user/{firebaseUid}/comments")]
     public async Task<IActionResult> GetCommentsByUser(string firebaseUid)
     {
-        var result = await _reviewService.GetCommentsByUserIdAsync(firebaseUid);
+        var result = await _mediator.Send(new GetCommentsByUserQuery { FirebaseUid = firebaseUid });
         return Ok(result.Data);
     }
 
     [HttpGet("user/{firebaseUid}/reviews")]
     public async Task<IActionResult> GetReviewsByUser(string firebaseUid)
     {
-        var result = await _reviewService.GetReviewsByUserIdAsync(firebaseUid);
+        var result = await _mediator.Send(new GetReviewsByUserQuery { FirebaseUid = firebaseUid });
         return Ok(result.Data);
     }
 
@@ -104,7 +118,12 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.ToggleCommentReactionAsync(uid, id, request.ReactionType);
+        var result = await _mediator.Send(new ToggleCommentReactionCommand 
+        { 
+            FirebaseUid = uid, 
+            CommentId = id, 
+            ReactionType = request.ReactionType 
+        });
         return Ok(result.Data);
     }
 
@@ -115,7 +134,12 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.ToggleReviewReactionAsync(uid, id, request.ReactionType);
+        var result = await _mediator.Send(new ToggleReviewReactionCommand
+        {
+            FirebaseUid = uid,
+            ReviewId = id,
+            ReactionType = request.ReactionType
+        });
         return Ok(result.Data);
     }
 
@@ -126,7 +150,7 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.GetUserCommentReactionsAsync(uid, ids);
+        var result = await _mediator.Send(new GetUserCommentReactionsQuery { FirebaseUid = uid, CommentIds = ids });
         return Ok(result.Data);
     }
 
@@ -137,9 +161,10 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.GetUserReviewReactionsAsync(uid, ids);
+        var result = await _mediator.Send(new GetUserReviewReactionsQuery { FirebaseUid = uid, ReviewIds = ids });
         return Ok(result.Data);
     }
+    
     [HttpDelete("comment/{id}")]
     [Authorize]
     public async Task<IActionResult> DeleteComment(int id)
@@ -147,7 +172,7 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.DeleteCommentAsync(uid, id);
+        var result = await _mediator.Send(new DeleteCommentCommand { FirebaseUid = uid, CommentId = id });
         return Ok(result);
     }
 
@@ -158,7 +183,7 @@ public class ReviewsController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _reviewService.DeleteReviewAsync(uid, id);
+        var result = await _mediator.Send(new DeleteReviewCommand { FirebaseUid = uid, ReviewId = id });
         return Ok(result);
     }
 
@@ -166,7 +191,6 @@ public class ReviewsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateReview(int novelId, [FromBody] AddReviewRequest request)
     {
-        // This is essentially same as AddReview because AddReview handles upsert
         return await AddReview(request);
     }
 }

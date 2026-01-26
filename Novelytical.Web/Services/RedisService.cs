@@ -1,5 +1,6 @@
 using StackExchange.Redis;
 
+using Novelytical.Application.Interfaces;
 namespace Novelytical.Web.Services;
 
 public class RedisService : IRedisService

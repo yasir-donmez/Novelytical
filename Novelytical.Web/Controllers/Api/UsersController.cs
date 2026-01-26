@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Novelytical.Application.Interfaces;
+using MediatR;
 using System.Security.Claims;
+using Novelytical.Application.Features.Users.Queries.GetProfileByUid;
+using Novelytical.Application.Features.Users.Commands.SyncUser;
+using Novelytical.Application.Features.Users.Commands.UpdateProfile;
 
 namespace Novelytical.Web.Controllers.Api;
 
@@ -9,11 +12,11 @@ namespace Novelytical.Web.Controllers.Api;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    private readonly IUserService _userService;
+    private readonly IMediator _mediator;
 
-    public UsersController(IUserService userService)
+    public UsersController(IMediator mediator)
     {
-        _userService = userService;
+        _mediator = mediator;
     }
 
     [HttpGet("me")]
@@ -23,7 +26,7 @@ public class UsersController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _userService.GetProfileByUidAsync(uid);
+        var result = await _mediator.Send(new GetProfileByUidQuery(uid));
         if (!result.Succeeded) return NotFound(result.Message);
 
         return Ok(result.Data);
@@ -36,7 +39,13 @@ public class UsersController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _userService.SyncUserAsync(uid, request.Email, request.DisplayName, request.AvatarUrl);
+        var result = await _mediator.Send(new SyncUserCommand 
+        { 
+            Uid = uid, 
+            Email = request.Email, 
+            DisplayName = request.DisplayName, 
+            AvatarUrl = request.AvatarUrl 
+        });
         return Ok(result.Data);
     }
 
@@ -47,7 +56,13 @@ public class UsersController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _userService.UpdateProfileAsync(uid, request.DisplayName, request.Bio, request.AvatarUrl);
+        var result = await _mediator.Send(new UpdateProfileCommand 
+        { 
+            Uid = uid, 
+            DisplayName = request.DisplayName, 
+            Bio = request.Bio, 
+            AvatarUrl = request.AvatarUrl 
+        });
         return Ok(result);
     }
 }

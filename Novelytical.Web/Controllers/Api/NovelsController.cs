@@ -26,7 +26,7 @@ public class NovelsController : ControllerBase
     public NovelsController(
         IMediator mediator, 
         Data.Interfaces.INovelRepository novelRepository,
-        Novelytical.Web.Services.IRedisService redisService,
+        IRedisService redisService,
         Microsoft.Extensions.Caching.Memory.IMemoryCache memoryCache)
     {
         _mediator = mediator;
@@ -35,7 +35,7 @@ public class NovelsController : ControllerBase
         _memoryCache = memoryCache;
     }
 
-    private readonly Novelytical.Web.Services.IRedisService _redisService;
+    private readonly IRedisService _redisService;
     private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _memoryCache;
 
     /// <summary>

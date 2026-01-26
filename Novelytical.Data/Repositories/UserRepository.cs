@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Novelytical.Data.Entities;
 using Novelytical.Data;
 using Novelytical.Data.Interfaces;
 

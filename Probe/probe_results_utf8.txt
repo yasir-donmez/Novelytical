@@ -1,9 +1,0 @@
-﻿Loading model...
-Loading tokenizer...
-Distance 'monster' <-> 'Reincarnated as a Monster': 0,4594 (Match < 0.60? YES)
-Distance 'monster' <-> 'Non-humanoid Protagonist': 0,4138 (Match < 0.60? YES)
-Distance 'canavar' <-> 'Reincarnated as a Monster': 0,5990 (Match < 0.60? YES)
-Distance 'canavar' <-> 'Non-humanoid Protagonist': 0,4917 (Match < 0.60? YES)
-Distance 'ant' <-> 'Insects': 0,1593 (Match < 0.60? YES)
-Distance 'ant' <-> 'Non-humanoid Protagonist': 0,3390 (Match < 0.60? YES)
-Distance 'kar─▒nca' <-> 'Insects': 0,3789 (Match < 0.60? YES)

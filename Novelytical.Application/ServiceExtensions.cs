@@ -17,7 +17,11 @@ public static class ServiceExtensions
         services.AddValidatorsFromAssemblyContaining<Novelytical.Application.Features.Novels.Queries.GetNovels.GetNovelsQuery>();
 
         // MediatR
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(System.Reflection.Assembly.GetExecutingAssembly()));
+        // MediatR
+        services.AddMediatR(cfg => {
+            cfg.RegisterServicesFromAssembly(System.Reflection.Assembly.GetExecutingAssembly());
+            cfg.AddOpenBehavior(typeof(Novelytical.Application.Behaviours.ValidationBehavior<,>));
+        });
 
         // Resolve model paths relative to the executing assembly (bin directory)
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
@@ -33,8 +37,7 @@ public static class ServiceExtensions
         });
 
 
-        services.AddScoped<IUserService, Services.UserService>();
-        services.AddScoped<IReviewService, Services.ReviewService>();
+
         services.AddScoped<ICommunityService, Services.CommunityService>();
         services.AddScoped<ILibraryService, Services.LibraryService>();
         return services;

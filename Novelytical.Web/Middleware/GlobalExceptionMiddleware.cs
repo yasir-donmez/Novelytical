@@ -39,18 +39,25 @@ public class GlobalExceptionMiddleware
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        var response = new Response<string> { Succeeded = false };
 
-        var response = new Response<string>
+        switch (exception)
         {
-            Succeeded = false,
-            Message = _env.IsDevelopment() 
-                ? $"Error: {exception.Message}\nStack: {exception.StackTrace}" 
-                : "An internal server error occurred. Please contact support.",
-            Errors = _env.IsDevelopment() 
-                ? new List<string> { exception.ToString() } 
-                : null
-        };
+            case Application.Exceptions.ValidationException validationEx:
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                response.Message = "Validation failed";
+                response.Errors = validationEx.Errors;
+                break;
+            default:
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                response.Message = _env.IsDevelopment() 
+                    ? $"Error: {exception.Message}\nStack: {exception.StackTrace}" 
+                    : "An internal server error occurred.";
+                response.Errors = _env.IsDevelopment() 
+                    ? new List<string> { exception.ToString() } 
+                    : null;
+                break;
+        }
 
         var options = new JsonSerializerOptions
         {

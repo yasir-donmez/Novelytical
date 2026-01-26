@@ -1,3 +1,4 @@
+using Novelytical.Data.Entities;
 namespace Novelytical.Data.Interfaces;
 
 public interface ILibraryRepository

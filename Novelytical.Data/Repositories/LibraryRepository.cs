@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Novelytical.Data.Entities;
 using Novelytical.Data.Interfaces;
 
 namespace Novelytical.Data.Repositories;

@@ -1,6 +1,7 @@
 using Novelytical.Application.DTOs;
 using Novelytical.Data;
 using Microsoft.EntityFrameworkCore;
+using Novelytical.Application.Interfaces;
 
 namespace Novelytical.Web.Services;
 

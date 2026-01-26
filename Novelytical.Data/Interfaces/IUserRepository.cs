@@ -1,3 +1,4 @@
+using Novelytical.Data.Entities; 
 using Novelytical.Data;
 
 namespace Novelytical.Data.Interfaces;

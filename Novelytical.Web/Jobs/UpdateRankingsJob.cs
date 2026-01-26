@@ -1,6 +1,7 @@
 using Novelytical.Data;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
+using Novelytical.Application.Interfaces;
 using Novelytical.Web.Services;
 
 namespace Novelytical.Web.Jobs;

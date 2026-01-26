@@ -94,7 +94,7 @@ try
             config.ConnectRetry = 1;
             return StackExchange.Redis.ConnectionMultiplexer.Connect(config);
         });
-        builder.Services.AddSingleton<Novelytical.Web.Services.IRedisService, Novelytical.Web.Services.RedisService>();
+        builder.Services.AddSingleton<Novelytical.Application.Interfaces.IRedisService, Novelytical.Web.Services.RedisService>();
         
         // 🎯 Stats Batch Service (Memory accumulation)
         builder.Services.AddSingleton<Novelytical.Web.Services.StatsBatchService>();
