@@ -39,6 +39,8 @@ public class GetNovelsByAuthorQueryHandler : IRequestHandler<GetNovelsByAuthorQu
                     ChapterCount = n.ChapterCount,
                     LastUpdated = n.LastUpdated,
                     CoverUrl = n.CoverUrl,
+                    CommentCount = n.CommentCount,  // Added
+                    ReviewCount = n.ReviewCount,    // Added
                     Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
                 })
                 .ToListAsync(cancellationToken);

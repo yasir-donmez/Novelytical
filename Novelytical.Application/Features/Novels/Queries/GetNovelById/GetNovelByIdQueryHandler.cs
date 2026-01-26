@@ -67,15 +67,19 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
         if (novel.ScrapedRating.HasValue && novel.ScrapedRating.Value > 0)
         {
             dto.AverageRating = (double)novel.ScrapedRating.Value;
-            dto.RatingCount = novel.ViewCount / 10000;
+            dto.RatingCount = novel.ReviewCount; 
         }
         else
         {
-            var seed = novel.Id * 17 + 42; 
-            var random = new Random(seed);
-            dto.AverageRating = Math.Round(3.5 + (random.NextDouble() * 1.5), 1); 
-            dto.RatingCount = random.Next(100, 5000); 
+            dto.AverageRating = (double)novel.Rating;
+            dto.RatingCount = novel.ReviewCount;
         }
+
+        // Map real stats
+        dto.CommentCount = novel.CommentCount;
+        dto.ReviewCount = novel.ReviewCount;
+        dto.ViewCount = novel.ViewCount;
+        dto.SiteViewCount = novel.SiteViewCount;
 
         // 3. Save to Cache (Duration: 20 Minutes) ⏳
         var cacheOptions = new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions
