@@ -693,3 +693,6 @@ log_*.txt
 build_*.txt
 probe_*.txt
 test_output.txt
+build_*.log
+clear_comments.js
+reset_firebase_full.js
