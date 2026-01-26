@@ -688,11 +688,3 @@ nginx/ssl/*.crt
 nginx/ssl/*.pem
 
 # Log Files
-log_*.txt
-*.log
-build_*.txt
-probe_*.txt
-test_output.txt
-build_*.log
-clear_comments.js
-reset_firebase_full.js
