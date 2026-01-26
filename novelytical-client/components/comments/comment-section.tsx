@@ -31,8 +31,7 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
 
             if (user && newComments.length > 0) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
                     // Merge reactions
                     newComments.forEach(c => {
                         if (reactionMap[c.id]) {
@@ -59,8 +58,7 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
         if (newComments.length > 0) {
             if (user) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
                     newComments.forEach(c => {
                         if (reactionMap[c.id]) {
                             c.userReaction = reactionMap[c.id];
@@ -86,8 +84,7 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
             const newComments = await reviewService.getComments(novelId, 1, 10);
             if (user && newComments.length > 0) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getCommentReactions(token, newComments.map(c => c.id));
+                    const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
                     newComments.forEach(c => {
                         if (reactionMap[c.id]) {
                             c.userReaction = reactionMap[c.id];

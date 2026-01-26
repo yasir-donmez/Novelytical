@@ -301,6 +301,23 @@ export const UserService = {
      * Syncs user profile with the backend (Postgres).
      * Call this after Firebase Auth login/signup to ensure DB consistency.
      */
+    /**
+     * Updates user profile on backend (Postgres).
+     */
+    async updateUser(userId: string, data: { displayName?: string, bio?: string, avatarUrl?: string }): Promise<void> {
+        const api = (await import("@/lib/axios")).default;
+        try {
+            await api.put(`/users/${userId}`, data);
+        } catch (error) {
+            console.error("Error updating user backend:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * Syncs user profile with the backend (Postgres).
+     * Call this after Firebase Auth login/signup to ensure DB consistency.
+     */
     async syncUser(email: string, displayName: string, avatarUrl?: string): Promise<void> {
         const api = (await import("@/lib/axios")).default;
         try {

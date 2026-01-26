@@ -133,7 +133,6 @@ export default function CommentItem({ comment, novelId, onDelete, onReplyAdded }
         setUserReaction(newReaction);
 
         try {
-            const token = await user.getIdToken();
             const reactionValue = newReaction === 'like' ? 1 : newReaction === 'dislike' ? -1 : 0; // 0 for remove?
             // API expects 1 or -1. If toggle off (0), we just send the SAME type again?
             // Backend logic: "if existing.ReactionType == reactionType -> Remove".
@@ -142,7 +141,7 @@ export default function CommentItem({ comment, novelId, onDelete, onReplyAdded }
             // So I should always send the clicked type (1 or -1).
 
             const typeToSend = type === 'like' ? 1 : -1;
-            await reviewService.toggleCommentReaction(token, comment.id, typeToSend);
+            await reviewService.toggleReaction('comment', comment.id, typeToSend);
         } catch (error) {
             // Revert
             setLikes(previousState.likes);

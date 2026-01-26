@@ -32,8 +32,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
 
             if (user && newReviews.length > 0) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    const reactionMap = await reviewService.getReactions('review', newReviews.map(r => r.id));
                     newReviews.forEach(r => {
                         if (reactionMap[r.id]) {
                             r.userReaction = reactionMap[r.id];
@@ -44,6 +43,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
 
             // Map to Review
             const mappedReviews: Review[] = newReviews.map(r => ({
+                ...r,
                 id: r.id.toString(),
                 novelId: r.novelId.toString(),
                 userId: r.userId,
@@ -85,8 +85,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
         if (newReviews.length > 0) {
             if (user) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    const reactionMap = await reviewService.getReactions('review', newReviews.map(r => r.id));
                     newReviews.forEach(r => {
                         if (reactionMap[r.id]) {
                             r.userReaction = reactionMap[r.id];
@@ -97,6 +96,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
 
             // Map to Review
             const mappedReviews: Review[] = newReviews.map(r => ({
+                ...r,
                 id: r.id.toString(),
                 novelId: r.novelId.toString(),
                 userId: r.userId,
@@ -137,8 +137,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
             const newReviews = await reviewService.getReviews(novelId, 1, 5);
             if (user && newReviews.length > 0) {
                 try {
-                    const token = await user.getIdToken();
-                    const reactionMap = await reviewService.getReviewReactions(token, newReviews.map(r => r.id));
+                    const reactionMap = await reviewService.getReactions('review', newReviews.map(r => r.id));
                     newReviews.forEach(r => {
                         if (reactionMap[r.id]) {
                             r.userReaction = reactionMap[r.id];
@@ -149,6 +148,7 @@ export default function ReviewSection({ novelId, coverImage }: ReviewSectionProp
 
             // Map to Review
             const mappedReviews: Review[] = newReviews.map(r => ({
+                ...r,
                 id: r.id.toString(),
                 novelId: r.novelId.toString(),
                 userId: r.userId,

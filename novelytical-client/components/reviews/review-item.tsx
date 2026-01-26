@@ -85,9 +85,8 @@ export default function ReviewItem({ review, onDelete }: ReviewItemProps) {
         setUserReaction(newReaction);
 
         try {
-            const token = await user.getIdToken();
             const typeToSend = type === 'like' ? 1 : -1;
-            await reviewService.toggleReviewReaction(token, parseInt(review.id), typeToSend);
+            await reviewService.toggleReaction('review', parseInt(review.id), typeToSend);
         } catch (error) {
             setLikes(previousState.likes);
             setDislikes(previousState.dislikes);

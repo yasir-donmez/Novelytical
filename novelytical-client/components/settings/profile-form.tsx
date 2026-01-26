@@ -163,7 +163,7 @@ export default function ProfileForm() {
 
             await Promise.all([
                 updateUserIdentityInComments(user.uid, displayName, photoURL, selectedFrame),
-                UserService.syncUserProfileToBackend(displayName, photoURL, bio)
+                UserService.updateUser(user.uid, { displayName, bio, avatarUrl: photoURL })
             ]);
 
             // Check if bio changed or other fields
