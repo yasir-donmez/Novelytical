@@ -263,6 +263,27 @@ namespace Novelytical.Worker
                     if (novelNodes != null && novelNodes.Count > 0)
                     {
                         _logger.LogInformation("[{Track}] 📄 Sayfa {Page}: {Count} roman bulundu.", trackName, page, novelNodes.Count);
+                        
+                        // DEBUG: Data Staleness Check
+                        if (novelNodes.Count > 0)
+                        {
+                            try 
+                            {
+                                 var firstNode = novelNodes[0];
+                                 var titleNode = firstNode.SelectSingleNode(".//h3[@class='novel-title']//a") 
+                                              ?? firstNode.SelectSingleNode(".//h2[@class='novel-title']//a");
+                                 var title = CleanText(titleNode?.InnerText ?? "Unknown");
+                                 
+                                 var chapterNode = firstNode.SelectSingleNode(".//span[@class='chapter-title']"); // Adjust XPath if needed based on list view
+                                 var chapterInfo = CleanText(chapterNode?.InnerText ?? "No Chapter Info");
+
+                                 _logger.LogInformation("🔍 [DEBUG CHECK] First Item on Page: '{Title}' - Info: '{Chapter}'", title, chapterInfo);
+                            } 
+                            catch (Exception ex) 
+                            { 
+                                _logger.LogWarning("Debug verify failed: {Message}", ex.Message); 
+                            }
+                        }
                         using (var scope = _serviceProvider.CreateScope())
                         {
                             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
