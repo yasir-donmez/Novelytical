@@ -24,7 +24,7 @@ namespace Novelytical.Worker
         {
             public const string NovelListItems = "//li[contains(@class, 'novel-item')]";
             public const string NovelTitle = ".//h4[contains(@class, 'novel-title')]";
-            public const string NovelLink = "./a";
+            public const string NovelLink = ".//h4[contains(@class, 'novel-title')]/parent::a";
             
             public const string DetailAuthor = "//a[contains(@class, 'property-item')][contains(@href, '/author/')]";
             public const string DetailDescription = "//div[contains(@class, 'content')][contains(@class, 'expand-wrapper')] | //div[contains(@class, 'summary')]//div[contains(@class, 'content')]";
