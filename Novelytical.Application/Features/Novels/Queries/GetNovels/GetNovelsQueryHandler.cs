@@ -61,7 +61,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
     {
         // Cache key
         string tagsKey = request.Tags != null && request.Tags.Any() ? string.Join("_", request.Tags.OrderBy(t => t)) : "none";
-        string cacheKey = $"novels_v6_p{request.PageNumber}_ps{request.PageSize}_s{request.SortOrder}_q{request.SearchString}_t{tagsKey}_c{request.MinChapters}-{request.MaxChapters}_r{request.MinRating}-{request.MaxRating}";
+        string cacheKey = $"novels_v7_p{request.PageNumber}_ps{request.PageSize}_s{request.SortOrder}_q{request.SearchString}_t{tagsKey}_c{request.MinChapters}-{request.MaxChapters}_r{request.MinRating}-{request.MaxRating}";
 
         // Try cache first (skip if filters active)
         bool hasFilters = (request.Tags != null && request.Tags.Any()) || request.MinChapters.HasValue || request.MaxChapters.HasValue || request.MinRating.HasValue || request.MaxRating.HasValue;
@@ -360,7 +360,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
 
     private async Task<Dictionary<int, int>> GetCachedRankPositionsAsync()
     {
-        const string cacheKey = "GlobalNovelRanks_v1";
+        const string cacheKey = "GlobalNovelRanks_v2";
 
         var cachedJson = await _cache.GetStringAsync(cacheKey);
         if (!string.IsNullOrEmpty(cachedJson))
@@ -372,7 +372,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         var allNovelRanks = await _repository.GetOptimizedQuery()
             .Select(n => new { 
                 n.Id, 
-                RankScore = n.TotalRankScore,
+                RankScore = (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50),
                 Rating = n.ScrapedRating ?? n.Rating
             })
             .OrderByDescending(x => x.RankScore)
