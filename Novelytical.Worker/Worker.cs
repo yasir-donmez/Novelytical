@@ -270,12 +270,10 @@ namespace Novelytical.Worker
                             try 
                             {
                                  var firstNode = novelNodes[0];
-                                 _logger.LogWarning("🔍 [DEBUG CHECK] Parsing Node HTML: {Html}", firstNode.OuterHtml.Substring(0, Math.Min(firstNode.OuterHtml.Length, 1000)));
-
-                                 var titleNode = firstNode.SelectSingleNode(".//h4[contains(@class, 'novel-title')]//a") 
-                                              ?? firstNode.SelectSingleNode(".//h3[contains(@class, 'novel-title')]//a")
-                                              ?? firstNode.SelectSingleNode(".//h2[contains(@class, 'novel-title')]//a");
+                                 var titleNode = firstNode.SelectSingleNode(".//h4[contains(@class, 'novel-title')]//a"); 
                                  var title = CleanText(titleNode?.InnerText ?? "Unknown");
+
+                                 _logger.LogWarning("🔍 [DEBUG CHECK] First Item on Page: '{Title}'", title);
                             } 
                             catch (Exception ex) 
                             { 
@@ -333,6 +331,10 @@ namespace Novelytical.Worker
 
                 var novelData = ParseNovelDetails(detailNode, fullUrl, title);
                 
+                // DEBUG: Detail Scrape Results
+                _logger.LogWarning("🔍 [DETAIL DEBUG] {Title} -> Chapters: {Ch}, Views: {V}, Updated: {Upd}", 
+                    novelData.Title, novelData.ChapterCount, novelData.ViewCount, novelData.LastUpdated);
+
                 await SaveOrUpdateNovel(dbContext, novelData, trackName);
             }
             catch (Exception ex)
