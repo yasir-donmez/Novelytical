@@ -270,14 +270,12 @@ namespace Novelytical.Worker
                             try 
                             {
                                  var firstNode = novelNodes[0];
-                                 var titleNode = firstNode.SelectSingleNode(".//h3[@class='novel-title']//a") 
-                                              ?? firstNode.SelectSingleNode(".//h2[@class='novel-title']//a");
-                                 var title = CleanText(titleNode?.InnerText ?? "Unknown");
-                                 
-                                 var chapterNode = firstNode.SelectSingleNode(".//span[@class='chapter-title']"); // Adjust XPath if needed based on list view
-                                 var chapterInfo = CleanText(chapterNode?.InnerText ?? "No Chapter Info");
+                                 _logger.LogWarning("🔍 [DEBUG CHECK] Parsing Node HTML: {Html}", firstNode.OuterHtml.Substring(0, Math.Min(firstNode.OuterHtml.Length, 1000)));
 
-                                 _logger.LogWarning("🔍 [DEBUG CHECK] First Item on Page: '{Title}' - Info: '{Chapter}'", title, chapterInfo);
+                                 var titleNode = firstNode.SelectSingleNode(".//h4[contains(@class, 'novel-title')]//a") 
+                                              ?? firstNode.SelectSingleNode(".//h3[contains(@class, 'novel-title')]//a")
+                                              ?? firstNode.SelectSingleNode(".//h2[contains(@class, 'novel-title')]//a");
+                                 var title = CleanText(titleNode?.InnerText ?? "Unknown");
                             } 
                             catch (Exception ex) 
                             { 
