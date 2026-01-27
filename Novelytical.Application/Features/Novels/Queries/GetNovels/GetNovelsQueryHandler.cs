@@ -372,6 +372,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
         var allNovelRanks = await _repository.GetOptimizedQuery()
             .Select(n => new { 
                 n.Id, 
+                n.Title,
                 RankScore = (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50),
                 Rating = n.ScrapedRating ?? n.Rating
             })
@@ -379,6 +380,17 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
             .ThenByDescending(x => x.Rating)
             .ThenBy(x => x.Id)
             .ToListAsync();
+
+        _logger.LogWarning("🔍 DEBUG RANKING CALCULATION 🔍");
+        _logger.LogWarning("Top 1 Novel: {Title} - Score: {Score}", allNovelRanks[0].Title, allNovelRanks[0].RankScore);
+        _logger.LogWarning("Top 2 Novel: {Title} - Score: {Score}", allNovelRanks[1].Title, allNovelRanks[1].RankScore);
+        
+        var shadowSlave = allNovelRanks.FirstOrDefault(x => x.Title.Contains("Shadow Slave"));
+        if (shadowSlave != null)
+        {
+             var index = allNovelRanks.IndexOf(shadowSlave);
+             _logger.LogWarning("Shadow Slave Found at Index: {Index} (Rank {Rank}). Score: {Score}", index, index + 1, shadowSlave.RankScore);
+        }
 
         var rankPositions = allNovelRanks
             .Select((x, index) => new { x.Id, Position = index + 1 })
