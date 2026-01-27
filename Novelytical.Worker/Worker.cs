@@ -135,7 +135,7 @@ namespace Novelytical.Worker
             string url = _configuration["NovelFire:BaseUrlLatest"] ?? "https://novelfire.net/latest-release-novels";
             int pagesToScrape = int.Parse(_configuration["Scraper:FastTrackPages"] ?? "5");
             
-            _logger.LogInformation("🚀 FastTrack başlatılıyor. URL: {Url}, Sayfa: {Pages}", url, pagesToScrape);
+            _logger.LogWarning("🚀 FastTrack başlatılıyor. URL: {Url}, Sayfa: {Pages} - [DEBUG VERSION: CHECKING STALENESS]", url, pagesToScrape);
             
             await ScrapePages(url, pagesToScrape, "FastTrack", stoppingToken);
             
@@ -277,7 +277,12 @@ namespace Novelytical.Worker
                                  var chapterNode = firstNode.SelectSingleNode(".//span[@class='chapter-title']"); // Adjust XPath if needed based on list view
                                  var chapterInfo = CleanText(chapterNode?.InnerText ?? "No Chapter Info");
 
-                                 _logger.LogInformation("🔍 [DEBUG CHECK] First Item on Page: '{Title}' - Info: '{Chapter}'", title, chapterInfo);
+                                 _logger.LogWarning("🔍 [DEBUG CHECK] First Item on Page: '{Title}' - Info: '{Chapter}'", title, chapterInfo);
+                            } 
+                            catch (Exception ex) 
+                            { 
+                                _logger.LogError("Debug verify failed: {Message}", ex.Message); 
+                            }
                             } 
                             catch (Exception ex) 
                             { 
