@@ -352,7 +352,7 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
                 >
                     {items.map((item) => (
                         <Link
-                            href={`/novel/${item.slug || item.novelId}`}
+                            href={`/novel/${item.novel?.slug || item.slug || item.novelId}`}
                             key={item.novelId}
                             className={`group shrink-0 py-1 ${isExpanded
                                 ? 'w-full sm:w-[calc((100%_-_2rem)_/_3)]'

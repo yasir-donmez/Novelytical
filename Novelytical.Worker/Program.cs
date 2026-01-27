@@ -1,8 +1,11 @@
 using Novelytical.Data;
 using Novelytical.Worker;
+using Novelytical.Worker.Services;
 using Novelytical.Application;
 using Novelytical.Services;
+using Novelytical.Application.Interfaces;
 using Serilog;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -85,7 +88,20 @@ try
         options.InstanceName = "Novelytical_";
     });
 
-    // 6. Firebase & Notification Service
+    // 6. Redis Service (Full Implementation for Worker)
+    // AddApplicationLayer handlers require IRedisService and IStatsBatchService
+    // We register IConnectionMultiplexer first, which is needed by WorkerRedisService
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+        ConnectionMultiplexer.Connect(redisUrl));
+    
+     builder.Services.AddSingleton<IRedisService, WorkerRedisService>();
+
+    // 7. Mock Services for Worker (NoOp)
+    // Worker doesn't need RealTime or StatsBatch, but Application layer requires them
+    builder.Services.AddScoped<IRealTimeService, WorkerRealTimeService>();
+    builder.Services.AddScoped<IStatsBatchService, WorkerStatsBatchService>();
+
+    // 8. Firebase & Notification Service
     var serviceAccountPath = builder.Configuration["Firebase:ServiceAccountPath"] 
         ?? Path.Combine(builder.Environment.ContentRootPath, "serviceAccountKey.json");
     
@@ -104,7 +120,7 @@ try
         Log.Warning("⚠️ serviceAccountKey.json not found! Notifications disabled.");
     }
 
-    // 7. Worker'ı İşe Al
+    // 9. Worker'ı İşe Al
     builder.Services.AddHostedService<Worker>();
 
     var host = builder.Build();
