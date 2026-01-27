@@ -260,8 +260,9 @@ namespace Novelytical.Worker
                     var listDoc = await FetchWithRetry(pageUrl);
                     var novelNodes = listDoc.DocumentNode.SelectNodes(XPaths.NovelListItems);
                     
-                    if (novelNodes != null)
+                    if (novelNodes != null && novelNodes.Count > 0)
                     {
+                        _logger.LogInformation("[{Track}] 📄 Sayfa {Page}: {Count} roman bulundu.", trackName, page, novelNodes.Count);
                         using (var scope = _serviceProvider.CreateScope())
                         {
                             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -271,6 +272,16 @@ namespace Novelytical.Worker
                                 await ProcessNovelNode(node, dbContext, trackName);
                             }
                         }
+                    }
+                    else
+                    {
+                         // 🕵️ DEBUG: Roman bulunamadıysa sayfa içeriğini logla
+                         _logger.LogWarning("[{Track}] ⚠️ Sayfa {Page}'de ROMAN BULUNAMADI! HTML Title: {Title}", 
+                             trackName, page, listDoc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim());
+                         
+                         var htmlSample = listDoc.DocumentNode.OuterHtml;
+                         if (htmlSample.Length > 500) htmlSample = htmlSample.Substring(0, 500);
+                         _logger.LogWarning("[{Track}] HTML Sample: {Html}", trackName, htmlSample);
                     }
                 }
                 catch (Exception ex)
