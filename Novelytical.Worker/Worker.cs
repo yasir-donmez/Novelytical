@@ -324,7 +324,19 @@ namespace Novelytical.Worker
 
             try 
             {
-                // Fetch details
+                // OPTIMIZATION: Try to parse directly from list item first (FastTrack)
+                Novel? fastNovel = ParseNovelFromListItem(node, fullUrl, title);
+                
+                if (fastNovel != null && fastNovel.ChapterCount > 0)
+                {
+                    _logger.LogInformation("🚀 [FastTrack] Listeden hızlı okundu: {Title} (Ch: {Ch}, Updated: {Upd})", 
+                        fastNovel.Title, fastNovel.ChapterCount, fastNovel.LastUpdated);
+                    
+                    await SaveOrUpdateNovel(dbContext, fastNovel, trackName);
+                    return; // Skip detail fetch!
+                }
+
+                // Fallback to slow detail fetch if list parsing failed
                 await Task.Delay(Random.Shared.Next(500, 1500)); // Random IO wait
                 var detailDoc = await FetchWithRetry(fullUrl);
                 var detailNode = detailDoc.DocumentNode;
@@ -341,6 +353,45 @@ namespace Novelytical.Worker
             {
                 _logger.LogWarning("[{Track}] Hata ({Title}): {Message}", trackName, title, ex.Message);
             }
+        }
+
+        private Novel? ParseNovelFromListItem(HtmlNode node, string fullUrl, string title)
+        {
+             try
+             {
+                 var chapterNode = node.SelectSingleNode(".//h5[contains(@class, 'chapter-title')]");
+                 int chapterCount = ParseInt(chapterNode?.InnerText);
+
+                 var timeNode = node.SelectSingleNode(".//div[contains(@class, 'novel-stats')]//span[contains(., 'ago')]");
+                 DateTime lastUpdated = ParseRelativeTime(timeNode?.InnerText);
+
+                 var imgNode = node.SelectSingleNode(".//img");
+                 var coverUrl = imgNode?.GetAttributeValue("data-src", string.Empty);
+                 if (string.IsNullOrEmpty(coverUrl)) coverUrl = imgNode?.GetAttributeValue("src", "");
+                 if (!string.IsNullOrEmpty(coverUrl) && coverUrl.StartsWith("/")) coverUrl = "https://novelfire.net" + coverUrl;
+                 
+                 // If we found a valid chapter count or recent update, return the object
+                 // Note: List item doesn't have Description, Genres, Tags, Views, Rating.
+                 // We only use this for UPDATING existing novels or partial insert.
+                 // To avoid overwriting existing rich data with nulls, SaveOrUpdateNovel handles null checks.
+                 
+                 return new Novel 
+                 {
+                     Title = title,
+                     SourceUrl = fullUrl,
+                     ChapterCount = chapterCount,
+                     LastUpdated = lastUpdated,
+                     CoverUrl = coverUrl,
+                     Status = "Ongoing", // Default for active list
+                     Author = "Unknown",
+                     Description = "",
+                     ViewCount = 0 // Not available in list usually
+                 };
+             }
+             catch
+             {
+                 return null;
+             }
         }
 
         // Exponential Backoff ile Hata Yönetimi
@@ -473,9 +524,19 @@ namespace Novelytical.Worker
                 hasChanges = true; 
             }
             if (dbNovel.ScrapedRating != scrapedData.ScrapedRating && scrapedData.ScrapedRating > 0) { dbNovel.ScrapedRating = scrapedData.ScrapedRating; hasChanges = true; }
-            if (dbNovel.Status != scrapedData.Status) { dbNovel.Status = scrapedData.Status; hasChanges = true; }
-            if (dbNovel.Author != scrapedData.Author) { dbNovel.Author = scrapedData.Author; hasChanges = true; }
-            if (dbNovel.CoverUrl != scrapedData.CoverUrl) { dbNovel.CoverUrl = scrapedData.CoverUrl; hasChanges = true; }
+            if (dbNovel.Status != scrapedData.Status && !string.IsNullOrEmpty(scrapedData.Status)) { dbNovel.Status = scrapedData.Status; hasChanges = true; }
+            
+            // Only update Author/Cover/Description if new data is valid (prevent overwriting with "Unknown" from FastTrack)
+            if (!string.IsNullOrEmpty(scrapedData.Author) && scrapedData.Author != "Unknown" && dbNovel.Author != scrapedData.Author) 
+            { 
+                dbNovel.Author = scrapedData.Author; 
+                hasChanges = true; 
+            }
+            if (!string.IsNullOrEmpty(scrapedData.CoverUrl) && dbNovel.CoverUrl != scrapedData.CoverUrl) 
+            { 
+                dbNovel.CoverUrl = scrapedData.CoverUrl; 
+                hasChanges = true; 
+            }
             
             if ((dbNovel.LastUpdated - scrapedData.LastUpdated).Duration() > TimeSpan.FromMinutes(5)) 
             { 
@@ -484,7 +545,7 @@ namespace Novelytical.Worker
             }
 
             // Description & Vector Logic
-            if (dbNovel.Description != scrapedData.Description)
+            if (!string.IsNullOrEmpty(scrapedData.Description) && dbNovel.Description != scrapedData.Description)
             {
                 dbNovel.Description = scrapedData.Description;
                 hasChanges = true;
