@@ -265,23 +265,7 @@ namespace Novelytical.Worker
                         _logger.LogInformation("[{Track}] 📄 Sayfa {Page}: {Count} roman bulundu.", trackName, page, novelNodes.Count);
                         
                         // DEBUG: Data Staleness Check
-                        if (novelNodes.Count > 0)
-                        {
-                            try 
-                            {
-                                 var firstNode = novelNodes[0];
-                                 var titleNode = firstNode.SelectSingleNode(".//h4[contains(@class, 'novel-title')]//a"); 
-                                 var title = CleanText(titleNode?.InnerText ?? "Unknown");
-
-                                 _logger.LogWarning("🔍 [DEBUG CHECK] First Item on Page: '{Title}'", title);
-                            } 
-                            catch (Exception ex) 
-                            { 
-                                _logger.LogError("Debug verify failed: {Message}", ex.Message); 
-                            }
-
-                        }
-                        using (var scope = _serviceProvider.CreateScope())
+                         using (var scope = _serviceProvider.CreateScope())
                         {
                             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                             foreach (var node in novelNodes)
@@ -388,8 +372,9 @@ namespace Novelytical.Worker
                      ViewCount = 0 // Not available in list usually
                  };
              }
-             catch
+             catch (Exception ex)
              {
+                 _logger.LogWarning("⚠️ List Parsing Failed ({Title}): {Message}", title, ex.Message);
                  return null;
              }
         }
