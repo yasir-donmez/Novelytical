@@ -283,11 +283,7 @@ namespace Novelytical.Worker
                             { 
                                 _logger.LogError("Debug verify failed: {Message}", ex.Message); 
                             }
-                            } 
-                            catch (Exception ex) 
-                            { 
-                                _logger.LogWarning("Debug verify failed: {Message}", ex.Message); 
-                            }
+
                         }
                         using (var scope = _serviceProvider.CreateScope())
                         {
