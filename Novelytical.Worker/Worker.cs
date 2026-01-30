@@ -142,6 +142,9 @@ namespace Novelytical.Worker
             // Son çalışma zamanını kaydet
             await SetScraperState(StateKeys.LastFastTrackRun, DateTime.UtcNow.ToString("O"));
             
+            // Cache'i temizle ki yeni veriler hemen görünsün
+            await ClearNovelCache();
+            
             _logger.LogInformation("✅ FastTrack tamamlandı. {Pages} sayfa tarandı.", pagesToScrape);
         }
 
@@ -344,7 +347,7 @@ namespace Novelytical.Worker
              try
              {
                  var chapterNode = node.SelectSingleNode(".//h5[contains(@class, 'chapter-title')]");
-                 int chapterCount = ParseInt(chapterNode?.InnerText);
+                 int chapterCount = ParseChapterFromTitle(chapterNode?.InnerText);
 
                  var timeNode = node.SelectSingleNode(".//div[contains(@class, 'novel-stats')]//span[contains(., 'ago')]");
                  DateTime lastUpdated = ParseRelativeTime(timeNode?.InnerText);
@@ -811,6 +814,31 @@ namespace Novelytical.Worker
             return 0;
         }
 
+        private int ParseChapterFromTitle(string? text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            
+            // Remove thousand separators to avoid splitting "1,234" into "1" and "234"
+            string clean = text.Replace(",", "");
+            
+            // Find all number sequences
+            var matches = Regex.Matches(clean, @"\d+");
+            if (matches.Count == 0) return 0;
+
+            int maxVal = 0;
+            foreach (Match match in matches)
+            {
+                if (int.TryParse(match.Value, out int val))
+                {
+                    // Assuming the largest number in the string is the latest chapter number
+                    // e.g. "Chapter 10-12" -> 12
+                    // e.g. "Vol 2 Ch 150" -> 150
+                    if (val > maxVal) maxVal = val;
+                }
+            }
+            return maxVal;
+        }
+
         private int ParseInt(string? text)
         {
             if (string.IsNullOrEmpty(text)) return 0;
@@ -837,6 +865,34 @@ namespace Novelytical.Worker
             if (text.Contains("second")) return DateTime.UtcNow.AddSeconds(-quantity);
 
             return DateTime.UtcNow;
+        }
+
+        private async Task ClearNovelCache()
+        {
+            try
+            {
+                // Cache key pattern: novels_v7_p{page}_ps{pageSize}_s{sortOrder}_q{query}_t{tags}_c{chapters}_r{rating}
+                // We need to clear all variations. Since Redis doesn't support wildcard delete easily,
+                // we'll clear the most common keys that affect homepage
+                
+                var keysToRemove = new List<string>
+                {
+                    "novels_v7_p1_ps7_sdate_desc_q_tnone_c-_r-",      // BentoGridLane (Son Güncellenenler)
+                    "novels_v7_p1_ps12_srating_desc_q_tnone_c-_r-",  // GenericLane (Editörün Seçimi)
+                    "GlobalNovelRanks_v2"                             // Rank positions cache
+                };
+
+                foreach (var key in keysToRemove)
+                {
+                    await _cache.RemoveAsync(key);
+                }
+
+                _logger.LogInformation("🗑️ Novel cache cleared ({Count} keys)", keysToRemove.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Cache temizleme hatası (önemli değil, devam ediliyor)");
+            }
         }
 
         #endregion

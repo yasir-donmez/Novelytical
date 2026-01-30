@@ -146,7 +146,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                     .OrderByDescending(n => (int)(n.ViewCount / 10000.0) + n.SiteViewCount + (n.CommentCount * 20) + (n.ReviewCount * 50))
                     .ThenByDescending(n => n.ScrapedRating ?? n.Rating)
                     .ThenBy(n => n.Id),
-                _ => query.OrderByDescending(n => n.LastUpdated).ThenBy(n => n.Id)
+                _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
             };
 
             var pagedEntities = await query
@@ -320,7 +320,7 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 "rating_desc" => fusedNovels.OrderBy(n => n.Rating),
                 "chapters_desc" => fusedNovels.OrderByDescending(n => n.ChapterCount),
                 "date_desc" => fusedNovels.OrderByDescending(n => n.LastUpdated),
-                _ => fusedNovels.OrderByDescending(n => n.LastUpdated)
+                _ => fusedNovels.OrderByDescending(n => n.Rating)
             };
         }
 
