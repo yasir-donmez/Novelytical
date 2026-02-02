@@ -288,7 +288,7 @@ export function CommunityPulseOptimized() {
         }
 
         try {
-            await createPost({
+            const newPost = await createPost({
                 content: postContent, // For rooms, content can be description or initial message
                 type: isRoom ? 'room' : (isPoll ? 'poll' : 'text'),
                 options: isPoll ? pollOptions.map((opt) => ({
@@ -298,6 +298,13 @@ export function CommunityPulseOptimized() {
                 durationHours: 24,
                 roomTitle: isRoom ? roomTitle : undefined
             });
+
+            if (newPost) {
+                setPosts(prev => {
+                    if (prev.some(p => p.id === newPost.id)) return prev;
+                    return [newPost, ...prev];
+                });
+            }
 
             // Notify Mentions
             const mentionRegex = /@(\w+)/g;

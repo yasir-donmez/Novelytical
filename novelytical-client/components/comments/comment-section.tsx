@@ -33,11 +33,13 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
                 try {
                     const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
                     // Merge reactions
-                    newComments.forEach(c => {
-                        if (reactionMap[c.id]) {
-                            c.userReaction = reactionMap[c.id];
-                        }
-                    });
+                    if (reactionMap) {
+                        newComments.forEach(c => {
+                            if (reactionMap[c.id]) {
+                                c.userReaction = reactionMap[c.id];
+                            }
+                        });
+                    }
                 } catch (e) { console.error(e); }
             }
 
@@ -59,11 +61,13 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
             if (user) {
                 try {
                     const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
-                    newComments.forEach(c => {
-                        if (reactionMap[c.id]) {
-                            c.userReaction = reactionMap[c.id];
-                        }
-                    });
+                    if (reactionMap) {
+                        newComments.forEach(c => {
+                            if (reactionMap[c.id]) {
+                                c.userReaction = reactionMap[c.id];
+                            }
+                        });
+                    }
                 } catch (e) { console.error(e); }
             }
 
@@ -85,11 +89,13 @@ export default function CommentSection({ novelId }: CommentSectionProps) {
             if (user && newComments.length > 0) {
                 try {
                     const reactionMap = await reviewService.getReactions('comment', newComments.map(c => c.id));
-                    newComments.forEach(c => {
-                        if (reactionMap[c.id]) {
-                            c.userReaction = reactionMap[c.id];
-                        }
-                    });
+                    if (reactionMap) {
+                        newComments.forEach(c => {
+                            if (reactionMap[c.id]) {
+                                c.userReaction = reactionMap[c.id];
+                            }
+                        });
+                    }
                 } catch (e) { console.error(e); }
             }
             setComments(newComments);
