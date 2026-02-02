@@ -114,6 +114,7 @@ export function NovelSearchModal({ open, onClose, onSelect }: NovelSearchModalPr
                                         alt={novel.title}
                                         fill
                                         className="object-cover"
+                                        unoptimized
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10">
