@@ -49,8 +49,12 @@ public class CommunityService : ICommunityService
 
         await _repository.CreatePostAsync(post);
 
+        // Reload to fetch navigation properties (RelatedNovel for covers)
+        var createdPost = await _repository.GetPostByIdAsync(post.Id);
+        if (createdPost == null) return new Response<CommunityPostDto>("Error creating post");
+
         // Map to DTO
-        var dto = MapToDto(post, user, null);
+        var dto = MapToDto(createdPost, user, null);
 
         // 📡 Broadcast new post via RealTime Service
         await _realTimeService.BroadcastNewPostAsync(dto);
