@@ -107,6 +107,7 @@ try
         builder.Services.AddScoped<Novelytical.Web.Services.RankingService>();
         builder.Services.AddScoped<Novelytical.Web.Jobs.UpdateRankingsJob>();
         builder.Services.AddScoped<Novelytical.Web.Jobs.DailyStatsResetJob>();
+        builder.Services.AddScoped<Novelytical.Web.Jobs.NotificationCleanupJob>();
         
 
     }
@@ -323,6 +324,13 @@ try
         
         recurringJobManager.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
             "daily-stats-reset",
+            job => job.Execute(),
+            Cron.Daily // Daily at midnight
+        );
+
+        // 🧹 Notification Cleanup Job (Daily)
+        recurringJobManager.AddOrUpdate<Novelytical.Web.Jobs.NotificationCleanupJob>(
+            "notification-cleanup",
             job => job.Execute(),
             Cron.Daily // Daily at midnight
         );
