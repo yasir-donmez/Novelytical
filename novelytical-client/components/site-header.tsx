@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/user-nav";
@@ -109,10 +109,13 @@ export function SiteHeader() {
                             </nav>
                         </div>
 
+
                         {/* Navbar Search Bar - Centered/Aligned */}
                         {showNavbarSearch && (
                             <div className="hidden lg:block flex-1 max-w-md mx-6 animate-in fade-in zoom-in-95 duration-300">
-                                <SearchBar variant="navbar" />
+                                <Suspense fallback={<div className="w-full h-10 rounded-full bg-muted/20 animate-pulse" />}>
+                                    <SearchBar variant="navbar" />
+                                </Suspense>
                             </div>
                         )}
 
