@@ -99,8 +99,7 @@ export default function ProfilePage() {
                                 )}
                             </div>
 
-                            {/* Online Status */}
-                            <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-4 border-[#1a1a1a] rounded-full z-30" title="Online"></div>
+
                         </div>
 
                         {/* Info */}
