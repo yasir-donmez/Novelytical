@@ -9,9 +9,9 @@ namespace Novelytical.Application.Features.Reviews.Commands.AddReview;
 
 public class AddReviewCommand : IRequest<Response<bool>>
 {
-    public string FirebaseUid { get; set; }
+    public required string FirebaseUid { get; set; }
     public int NovelId { get; set; }
-    public string Content { get; set; }
+    public required string Content { get; set; }
     public bool IsSpoiler { get; set; }
     public double RatingOverall { get; set; }
     public double RatingStory { get; set; }

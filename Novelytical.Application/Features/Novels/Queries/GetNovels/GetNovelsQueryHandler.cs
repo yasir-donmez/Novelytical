@@ -166,7 +166,9 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 Status = n.Status,
                 ChapterCount = n.ChapterCount,
                 LastUpdated = n.LastUpdated,
+
                 CoverUrl = n.CoverUrl,
+                DominantColor = n.DominantColor, // Added
                 CommentCount = n.CommentCount,  // Added
                 ReviewCount = n.ReviewCount,    // Added
                 Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
@@ -339,7 +341,9 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 Status = n.Status,               // Added
                 ChapterCount = n.ChapterCount,
                 LastUpdated = n.LastUpdated,
+
                 CoverUrl = n.CoverUrl,
+                DominantColor = n.DominantColor, // Added
                 Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
             })
             .ToList();

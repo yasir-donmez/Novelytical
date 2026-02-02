@@ -12,6 +12,7 @@ export interface NovelListDto {
     chapterCount: number;
     lastUpdated: string;
     coverUrl?: string;
+    dominantColor?: string; // Hex code from backend
     rankPosition?: number; // Global rank position (1 = highest)
     tags: string[];
     // New stats for ranking

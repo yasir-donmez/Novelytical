@@ -13,6 +13,7 @@ public interface ICommunityRepository
     Task<List<CommunityPost>> GetUserPostsAsync(Guid userId);
     
     Task<PollVote?> GetUserVoteAsync(int pollId, Guid userId);
+    Task<List<PollVote>> GetUserVotesForPostsAsync(List<int> postIds, Guid userId);
     Task AddVoteAsync(PollVote vote);
     Task RemoveVoteAsync(PollVote vote);
     Task UpdatePollOptionCountAsync(int optionId, int increment); // atomic increment/decrement

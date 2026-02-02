@@ -45,8 +45,10 @@ function timeAgo(date: Timestamp | Date | string | null | undefined) {
     return "Az önce";
 }
 
-export default function SavedPollsList() {
+export default function SavedPollsList({ userId }: { userId?: string } = {}) {
     const { user } = useAuth();
+    const targetUserId = userId || user?.uid;
+
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
     const [createdPosts, setCreatedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,17 +59,17 @@ export default function SavedPollsList() {
     const [viewingPollId, setViewingPollId] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user) return;
+        if (!targetUserId) return;
         loadPosts();
-    }, [user]);
+    }, [targetUserId]);
 
     const loadPosts = async () => {
         setLoading(true);
         try {
-            if (user) {
+            if (targetUserId) {
                 const [savedData, createdData] = await Promise.all([
-                    getSavedPostsData(user.uid),
-                    getUserCreatedPolls(user.uid)
+                    getSavedPostsData(targetUserId),
+                    getUserCreatedPolls(targetUserId)
                 ]);
 
                 setSavedPosts(savedData.filter(p => p.type === 'poll'));

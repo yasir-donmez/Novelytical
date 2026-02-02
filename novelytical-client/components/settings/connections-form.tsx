@@ -102,7 +102,13 @@ export default function ConnectionsForm() {
                             <Switch
                                 id="privateProfile"
                                 checked={privacy.privateProfile}
-                                onCheckedChange={(c) => setPrivacy(p => ({ ...p, privateProfile: c }))}
+                                onCheckedChange={(c) => setPrivacy(p => ({
+                                    ...p,
+                                    privateProfile: c,
+                                    // If enabling this, disable others
+                                    hideLibrary: c ? false : p.hideLibrary,
+                                    restrictContentToMutuals: c ? false : p.restrictContentToMutuals
+                                }))}
                             />
                         </div>
 
@@ -116,7 +122,13 @@ export default function ConnectionsForm() {
                             <Switch
                                 id="hideLibrary"
                                 checked={privacy.hideLibrary || false}
-                                onCheckedChange={(c) => setPrivacy(p => ({ ...p, hideLibrary: c }))}
+                                onCheckedChange={(c) => setPrivacy(p => ({
+                                    ...p,
+                                    hideLibrary: c,
+                                    // If enabling this, disable others
+                                    privateProfile: c ? false : p.privateProfile,
+                                    restrictContentToMutuals: c ? false : p.restrictContentToMutuals
+                                }))}
                             />
                         </div>
 
@@ -130,7 +142,13 @@ export default function ConnectionsForm() {
                             <Switch
                                 id="restrictMutuals"
                                 checked={privacy.restrictContentToMutuals || false}
-                                onCheckedChange={(c) => setPrivacy(p => ({ ...p, restrictContentToMutuals: c }))}
+                                onCheckedChange={(c) => setPrivacy(p => ({
+                                    ...p,
+                                    restrictContentToMutuals: c,
+                                    // If enabling this, disable others
+                                    privateProfile: c ? false : p.privateProfile,
+                                    hideLibrary: c ? false : p.hideLibrary
+                                }))}
                             />
                         </div>
                     </div>

@@ -29,7 +29,6 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
             setStats(fetchedStats);
         });
     }, [novel.id, novel.viewCount]);
-
     // If aspect is provided, it overrides variant logic for simple aspect control
     // taking 'portrait' as default vertical look
     const computedVariant = aspect ? 'vertical' : variant;
@@ -132,8 +131,17 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
 
             {/* Tablet/Desktop: Vertical Layout */}
             <div className={cn("relative group w-full h-full", aspect === 'auto' ? "block" : "flex-grow flex flex-col", verticalLayoutClass, className)}>
-                {/* Ambient Glow Effect - specific for vertical layout but conflicting with transparent cards in Bento */}
-                {novel.coverUrl && aspect !== 'auto' && (
+                {/* Dynamic Dominant Color Background (From Database) */}
+                <div
+                    className="absolute -inset-0.5 rounded-[1rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{
+                        backgroundColor: novel.dominantColor || 'transparent',
+                        boxShadow: novel.dominantColor ? `0 0 80px -20px ${novel.dominantColor}` : 'none'
+                    }}
+                />
+
+                {/* Fallback Ambient Blur - Only if no dominant color found */}
+                {!novel.dominantColor && novel.coverUrl && aspect !== 'auto' && (
                     <div
                         className="absolute -inset-3 rounded-[2rem] bg-cover bg-center blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
                         style={{ backgroundImage: `url(${novel.coverUrl})` }}
@@ -321,7 +329,7 @@ export function NovelCard({ novel, variant = 'default', aspect, className, showL
                         </div>
                     )}
                     <CardContent className={cn("px-4 pb-2 pt-3 flex-grow", aspect === 'auto' && "hidden")}>
-                        <h3 className={cn("font-semibold text-sm md:text-base line-clamp-2 leading-tight min-h-[2.5rem] mb-2", aspect === 'auto' && "hidden")}>{novel.title}</h3>
+                        <h3 className={cn("font-semibold text-sm md:text-base line-clamp-2 leading-tight h-10 mb-2", aspect === 'auto' && "hidden")}>{novel.title}</h3>
                         <p className="text-sm text-muted-foreground truncate h-5 flex items-center mb-2">{novel.author}</p>
                         <div className="flex items-center gap-2 text-sm h-5">
                             <span className="text-yellow-500">★</span>

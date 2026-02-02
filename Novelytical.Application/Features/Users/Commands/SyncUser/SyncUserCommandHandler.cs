@@ -10,7 +10,7 @@ namespace Novelytical.Application.Features.Users.Commands.SyncUser;
 
 public class SyncUserCommand : IRequest<Response<UserDto>>
 {
-    public string Uid { get; set; }
+    public required string Uid { get; set; }
     public string? Email { get; set; }
     public string? DisplayName { get; set; }
     public string? AvatarUrl { get; set; }

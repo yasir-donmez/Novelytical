@@ -24,7 +24,7 @@ export default function SettingsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen pb-12 bg-background pt-24 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen pb-12 bg-background px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
                 <div className="bg-white/5 dark:bg-zinc-800/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-500/50 via-purple-500/50 to-amber-500/50"></div>

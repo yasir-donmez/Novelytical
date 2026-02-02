@@ -126,6 +126,19 @@ export function PollDisplay({
                         onClick={() => onViewDetails(post.id)}
                     >
                         <span>{post.options.reduce((a, b) => a + b.voteCount, 0)} oy</span>
+                        {isExpired && (
+                            <>
+                                <span className="opacity-60 text-[8px]">•</span>
+                                <div className="flex items-center gap-1 group/lock relative cursor-help">
+                                    <span className="text-amber-500 bg-amber-500/10 p-1 rounded">
+                                        <Lock size={10} />
+                                    </span>
+                                    <span className="text-[10px] text-amber-500 font-medium opacity-0 w-0 group-hover/lock:opacity-100 group-hover/lock:w-auto transition-all duration-300 overflow-hidden whitespace-nowrap">
+                                        Sona Erdi
+                                    </span>
+                                </div>
+                            </>
+                        )}
                         <span className="opacity-60">• Detay</span>
                     </Button>
                 </div>
@@ -212,6 +225,19 @@ export function PollDisplay({
                     onClick={() => onViewDetails(post.id)}
                 >
                     <span className="font-semibold">{post.options.reduce((acc, curr) => acc + curr.voteCount, 0)} oy</span>
+                    {isExpired && (
+                        <>
+                            <span className="opacity-60 text-[8px]">•</span>
+                            <div className="flex items-center gap-1 group/lock relative cursor-help">
+                                <span className="text-amber-500 bg-amber-500/10 p-1 rounded">
+                                    <Lock size={10} />
+                                </span>
+                                <span className="text-[10px] text-amber-500 font-medium opacity-0 w-0 group-hover/lock:opacity-100 group-hover/lock:w-auto transition-all duration-300 overflow-hidden whitespace-nowrap">
+                                    Sona Erdi
+                                </span>
+                            </div>
+                        </>
+                    )}
                     <span className="opacity-60">• Detay</span>
                 </Button>
             </div>

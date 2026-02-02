@@ -7,6 +7,10 @@ using Novelytical.Application.DTOs;
 using System.Globalization;
 using Novelytical.Application.Interfaces;
 using Pgvector;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+
 using Novelytical.Services;
 
 namespace Novelytical.Worker
@@ -499,6 +503,13 @@ namespace Novelytical.Worker
                     Slug = slug, // Slug'ı SourceUrl'den çıkarılmış haliyle set et
                     NovelTags = new List<NovelTag>()
                 };
+
+                // Calculate Dominant Color for New Novel
+                if (!string.IsNullOrEmpty(scrapedData.CoverUrl))
+                {
+                    dbNovel.DominantColor = await GetDominantColorFromUrl(scrapedData.CoverUrl);
+                }
+
                 dbContext.Novels.Add(dbNovel);
             }
 
@@ -524,6 +535,15 @@ namespace Novelytical.Worker
             { 
                 dbNovel.CoverUrl = scrapedData.CoverUrl; 
                 hasChanges = true; 
+                // Recalculate color on cover change
+                dbNovel.DominantColor = await GetDominantColorFromUrl(scrapedData.CoverUrl);
+            }
+            
+            // Fill missing color if cover exists
+            if (string.IsNullOrEmpty(dbNovel.DominantColor) && !string.IsNullOrEmpty(dbNovel.CoverUrl))
+            {
+                 dbNovel.DominantColor = await GetDominantColorFromUrl(dbNovel.CoverUrl);
+                 hasChanges = true;
             }
             
             if ((dbNovel.LastUpdated - scrapedData.LastUpdated).Duration() > TimeSpan.FromMinutes(5)) 
@@ -778,6 +798,37 @@ namespace Novelytical.Worker
         }
 
         #endregion
+
+        private async Task<string?> GetDominantColorFromUrl(string url)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+                
+                // Fetch image (small size if possible, otherwise rely on Resize)
+                var bytes = await client.GetByteArrayAsync(url);
+                using var image = Image.Load<Rgba32>(bytes);
+                
+                // Resize to 1x1 to get average color efficiently
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(1, 1),
+                    Sampler = KnownResamplers.Triangle
+                }));
+                
+                var pixel = image[0, 0];
+                return $"#{pixel.R:X2}{pixel.G:X2}{pixel.B:X2}";
+                
+                // Alternative: Use Quantize for "Dominant" vs "Average"
+                // For YouTube style backdrops, Average is usually safer/smoother than a specific dominant palette color.
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("🎨 Color extraction failed for {Url}: {Message}", url, ex.Message);
+                return null;
+            }
+        }
 
         #region Helpers
 

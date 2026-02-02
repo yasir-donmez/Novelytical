@@ -1,15 +1,26 @@
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import api from "@/lib/axios";
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
-import { Timestamp } from "firebase/firestore"; // Only for type compatibility if needed, but we should switch to string ISO dates or Date objects
+import { Timestamp } from "firebase/firestore";
 
 // Type Definitions
+export interface ChatMessage {
+    id: string;
+    text: string;
+    userId: string;
+    userDisplayName: string;
+    userAvatarUrl?: string;
+    createdAt: any;
+}
+
 export interface PollOption {
     id: number;
     text: string;
     voteCount: number;
     relatedNovelId?: number;
     relatedNovelTitle?: string;
-    relatedNovelCover?: string; // Mapped from CoverUrl
+    relatedNovelCover?: string;
 }
 
 export interface PostComment {
@@ -19,7 +30,7 @@ export interface PostComment {
     userDisplayName: string;
     userAvatarUrl?: string;
     content: string;
-    createdAt: string; // ISO string
+    createdAt: string;
 }
 
 export interface VoteInfo {
@@ -33,26 +44,31 @@ export interface VoteInfo {
 export interface Post {
     id: number;
     userId: string;
-    userDisplayName: string; // Mapped from UserName
-    userAvatarUrl?: string; // Mapped from UserImage
+    userDisplayName: string;
+    userAvatarUrl?: string;
     userFrame?: string;
     content: string;
-    type: 'text' | 'poll';
-    options?: PollOption[]; // Mapped from PollOptions
-    createdAt: string; // ISO string
-    expiresAt?: string; // ISO string
+    type: 'text' | 'poll' | 'room';
+    options?: PollOption[];
+    createdAt: string;
+    expiresAt?: string;
     userVotedOptionId?: number;
 
-    // UI Helpers (optional, can be computed)
+    // Room fields
+    roomTitle?: string;
+    participantCount?: number;
+
+    // UI Helpers 
     isExpired?: boolean;
 }
 
 // Request Types
 export interface CreatePostRequest {
     content: string;
-    type: 'text' | 'poll';
+    type: 'text' | 'poll' | 'room';
     options?: { text: string; relatedNovelId?: number }[];
     durationHours?: number;
+    roomTitle?: string;
 }
 
 export interface CreateCommentRequest {
@@ -71,17 +87,7 @@ export const initializeSignalR = async (
 ) => {
     if (connection) return connection;
 
-    // Use the API URL from environment files as base, defaulting to relative /api if not set
-    // Note: SignalR Hub connection string usually requires absolute path or same domain.
-    // If we use Next.js rewrites, '/hubs/community' might work.
-
-    // Ideally, connection string should match the API_URL but ending with /hubs/community
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
-    // Remove /api suffix if present to get base host, or just append distinct route if configured that way.
-    // Assuming API_URL points to "http://host:port" or "https://domain". 
-    // If API_URL is "http://localhost:5050", hub is at "http://localhost:5050/hubs/community"
-
-    // Robust replacement:
     const hubUrl = `${apiBase.replace(/\/api$/, '')}/hubs/community`;
 
     connection = new HubConnectionBuilder()
@@ -93,7 +99,7 @@ export const initializeSignalR = async (
     connection.on("ReceiveNewPost", (dto: any) => onNewPost(mapDtoToPost(dto)));
     connection.on("ReceivePollUpdate", (data: { postId: number, options: any[] }) => onPollUpdate(data.postId, data.options.map(mapDtoToPollOption)));
     connection.on("ReceivePostDeleted", (postId: number) => onPostDeleted(postId));
-    connection.on("ReceiveNewComment", (dto: any) => onNewComment(mapDtoToComment(dto))); // We need to confirm DTO structure matches
+    connection.on("ReceiveNewComment", (dto: any) => onNewComment(mapDtoToComment(dto)));
     connection.on("ReceiveCommentDeleted", (data: { postId: number, commentId: number }) => onCommentDeleted(data.postId, data.commentId));
 
     try {
@@ -104,6 +110,31 @@ export const initializeSignalR = async (
     }
 
     return connection;
+};
+
+// Room Chat Methods
+export const subscribeToRoomMessages = (roomId: number, callback: (messages: ChatMessage[]) => void) => {
+    const messagesRef = collection(db, "rooms", roomId.toString(), "messages");
+    const q = query(messagesRef, orderBy("createdAt", "desc"));
+
+    return onSnapshot(q, (snapshot) => {
+        const messages = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as ChatMessage));
+        callback(messages.reverse());
+    });
+};
+
+export const sendRoomMessage = async (roomId: number, text: string, user: any) => {
+    const messagesRef = collection(db, "rooms", roomId.toString(), "messages");
+    await addDoc(messagesRef, {
+        text,
+        userId: user.uid,
+        userDisplayName: user.displayName || "Anonim",
+        userAvatarUrl: user.photoURL || null,
+        createdAt: serverTimestamp()
+    });
 };
 
 // API Methods
@@ -119,8 +150,10 @@ export const getLatestPosts = async (count: number = 20): Promise<Post[]> => {
 
 export const getUserPosts = async (firebaseUid: string): Promise<Post[]> => {
     try {
-        const response = await api.get<any[]>(`/community/user/${firebaseUid}`);
-        return response.data.map(mapDtoToPost);
+        const response = await api.get<any>(`/community/user/${firebaseUid}`);
+        // Handle both array and object responses
+        const data = Array.isArray(response.data) ? response.data : [];
+        return data.map(mapDtoToPost);
     } catch (error) {
         console.error("Error fetching user posts:", error);
         return [];
@@ -190,7 +223,7 @@ export const addComment = async (postId: number, content: string): Promise<PostC
     }
 };
 
-export const deleteComment = async (postId: number, commentId: number) => { // postId required for checking logic if needed
+export const deleteComment = async (postId: number, commentId: number) => {
     try {
         await api.delete(`/community/comments/${commentId}`);
         return { success: true };
@@ -199,7 +232,6 @@ export const deleteComment = async (postId: number, commentId: number) => { // p
         throw error;
     }
 };
-
 
 // Mappers
 function mapDtoToPost(dto: any): Post {
@@ -215,9 +247,14 @@ function mapDtoToPost(dto: any): Post {
         expiresAt: dto.expiresAt,
         options: dto.options ? dto.options.map(mapDtoToPollOption) : [],
         userVotedOptionId: dto.userVotedOptionId,
-        isExpired: dto.expiresAt ? new Date(dto.expiresAt) < new Date() : false
+        isExpired: dto.expiresAt ? new Date(dto.expiresAt) < new Date() : false,
+        roomTitle: dto.roomTitle || dto.content,
+        participantCount: dto.participantCount || 0
     };
 }
+
+// ... keep Legacy Wrappers ...
+// ... rest of file ...
 
 // --- Legacy / Missing Exports Stubs ---
 // --- Legacy compatibility wrappers ---

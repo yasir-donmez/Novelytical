@@ -8,7 +8,7 @@ namespace Novelytical.Application.Features.Reviews.Queries.GetCommentsByUser;
 
 public class GetCommentsByUserQuery : IRequest<Response<List<CommentDto>>>
 {
-    public string FirebaseUid { get; set; }
+    public required string FirebaseUid { get; set; }
 }
 
 public class GetCommentsByUserQueryHandler : IRequestHandler<GetCommentsByUserQuery, Response<List<CommentDto>>>

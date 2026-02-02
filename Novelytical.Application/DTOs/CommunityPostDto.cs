@@ -13,7 +13,7 @@ public class CommunityPostDto
     public string? UserFrame { get; set; }
 
     public string Content { get; set; } = string.Empty;
-    public string Type { get; set; } = "text"; // "text" or "poll"
+    public string Type { get; set; } = "text"; // "text", "poll", "room"
 
     public DateTime CreatedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }
@@ -21,6 +21,10 @@ public class CommunityPostDto
     // Poll Specific
     public List<PollOptionDto> Options { get; set; } = new();
     public int? UserVotedOptionId { get; set; }
+
+    // Room Specific
+    public string? RoomTitle { get; set; }
+    public int? ParticipantCount { get; set; }
 }
 
 public class PollOptionDto

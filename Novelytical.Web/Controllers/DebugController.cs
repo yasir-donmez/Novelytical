@@ -42,7 +42,7 @@ public class DebugController : ControllerBase
     [HttpPost("trigger-job")]
     public IActionResult Trigger()
     {
-        Hangfire.RecurringJob.Trigger("update-rankings");
+        Hangfire.RecurringJob.TriggerJob("update-rankings");
         return Ok("Job triggered. Check logs.");
     }
 }

@@ -8,7 +8,7 @@ namespace Novelytical.Application.Features.Reviews.Queries.GetReviewsByUser;
 
 public class GetReviewsByUserQuery : IRequest<Response<List<ReviewDto>>>
 {
-    public string FirebaseUid { get; set; }
+    public required string FirebaseUid { get; set; }
 }
 
 public class GetReviewsByUserQueryHandler : IRequestHandler<GetReviewsByUserQuery, Response<List<ReviewDto>>>

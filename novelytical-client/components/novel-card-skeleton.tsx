@@ -43,9 +43,9 @@ export function NovelCardSkeleton() {
                     {/* Content Section: Must match NovelCard padding and flex-grow */}
                     {/* NovelCard: px-4 pb-2 pt-3 flex-grow */}
                     <CardContent className="px-4 pb-2 pt-3 flex-grow">
-                        {/* Title: 3.5rem total (2 lines * leading-7) */}
-                        {/* We use a flex-col justify-center to mimic the vertical alignment of text lines */}
-                        <div className="min-h-[2.5rem] mb-2 flex flex-col justify-center gap-1">
+                        {/* Title: NovelCard uses h-10 fixed height */}
+                        <div className="h-10 mb-2 flex flex-col justify-center gap-1">
+                            {/* 2 lines of text skeleton */}
                             <Skeleton className="h-3.5 w-full rounded-sm opacity-60" />
                             <Skeleton className="h-3.5 w-2/3 rounded-sm opacity-60" />
                         </div>

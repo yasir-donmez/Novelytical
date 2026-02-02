@@ -1,5 +1,6 @@
 
 import { db } from "@/lib/firebase";
+import { BackendUser } from "@/types/backend-user";
 import {
     collection,
     doc,
@@ -11,7 +12,8 @@ import {
     getDocs,
     serverTimestamp,
     orderBy,
-    limit
+    limit,
+    onSnapshot
 } from "firebase/firestore";
 
 const USERS_COLLECTION = "users";
@@ -110,6 +112,11 @@ export const UserService = {
         if (bio !== undefined) updateData.bio = bio;
 
         await updateDoc(userRef, updateData);
+
+        // INVALIDATE CACHE
+        const cacheManager = getCacheManager();
+        await cacheManager.invalidateUserData(uid);
+        userProfileCache.delete(uid);
     },
 
     /**
@@ -207,6 +214,10 @@ export const UserService = {
      * Fetches the full user profile from Firestore.
      * Uses optimized multi-layered caching to prevent excessive reads (30 minute TTL).
      */
+    /**
+     * Fetches the full user profile from Firestore.
+     * Uses optimized multi-layered caching to prevent excessive reads (30 minute TTL).
+     */
     async getUserProfile(uid: string): Promise<UserProfile | null> {
         const cacheManager = getCacheManager();
         const cacheKey = CacheKeys.userProfile(uid);
@@ -261,14 +272,47 @@ export const UserService = {
     },
 
     /**
+     * Subscribes to real-time updates for a user profile.
+     * Bypasses the custom cache mechanism to ensure fresh data (e.g., for privacy settings).
+     */
+    subscribeToUserProfile(uid: string, onUpdate: (profile: UserProfile | null) => void): () => void {
+        const docRef = doc(db, USERS_COLLECTION, uid);
+        return onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const profile: UserProfile = {
+                    uid,
+                    username: data.username,
+                    email: data.email,
+                    photoURL: data.photoURL,
+                    displayName: data.displayName || data.username,
+                    bio: data.bio || undefined,
+                    frame: data.selectedFrame,
+                    createdAt: data.createdAt,
+                    privacySettings: data.privacySettings,
+                    notificationSettings: data.notificationSettings
+                };
+                onUpdate(profile);
+            } else {
+                onUpdate(null);
+            }
+        }, (error) => {
+            console.error("Error subscribing to profile:", error);
+            onUpdate(null);
+        });
+    },
+
+    /**
      * Updates user notification settings.
      */
     async updateNotificationSettings(uid: string, settings: NotificationSettings): Promise<void> {
         const userRef = doc(db, USERS_COLLECTION, uid);
-        // We use setDoc with merge: true to ensure we don't overwrite other fields if the doc exists
-        // or create it if it doesn't (though user doc should exist).
-        // Actually updateDoc is safer if we assume user exists.
         await updateDoc(userRef, { notificationSettings: settings });
+
+        // INVALIDATE CACHE
+        const cacheManager = getCacheManager();
+        await cacheManager.invalidateUserData(uid);
+        userProfileCache.delete(uid);
     },
 
     /**
@@ -286,20 +330,22 @@ export const UserService = {
         }
         return null;
     },
+
     /**
      * Updates user privacy settings.
      */
     async updatePrivacySettings(uid: string, settings: PrivacySettings): Promise<void> {
         const userRef = doc(db, USERS_COLLECTION, uid);
         await updateDoc(userRef, { privacySettings: settings });
+
+        // INVALIDATE CACHE
+        const cacheManager = getCacheManager();
+        await cacheManager.invalidateUserData(uid);
+        userProfileCache.delete(uid);
     },
 
     /**
-     * Syncs user profile with the backend (Postgres).
-     */
-    /**
-     * Syncs user profile with the backend (Postgres).
-     * Call this after Firebase Auth login/signup to ensure DB consistency.
+     * Updates user profile on backend (Postgres).
      */
     /**
      * Updates user profile on backend (Postgres).
@@ -307,7 +353,8 @@ export const UserService = {
     async updateUser(userId: string, data: { displayName?: string, bio?: string, avatarUrl?: string }): Promise<void> {
         const api = (await import("@/lib/axios")).default;
         try {
-            await api.put(`/users/${userId}`, data);
+            // MATCHES: UsersController.cs -> [HttpPut("profile")] -> UpdateProfile
+            await api.put(`/users/profile`, data);
         } catch (error) {
             console.error("Error updating user backend:", error);
             throw error;
@@ -330,6 +377,20 @@ export const UserService = {
         } catch (error) {
             console.error("Error syncing user to backend:", error);
             // Don't throw to prevent blocking the UI, but log it.
+        }
+    },
+
+    /**
+     * Fetches the backend user profile (Postgres).
+     */
+    async getBackendUser(): Promise<BackendUser | null> {
+        const api = (await import("@/lib/axios")).default;
+        try {
+            const response = await api.get<BackendUser>('/users/me');
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching backend user:", error);
+            return null;
         }
     }
 };

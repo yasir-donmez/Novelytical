@@ -13,6 +13,7 @@ namespace Novelytical.Data
         public string Slug { get; set; } = string.Empty; // URL-friendly ID
         public string? Description { get; set; }
         public string? CoverUrl { get; set; }
+        public string? DominantColor { get; set; } // Hex Color (e.g. #FF5500)
         public string SourceUrl { get; set; } = string.Empty;
         
         // --- 2. Content Details ---

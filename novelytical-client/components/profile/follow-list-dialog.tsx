@@ -62,8 +62,10 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
             await FollowService.unfollowUser(currentUser.uid, targetId);
             setFollowing(prev => prev.filter(u => u.uid !== targetId));
             toast.success("Takipten çıkıldı.");
-        } catch (error) {
-            toast.error("İşlem başarısız.");
+        } catch (error: any) {
+            console.error(error);
+            const msg = error?.message || (typeof error === 'string' ? error : "İşlem başarısız.");
+            toast.error(msg);
         }
     };
 
@@ -74,19 +76,20 @@ export function FollowListDialog({ userId, isOpen, onClose, defaultTab = "follow
             await FollowService.unfollowUser(followerId, currentUser.uid);
             setFollowers(prev => prev.filter(u => u.uid !== followerId));
             toast.success("Takipçi çıkarıldı.");
-        } catch (error) {
-            toast.error("İşlem başarısız.");
+        } catch (error: any) {
+            console.error(error);
+            const msg = error?.message || (typeof error === 'string' ? error : "İşlem başarısız.");
+            toast.error(msg);
         }
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md bg-zinc-900 border-white/10">
-                <DialogHeader>
-                    <DialogTitle className="text-center">{isOwnProfile ? "Bağlantılarım" : "Bağlantılar"}</DialogTitle>
-                </DialogHeader>
+                <DialogTitle className="sr-only">Bağlantılar</DialogTitle>
+                {/* Header Removed as requested */}
 
-                <Tabs defaultValue={defaultTab} className="w-full">
+                <Tabs defaultValue={defaultTab} className="w-full mt-6">
                     <div className="flex items-center justify-center mb-4">
                         <TabsList className="inline-flex w-max justify-center h-auto p-1 flex-nowrap bg-black/5 dark:bg-zinc-800/40 border border-black/5 dark:border-white/10 rounded-lg">
                             <TabsTrigger value="followers" className="flex-none px-4 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md transition-all">

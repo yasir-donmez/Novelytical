@@ -60,6 +60,7 @@ public class GetNovelByIdQueryHandler : IRequestHandler<GetNovelByIdQuery, Respo
             ChapterCount = novel.ChapterCount,
             LastUpdated = novel.LastUpdated,
             CoverUrl = novel.CoverUrl,
+            DominantColor = novel.DominantColor,
             SourceUrl = novel.SourceUrl,
             Tags = novel.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).ToList()
         };

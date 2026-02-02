@@ -126,4 +126,13 @@ public class CommunityRepository : ICommunityRepository
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<List<PollVote>> GetUserVotesForPostsAsync(List<int> postIds, Guid userId)
+    {
+        if (!postIds.Any()) return new List<PollVote>();
+
+        return await _context.PollVotes
+            .Where(v => postIds.Contains(v.PollId) && v.UserId == userId)
+            .ToListAsync();
+    }
 }

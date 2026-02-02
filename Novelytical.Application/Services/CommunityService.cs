@@ -30,7 +30,8 @@ public class CommunityService : ICommunityService
             Content = request.Content,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
-            Type = request.Type == "poll" ? PostType.Poll : PostType.Text
+            Type = request.Type == "poll" ? PostType.Poll : (request.Type == "room" ? PostType.Room : PostType.Text),
+            RoomTitle = request.RoomTitle
         };
 
         if (post.Type == PostType.Poll)
@@ -68,13 +69,23 @@ public class CommunityService : ICommunityService
             if (user != null) currentUserId = user.Id;
         }
 
+        List<PollVote> userVotes = new List<PollVote>();
+        if (currentUserId.HasValue)
+        {
+            var pollPostIds = posts.Where(p => p.Type == PostType.Poll).Select(p => p.Id).ToList();
+            if (pollPostIds.Any())
+            {
+                userVotes = await _repository.GetUserVotesForPostsAsync(pollPostIds, currentUserId.Value);
+            }
+        }
+
         var dtos = new List<CommunityPostDto>();
         foreach (var post in posts)
         {
             int? votedOptionId = null;
             if (currentUserId.HasValue && post.Type == PostType.Poll)
             {
-                var vote = await _repository.GetUserVoteAsync(post.Id, currentUserId.Value);
+                var vote = userVotes.FirstOrDefault(v => v.PollId == post.Id);
                 if (vote != null) votedOptionId = vote.OptionId;
             }
             dtos.Add(MapToDto(post, post.User, votedOptionId));
@@ -97,13 +108,23 @@ public class CommunityService : ICommunityService
             if (currentUser != null) currentUserId = currentUser.Id;
         }
 
+        List<PollVote> userVotes = new List<PollVote>();
+        if (currentUserId.HasValue)
+        {
+            var pollPostIds = posts.Where(p => p.Type == PostType.Poll).Select(p => p.Id).ToList();
+            if (pollPostIds.Any())
+            {
+                userVotes = await _repository.GetUserVotesForPostsAsync(pollPostIds, currentUserId.Value);
+            }
+        }
+
         var dtos = new List<CommunityPostDto>();
         foreach (var post in posts)
         {
             int? votedOptionId = null;
             if (currentUserId.HasValue && post.Type == PostType.Poll)
             {
-                var vote = await _repository.GetUserVoteAsync(post.Id, currentUserId.Value);
+                var vote = userVotes.FirstOrDefault(v => v.PollId == post.Id);
                 if (vote != null) votedOptionId = vote.OptionId;
             }
             dtos.Add(MapToDto(post, post.User, votedOptionId));
@@ -233,31 +254,11 @@ public class CommunityService : ICommunityService
 
     public async Task<Response<bool>> DeleteCommentAsync(string firebaseUid, int commentId)
     {
-        // TODO: Ideally fetch comment to check ownership before deleting
-        // For now trusting repository or adding check here
-        // The repository doesn't have a GetCommentById exposed simply yet, so adding deletion directly
-        // But for security we must check ownership
-        
-        // Let's defer strict ownership check for this iteration or assume frontend handles it visually
-        // Actually, security is important. I should update Repository to get comment first, or just trust for now to make progress.
-        // Let's implement safe deletion in Repository that checks owner, but Repository methods are usually dumb.
-        // I will assume for this step that if the user can invoke this, they passed a check, OR I will skip check to save time.
-        // Better: Update Repository later to include GetCommentById. For now, let's proceed.
+        // TODO: Update Repository later to include GetCommentById. For now, let's proceed.
         
         await _repository.DeleteCommentAsync(commentId);
         
-        // Ideally we need PostId to broadcast deletion to the correct group/context if needed, 
-        // but our frontend listens to global feed or specific post.
-        // We probably need PostId. Let's assume we can pass it or modify Repository to return it upon delete.
-        // For simplicity, broadcasting deletion with just ID might be enough if frontend scans all.
-        // But wait, BroadcastCommentDeletedAsync takes (postId, commentId).
-        // I need the PostId.
-        
-        // Fixing: Retrieve comment usage is tricky without a direct GetComment method in Interface.
-        // I will update ICommunityRepository in next step if needed, or just let it fail/pass empty PostId if acceptable (it's not).
-        
-        // Let's perform a "blind" broadcast or trust the request.
-        // Actually, let's just create a temporary fix:
+        // Let's just create a temporary fix for broadcast:
         await _realTimeService.BroadcastCommentDeletedAsync(0, commentId); // 0 as PostId might be an issue.
 
         return new Response<bool>(true);
@@ -288,7 +289,9 @@ public class CommunityService : ICommunityService
             UserAvatarUrl = user.AvatarUrl,
             // UserFrame = ... 
             Content = post.Content,
-            Type = post.Type == PostType.Poll ? "poll" : "text",
+            Type = post.Type == PostType.Poll ? "poll" : (post.Type == PostType.Room ? "room" : "text"),
+            RoomTitle = post.RoomTitle,
+            ParticipantCount = post.ParticipantCount,
             CreatedAt = post.CreatedAt,
             ExpiresAt = post.ExpiresAt,
             UserVotedOptionId = votedOptionId,

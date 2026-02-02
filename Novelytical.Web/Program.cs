@@ -49,12 +49,15 @@ try
     // 🚀 Phase 2: Clean Architecture Layers
     builder.Services.AddDataLayer(connectionString!);          // Data layer (DbContext, Repositories)
     builder.Services.AddApplicationLayer();                    // Application layer (Services, Cache)
+    builder.Services.AddScoped<Novelytical.Application.Interfaces.INotificationService, Novelytical.Web.Services.FirebaseNotificationService>();
     
     // Health Check servisi - Redis health check with timeout optimization
     var healthChecksBuilder = builder.Services.AddHealthChecks()
         .AddNpgSql(connectionString!);
     
     // Add Redis health check with short timeout to prevent deploy timeouts
+    builder.Services.AddMemoryCache(); // 🧠 Always enable In-Memory Cache (Required for Hybrid Caching)
+
     var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
     if (!string.IsNullOrEmpty(redisConnectionString))
     {
@@ -78,20 +81,20 @@ try
             options.InstanceName = "Novelytical_";
             // Aggressive timeout settings for Upstash Redis
             options.ConfigurationOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
-            options.ConfigurationOptions.ConnectTimeout = 2000; // 2 seconds
-            options.ConfigurationOptions.SyncTimeout = 2000;    // 2 seconds
+            options.ConfigurationOptions.ConnectTimeout = 5000; // 5 seconds
+            options.ConfigurationOptions.SyncTimeout = 5000;    // 5 seconds
             options.ConfigurationOptions.AbortOnConnectFail = false;
-            options.ConfigurationOptions.ConnectRetry = 1;      // Only 1 retry
+            options.ConfigurationOptions.ConnectRetry = 3;      // Increase retry
         });
         
         // 🎯 Direct Redis Access for Performance Optimization
         builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
         {
             var config = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
-            config.ConnectTimeout = 2000;
-            config.SyncTimeout = 2000;
+            config.ConnectTimeout = 5000;
+            config.SyncTimeout = 5000;
             config.AbortOnConnectFail = false;
-            config.ConnectRetry = 1;
+            config.ConnectRetry = 3;
             return StackExchange.Redis.ConnectionMultiplexer.Connect(config);
         });
         builder.Services.AddSingleton<Novelytical.Application.Interfaces.IRedisService, Novelytical.Web.Services.RedisService>();
@@ -110,7 +113,7 @@ try
     else
     {
         // Fallback to memory cache
-        builder.Services.AddMemoryCache();
+        // builder.Services.AddMemoryCache(); // ❌ Already registered globally above
         // Add IDistributedCache implementation using MemoryCache
         builder.Services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache, Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache>();
         
@@ -135,6 +138,9 @@ try
     builder.Services.AddSignalR(); // 📡 Real-time support
 
 
+
+    // 🚀 Response Caching
+    builder.Services.AddResponseCaching();
 
     // 🌐 CORS - Frontend erişimi için
     builder.Services.AddCors(options =>
@@ -187,9 +193,10 @@ try
     
     if (File.Exists(serviceAccountPath))
     {
+        using var stream = File.OpenRead(serviceAccountPath);
         FirebaseApp.Create(new AppOptions()
         {
-            Credential = GoogleCredential.FromFile(serviceAccountPath)
+            Credential = GoogleCredential.FromStream(stream)
         });
     }
     else
@@ -277,6 +284,10 @@ try
     // 🌐 CORS - Must be after UseHttpsRedirection and before UseRouting
     app.UseCors("AllowFrontend");
     
+    // 🚀 Response Caching - Must be after CORS and before Routing/Auth? 
+    // Actually correct order is: Cors -> ResponseCaching -> Routing -> Auth
+    app.UseResponseCaching();
+    
     // ⚡ Rate Limiting - Must be after CORS and before UseRouting
     app.UseRateLimiter();
     
@@ -285,30 +296,34 @@ try
     app.UseAuthentication(); // 🔐 Kimlik Doğrulama
     app.UseAuthorization();
     
-    // 🔄 Hangfire Dashboard (Development only - no auth for simplicity)
+    // 🔄 Hangfire Dashboard (Development only)
     if (app.Environment.IsDevelopment())
     {
         app.UseHangfireDashboard("/hangfire");
-        
-        // 🎯 Schedule Background Jobs
-        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Services.StatsBatchService>(
-            "flush-stats-to-redis",
-            service => service.FlushToRedis(),
-            "*/5 * * * *" // Every 5 minutes
-        );
-        
-        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.UpdateRankingsJob>(
-            "update-rankings",
-            job => job.Execute(),
-            "0 * * * *" // Hourly
-        );
-        
-        Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
-            "daily-stats-reset",
-            job => job.Execute(),
-            "0 0 * * *" // Daily at midnight
-        );
     }
+
+    // 🎯 Schedule Background Jobs (Global - Runs in Prod too)
+    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Services.StatsBatchService>(
+        "flush-stats-to-redis",
+        service => service.FlushToRedis(),
+        "*/5 * * * *" // Every 5 minutes
+    );
+    
+    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.UpdateRankingsJob>(
+        "update-rankings",
+        job => job.Execute(),
+        "0 * * * *" // Hourly
+    );
+    
+    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
+        "daily-stats-reset",
+        job => job.Execute(),
+        "0 0 * * *" // Daily at midnight
+    );
+
+    // 🚀 PERMANENT FIX: Trigger Rankings Update immediately on startup
+    // This ensures cache is populated even if the scheduled job hasn't run yet.
+    Hangfire.BackgroundJob.Enqueue<Novelytical.Web.Jobs.UpdateRankingsJob>(job => job.Execute());
 
     app.MapControllers();
     app.MapHub<Novelytical.Web.Hubs.CommunityHub>("/hubs/community"); // 📡 SignalR Hub

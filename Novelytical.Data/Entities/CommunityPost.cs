@@ -6,7 +6,8 @@ namespace Novelytical.Data.Entities;
 public enum PostType
 {
     Text = 0,
-    Poll = 1
+    Poll = 1,
+    Room = 2
 }
 
 public class CommunityPost
@@ -19,6 +20,10 @@ public class CommunityPost
     public string Content { get; set; } = string.Empty; // The question or text content
     
     public PostType Type { get; set; } = PostType.Text;
+    
+    // Room Spec
+    public string? RoomTitle { get; set; }
+    public int? ParticipantCount { get; set; } // Optional/Cached
 
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

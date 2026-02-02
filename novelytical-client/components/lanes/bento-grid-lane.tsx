@@ -15,7 +15,7 @@ interface BentoGridLaneProps {
 export async function BentoGridLane({ title, icon }: BentoGridLaneProps) {
     let novels: NovelListDto[] = [];
     try {
-        const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc', revalidate: 3600 });
+        const res = await fetchNovels({ pageSize: 7, sortOrder: 'date_desc', revalidate: 60 });
         novels = res.data?.slice(0, 7) || [];
     } catch (error) {
         console.error(`Failed to fetch Bento Grid Lane:`, error);

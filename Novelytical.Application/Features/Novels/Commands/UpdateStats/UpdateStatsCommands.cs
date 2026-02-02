@@ -54,13 +54,13 @@ public class UpdateStatsCommandHandler :
         _batchService = batchService;
     }
 
-    public async Task<Response<bool>> Handle(IncrementSiteViewCommand request, CancellationToken cancellationToken)
+    public Task<Response<bool>> Handle(IncrementSiteViewCommand request, CancellationToken cancellationToken)
     {
         // Use batch service to buffer views in memory -> Redis -> Nightly DB Sync
         _batchService.AccumulateView(request.NovelId);
         
         // Return success immediately (fire and forget)
-        return new Response<bool>(true);
+        return Task.FromResult(new Response<bool>(true));
     }
 
     public async Task<Response<bool>> Handle(UpdateCommentCountCommand request, CancellationToken cancellationToken)

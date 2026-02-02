@@ -36,33 +36,30 @@ export default function NotificationBell() {
     useEffect(() => {
         if (!user) return;
 
-        // Single fetch to save quota instead of realtime listener
-        const fetchNotifications = async () => {
-            try {
-                const q = query(
-                    collection(db, "notifications"),
-                    where("recipientId", "==", user.uid),
-                    where("isRead", "==", false),
-                    limit(20) // CRITICAL: Limit reads to prevent quota explosion if spam exists
-                );
+        // CRITICAL: Real-time listener for "Instant" feedback
+        const q = query(
+            collection(db, "notifications"),
+            where("recipientId", "==", user.uid),
+            where("isRead", "==", false),
+            limit(20)
+        );
 
-                const snapshot = await import("firebase/firestore").then(mod => mod.getDocs(q));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const unreadData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Notification));
 
-                const unreadData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                } as Notification));
+            // Client-side sort by createdAt descending
+            unreadData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
 
-                unreadData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            setNotifications(unreadData);
+            setUnreadCount(unreadData.length);
+        }, (error) => {
+            console.error("Error subscribing to notifications:", error);
+        });
 
-                setNotifications(unreadData);
-                setUnreadCount(unreadData.length);
-            } catch (error) {
-                console.error("Error fetching notifications:", error);
-            }
-        };
-
-        fetchNotifications();
+        return () => unsubscribe();
     }, [user?.uid]);
 
     const handleRead = async (id: string, link: string) => {

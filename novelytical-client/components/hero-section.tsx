@@ -67,7 +67,7 @@ export function HeroSection({ novels }: HeroSectionProps) {
                     </div>
                 </div>
 
-                <div className="w-full max-w-2xl mx-auto mt-8 transform transition-all hover:scale-[1.02]">
+                <div className="w-full max-w-2xl mx-auto mt-8 transform transition-all">
                     <SearchBar />
                 </div>
             </div>

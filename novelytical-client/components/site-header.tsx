@@ -12,13 +12,30 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { CurvedBottomNav } from "@/components/curved-bottom-nav";
 
+import { usePathname } from "next/navigation";
+import { SearchBar } from "@/components/search-bar";
+
 export function SiteHeader() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [passedHero, setPassedHero] = useState(false);
+    const pathname = usePathname();
+
+    // Determine if we are on a discovery page (Home or Romanlar) where the Hero search bar exists
+    const isDiscoveryPage = pathname === "/" || pathname === "/romanlar";
+    const showNavbarSearch = !isDiscoveryPage || passedHero;
 
     useEffect(() => {
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10);
+            const scrollY = window.scrollY;
+            setIsScrolled(scrollY > 10);
+
+            // Logic for showing search bar on homepage/romanlar after scrolling past hero
+            // Hero is 85vh, we show navbar search after ~60vh to transition in
+            if (typeof window !== 'undefined') {
+                const heroThreshold = window.innerHeight * 0.6;
+                setPassedHero(scrollY > heroThreshold);
+            }
         };
 
         // Check immediately on mount
@@ -50,48 +67,60 @@ export function SiteHeader() {
                 style={{ paddingRight: 'var(--removed-body-scroll-bar-size, 0px)' }}
             >
                 <div className="container flex h-16 items-center justify-between px-4 sm:px-12 lg:px-16 xl:px-24">
-                    <div className="flex items-center gap-6 md:gap-8">
-                        <Link href="/" className="flex items-center gap-1 group relative z-50" onClick={() => setMobileMenuOpen(false)}>
-                            <Image
-                                src="/logo.png"
-                                alt="N"
-                                width={40}
-                                height={40}
-                                className="transition-transform group-hover:scale-110 duration-300"
-                            />
-                            <span className="font-bold text-xl group-hover:text-primary transition-colors">
-                                ovelytical
-                            </span>
-                        </Link>
-                        <nav className="hidden md:flex items-center gap-6">
-                            <Link
-                                href="/"
-                                className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
-                            >
-                                Ana Sayfa
+                    <div className="flex items-center gap-6 md:gap-8 flex-1">
+                        <div className="flex items-center gap-6 md:gap-8 shrink-0">
+                            <Link href="/" className="flex items-center gap-1 group relative z-50" onClick={() => setMobileMenuOpen(false)}>
+                                <Image
+                                    src="/logo.png"
+                                    alt="N"
+                                    width={40}
+                                    height={40}
+                                    className="transition-transform group-hover:scale-110 duration-300"
+                                />
+                                <span className="font-bold text-xl group-hover:text-primary transition-colors">
+                                    ovelytical
+                                </span>
                             </Link>
-                            <Link
-                                href="/romanlar"
-                                className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
-                            >
-                                Romanlar
-                            </Link>
-                            <Link
-                                href="/yazarlar"
-                                className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
-                            >
-                                Yazarlar
-                            </Link>
-                            <Link
-                                href="/topluluk"
-                                className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
-                            >
-                                Topluluk
-                            </Link>
-                        </nav>
+                            <nav className="hidden md:flex items-center gap-6">
+                                <Link
+                                    href="/"
+                                    className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
+                                >
+                                    Ana Sayfa
+                                </Link>
+                                <Link
+                                    href="/romanlar"
+                                    className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
+                                >
+                                    Romanlar
+                                </Link>
+                                <Link
+                                    href="/yazarlar"
+                                    className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
+                                >
+                                    Yazarlar
+                                </Link>
+                                <Link
+                                    href="/topluluk"
+                                    className="text-sm font-medium transition-colors hover:text-primary text-foreground/80 hover:bg-muted/50 px-3 py-2 rounded-md"
+                                >
+                                    Topluluk
+                                </Link>
+                            </nav>
+                        </div>
+
+                        {/* Navbar Search Bar - Centered/Aligned */}
+                        {showNavbarSearch && (
+                            <div className="hidden lg:block flex-1 max-w-md mx-6 animate-in fade-in zoom-in-95 duration-300">
+                                <SearchBar variant="navbar" />
+                            </div>
+                        )}
+
+                        {/* Spacer if search bar is hidden or on smaller screens to push actions to right */}
+                        {(!showNavbarSearch || true) && <div className="flex-1 lg:hidden" />}
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
                         <div className="hidden md:flex items-center gap-4">
                             <NotificationBell />
                             <UserNav />

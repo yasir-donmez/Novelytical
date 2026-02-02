@@ -35,6 +35,8 @@ export interface Notification {
 
 const COLLECTION_NAME = "notifications";
 
+import { UserService } from "./user-service";
+
 export const createNotification = async (
     recipientId: string,
     type: NotificationType,
@@ -49,6 +51,30 @@ export const createNotification = async (
 ) => {
     try {
         if (recipientId === senderId) return; // Don't notify self
+
+        // 1. Check User Settings
+        // We use the cached getNotificationSettings from UserService
+        const settings = await UserService.getNotificationSettings(recipientId);
+
+        if (settings) {
+            let allowed = true;
+            // Map types to settings keys
+            if (type === 'reply' || type === 'like' || type === 'dislike') {
+                if (settings.pushReplies === false) allowed = false;
+            } else if (type === 'follow') {
+                if (settings.pushFollows === false) allowed = false;
+            } else if (type === 'system') {
+                // System updates usually bypass or use specific system setting, defaulting to allowed for critical ones
+                // or use 'pushNewChapters' if it's content related? 
+                // For generic system, we assume true unless blocked entirely?
+                // Current settings don't have "Block System".
+            }
+
+            if (!allowed) {
+                // console.log(`Notification suppressed by user settings: ${type} for ${recipientId}`);
+                return;
+            }
+        }
 
         const notificationData = {
             recipientId,

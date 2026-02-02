@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     );
 
                     // Fetch backend user details if needed for context
-                    // const details = await userService.getBackendUser();
-                    // setBackendUser(details);
+                    const details = await userService.getBackendUser();
+                    setBackendUser(details);
                 } catch (error) {
                     console.error("Backend sync failed:", error);
                 }

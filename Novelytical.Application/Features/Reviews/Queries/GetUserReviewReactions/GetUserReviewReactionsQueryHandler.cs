@@ -6,8 +6,8 @@ namespace Novelytical.Application.Features.Reviews.Queries.GetUserReviewReaction
 
 public class GetUserReviewReactionsQuery : IRequest<Response<Dictionary<int, int>>>
 {
-    public string FirebaseUid { get; set; }
-    public List<int> ReviewIds { get; set; }
+    public required string FirebaseUid { get; set; }
+    public required List<int> ReviewIds { get; set; }
 }
 
 public class GetUserReviewReactionsQueryHandler : IRequestHandler<GetUserReviewReactionsQuery, Response<Dictionary<int, int>>>

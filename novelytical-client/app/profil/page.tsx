@@ -56,7 +56,7 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-[#111111]">
+            <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
             </div>
         );
@@ -68,7 +68,7 @@ export default function ProfilePage() {
     const currentFrame = LEVEL_FRAMES.find(f => f.id === levelData?.selectedFrame) || LEVEL_FRAMES[0];
 
     return (
-        <div className="min-h-screen bg-[#111111] text-gray-100 pt-24 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-background text-gray-100 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
                 {/* Header Section (Profile Card) */}
                 <div className="bg-[#1a1a1a] rounded-2xl p-8 border border-white/5 shadow-xl mb-8 relative overflow-hidden">

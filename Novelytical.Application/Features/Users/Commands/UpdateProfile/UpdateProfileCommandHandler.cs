@@ -7,7 +7,7 @@ namespace Novelytical.Application.Features.Users.Commands.UpdateProfile;
 
 public class UpdateProfileCommand : IRequest<Response<bool>>
 {
-    public string Uid { get; set; }
+    public required string Uid { get; set; }
     public string? DisplayName { get; set; }
     public string? Bio { get; set; }
     public string? AvatarUrl { get; set; }

@@ -218,12 +218,17 @@ export const getCommentsByUserId = async (userId: string): Promise<Comment[]> =>
     try {
         const api = (await import("@/lib/axios")).default;
         // Backend endpoint: /api/reviews/user/{uid}/comments
-        const { data } = await api.get(`/reviews/user/${userId}/comments`);
+        const { data } = await api.get<any[] | { data: any[] }>(`/reviews/user/${userId}/comments`);
+
+        // Handle both raw array and wrapped response
+        const comments = Array.isArray(data) ? data : (data as { data: any[] }).data;
+
+        if (!comments || !Array.isArray(comments)) return [];
 
         // Map backend response 
         // Assuming backend returns a list of comments with SQL field names (PascalCase or camelCase)
         // We map them to the Comment interface expected by the frontend
-        return data.data.map((c: any) => ({
+        return comments.map((c: any) => ({
             id: c.id.toString(), // SQL ID is likely number
             novelId: c.novelId,
             userId: c.userId,
@@ -244,7 +249,7 @@ export const getCommentsByUserId = async (userId: string): Promise<Comment[]> =>
                 toDate: () => new Date(c.createdAt),
                 seconds: new Date(c.createdAt).getTime() / 1000,
                 nanoseconds: 0
-            }
+            } as any
         }));
     } catch (error) {
         console.error("Error fetching user comments from API:", error);

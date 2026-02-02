@@ -64,25 +64,34 @@ export interface Review extends Omit<ReviewDto, 'id' | 'novelId' | 'createdAt'> 
 export const reviewService = {
     // Queries
     async getComments(novelId: number, page: number = 1, pageSize: number = 10): Promise<CommentDto[]> {
-        const { data } = await api.get<{ data: CommentDto[] }>(`/reviews/novel/${novelId}/comments`, {
+        const { data } = await api.get<CommentDto[] | { data: CommentDto[] }>(`/reviews/novel/${novelId}/comments`, {
             params: { page, pageSize }
         });
-        return data.data;
+        // Handle both raw array and wrapped response
+        const comments = Array.isArray(data) ? data : (data as { data: CommentDto[] }).data;
+        return comments || [];
     },
 
     async getReviews(novelId: number, page: number = 1, pageSize: number = 5): Promise<ReviewDto[]> {
-        const { data } = await api.get<{ data: ReviewDto[] }>(`/reviews/novel/${novelId}/reviews`, {
+        const { data } = await api.get<ReviewDto[] | { data: ReviewDto[] }>(`/reviews/novel/${novelId}/reviews`, {
             params: { page, pageSize }
         });
-        return data.data;
+        // Handle both raw array and wrapped response
+        const reviews = Array.isArray(data) ? data : (data as { data: ReviewDto[] }).data;
+        return reviews || [];
     },
 
     async getReviewsByUserId(userId: string): Promise<Review[]> {
         try {
-            const { data } = await api.get<{ data: ReviewDto[] }>(`/reviews/user/${userId}/reviews`);
+            const { data } = await api.get<ReviewDto[] | { data: ReviewDto[] }>(`/reviews/user/${userId}/reviews`);
+
+            // Handle both raw array and wrapped response
+            const reviews = Array.isArray(data) ? data : (data as { data: ReviewDto[] }).data;
+
+            if (!reviews || !Array.isArray(reviews)) return [];
 
             // Map DTO to UI Model
-            return data.data.map(r => ({
+            return reviews.map(r => ({
                 ...r,
                 id: r.id.toString(),
                 novelId: r.novelId.toString(),
@@ -107,11 +116,16 @@ export const reviewService = {
 
     async getLatestReviews(count: number = 5): Promise<Review[]> {
         try {
-            const { data } = await api.get<{ data: ReviewDto[] }>(`/reviews/latest`, {
+            const { data } = await api.get<ReviewDto[] | { data: ReviewDto[] }>(`/reviews/latest`, {
                 params: { count }
             });
 
-            return data.data.map(r => ({
+            // Handle both raw array and wrapped response
+            const reviews = Array.isArray(data) ? data : (data as { data: ReviewDto[] }).data;
+
+            if (!reviews || !Array.isArray(reviews)) return [];
+
+            return reviews.map(r => ({
                 ...r,
                 id: r.id.toString(),
                 novelId: r.novelId.toString(),

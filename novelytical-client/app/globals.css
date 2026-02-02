@@ -260,44 +260,12 @@ body {
     animation-play-state: running;
   }
 
+  /* Rainbow border removed as per user request */
   .ai-search-input {
     position: relative;
   }
 
-  /* Ensure rainbow border ONLY shows on focus/click, never on hover */
-  .ai-search-input::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    padding: 2px;
-    background: linear-gradient(
-      90deg,
-      #ff0080,
-      #ff8c00,
-      #40e0d0,
-      #7b68ee,
-      #ff0080
-    );
-    background-size: 300% 300%;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    animation: rainbow-border 3s linear infinite;
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: -1;
-    pointer-events: none; /* Prevent interference */
-  }
 
-  .ai-search-input:hover::before {
-    /* Explicitly keep opacity 0 on hover unless focused */
-    opacity: 0;
-  }
-
-  .ai-search-input:focus-within::before {
-    opacity: 1;
-  }
 
   .typewriter {
     overflow: hidden;

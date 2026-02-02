@@ -1,7 +1,7 @@
 using Novelytical.Application.Wrappers;
 using Novelytical.Data;
 
-#nullable disable
+#nullable enable
 
 namespace Novelytical.Application.Interfaces;
 

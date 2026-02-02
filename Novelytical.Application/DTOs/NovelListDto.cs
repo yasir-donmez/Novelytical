@@ -17,6 +17,7 @@ public class NovelListDto
     public int ChapterCount { get; set; }
     public DateTime LastUpdated { get; set; }
     public string? CoverUrl { get; set; }
+    public string? DominantColor { get; set; }
     
     /// <summary>
     /// Global rank position based on composite score (1 = highest ranked)

@@ -15,3 +15,5 @@ export default function DiscoveryLayout({
         </>
     );
 }
+
+// Suspense and Skeleton removed as requested

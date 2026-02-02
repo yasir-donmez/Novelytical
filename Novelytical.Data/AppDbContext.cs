@@ -61,6 +61,31 @@ namespace Novelytical.Data
             modelBuilder.Entity<ReviewReaction>()
                 .HasIndex(rr => new { rr.UserId, rr.ReviewId })
                 .IsUnique();
+            // 🚀 Performance Improvements: Indexing for Sort & Filter
+            
+            // Novels: Used for "Latest Updates"
+            modelBuilder.Entity<Novel>()
+                .HasIndex(n => n.LastUpdated);
+
+            // Novels: Used for "Top Rated"
+            modelBuilder.Entity<Novel>()
+                .HasIndex(n => n.Rating);
+
+            // Novels: Used for filtering by Status
+            modelBuilder.Entity<Novel>()
+                .HasIndex(n => n.Status);
+
+            // Community: Feed sorting
+            modelBuilder.Entity<CommunityPost>()
+                .HasIndex(p => p.CreatedAt);
+            
+            // Reviews: Filter by Novel
+            modelBuilder.Entity<Review>()
+                .HasIndex(r => r.NovelId);
+
+            // 🔍 Composite Index: Status + Rating (Common filter usage)
+            modelBuilder.Entity<Novel>()
+                .HasIndex(n => new { n.Status, n.Rating });
         }
     }
 }

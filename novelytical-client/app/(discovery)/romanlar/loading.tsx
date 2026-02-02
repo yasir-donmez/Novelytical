@@ -5,7 +5,7 @@ export default function Loading() {
     return (
         <div className="space-y-4 min-h-screen -mt-20 relative z-10">
             {/* Visual Anchor Header - Matches RomanlarPage */}
-            <div className="relative z-10 bg-background/95 backdrop-blur-sm py-4 mb-2">
+            <div className="relative z-10 py-4 mb-2">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
                     <div className="h-12 w-12 rounded-2xl bg-zinc-900/80 border border-white/5 flex items-center justify-center shadow-sm shrink-0 ring-1 ring-white/5">
                         <Library className="h-6 w-6 text-blue-500 fill-blue-500/20" />

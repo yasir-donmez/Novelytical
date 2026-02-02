@@ -14,7 +14,7 @@ public class GetTopAuthorsQuery : IRequest<Response<AuthorsRankResponse>>
 
 public class AuthorsRankResponse
 {
-    public IEnumerable<object> Authors { get; set; }
+    public required IEnumerable<object> Authors { get; set; }
     public string? MaxScore { get; set; }
     public long TotalCount { get; set; }
     public int Page { get; set; }
@@ -78,7 +78,7 @@ public class GetTopAuthorsQueryHandler : IRequestHandler<GetTopAuthorsQuery, Res
         var totalCount = await _redis.SortedSetLengthAsync("authors:rankings");
 
         var response = new AuthorsRankResponse {
-            Authors = results.Where(r => r != null),
+            Authors = results.Where(r => r != null).Cast<object>(),
             MaxScore = maxScore,
             TotalCount = totalCount,
             Page = request.Page,
