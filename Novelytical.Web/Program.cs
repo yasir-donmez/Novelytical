@@ -303,27 +303,35 @@ try
     }
 
     // 🎯 Schedule Background Jobs (Global - Runs in Prod too)
-    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Services.StatsBatchService>(
-        "flush-stats-to-redis",
-        service => service.FlushToRedis(),
-        "*/5 * * * *" // Every 5 minutes
-    );
-    
-    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.UpdateRankingsJob>(
-        "update-rankings",
-        job => job.Execute(),
-        "0 * * * *" // Hourly
-    );
-    
-    Hangfire.RecurringJob.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
-        "daily-stats-reset",
-        job => job.Execute(),
-        "0 0 * * *" // Daily at midnight
-    );
+    // FIX: Use IRecurringJobManager from DI instead of static RecurringJob to avoid "JobStorage not initialized" error
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        var backgroundJobClient = scope.ServiceProvider.GetRequiredService<IBackgroundJobClient>();
 
-    // 🚀 PERMANENT FIX: Trigger Rankings Update immediately on startup
-    // This ensures cache is populated even if the scheduled job hasn't run yet.
-    Hangfire.BackgroundJob.Enqueue<Novelytical.Web.Jobs.UpdateRankingsJob>(job => job.Execute());
+        recurringJobManager.AddOrUpdate<Novelytical.Web.Services.StatsBatchService>(
+            "flush-stats-to-redis",
+            service => service.FlushToRedis(),
+            "*/5 * * * *" // Every 5 minutes
+        );
+        
+        recurringJobManager.AddOrUpdate<Novelytical.Web.Jobs.UpdateRankingsJob>(
+            "update-rankings",
+            job => job.Execute(),
+            Cron.Hourly // Hourly
+        );
+        
+        recurringJobManager.AddOrUpdate<Novelytical.Web.Jobs.DailyStatsResetJob>(
+            "daily-stats-reset",
+            job => job.Execute(),
+            Cron.Daily // Daily at midnight
+        );
+
+        // 🚀 PERMANENT FIX: Trigger Rankings Update immediately on startup
+        // This ensures cache is populated even if the scheduled job hasn't run yet.
+        backgroundJobClient.Enqueue<Novelytical.Web.Jobs.UpdateRankingsJob>(job => job.Execute());
+    }
+
 
     app.MapControllers();
     app.MapHub<Novelytical.Web.Hubs.CommunityHub>("/hubs/community"); // 📡 SignalR Hub
