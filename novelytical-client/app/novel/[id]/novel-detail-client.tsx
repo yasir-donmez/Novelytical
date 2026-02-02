@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RatingStars } from '@/components/rating-stars';
 import { SocialShare } from '@/components/social-share';
-import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info, TrendingUp, Send } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LibraryAction from '@/components/novel/library-action';
+import { ShareWithFriendDialog } from '@/components/share-with-friend-dialog';
 import { RatingCriteriaTooltip } from '@/components/rating-criteria-tooltip';
 import { getReviewsByNovelId } from '@/services/review-service';
 import { incrementViewCount, getNovelStats, calculateRank, type NovelStats } from '@/services/novel-stats-service';
@@ -27,6 +28,7 @@ interface NovelDetailClientProps {
 export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
     const router = useRouter();
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
     const descriptionRef = useRef<HTMLDivElement>(null);
 
     const toggleExpanded = () => {
@@ -281,6 +283,24 @@ export default function NovelDetailClient({ novel }: NovelDetailClientProps) {
                                 <SocialShare
                                     title={`${novel.title} - Novelytical'da keşfet!`}
                                     url={locationHref}
+                                />
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setIsShareDialogOpen(true)}
+                                    title="Arkadaşla Paylaş"
+                                    className="rounded-full w-9 h-9"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+
+                                <ShareWithFriendDialog
+                                    novelId={novel.id}
+                                    novelSlug={novel.slug}
+                                    novelTitle={novel.title}
+                                    novelCover={novel.coverUrl ?? null}
+                                    isOpen={isShareDialogOpen}
+                                    onClose={() => setIsShareDialogOpen(false)}
                                 />
                             </div>
                         </div>

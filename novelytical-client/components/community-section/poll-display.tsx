@@ -66,6 +66,7 @@ export function PollDisplay({
                                         src={opt.relatedNovelCover}
                                         alt={opt.text}
                                         fill
+                                        unoptimized
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                                         sizes="(max-width: 768px) 50vw, 33vw"
                                     />
