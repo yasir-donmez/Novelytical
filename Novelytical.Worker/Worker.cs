@@ -668,6 +668,31 @@ namespace Novelytical.Worker
                         {
                             _logger.LogError(ex, "Error initiating notification");
                         }
+
+                        // 🔔 Notify Library Subscribers (New Chapter)
+                        // This is separate because it targets readers, not author followers
+                        if (isNewChapter)
+                        {
+                            try
+                            {
+                                var notifService = _serviceProvider.GetService<Novelytical.Services.FirebaseNotificationService>();
+                                if (notifService != null)
+                                {
+                                     _ = notifService.NotifyNovelSubscribersAsync(
+                                        dbNovel.Id.ToString(),
+                                        dbNovel.Title,
+                                        dbNovel.CoverUrl ?? string.Empty
+                                     ).ContinueWith(t => 
+                                     {
+                                        if (t.IsFaulted) _logger.LogError(t.Exception, "Subscriber notification failed for {Title}", dbNovel.Title);
+                                     });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error initiating subscriber notification");
+                            }
+                        }
                     }
 
                     // 🧹 CACHE INVALIDATION (Redis)

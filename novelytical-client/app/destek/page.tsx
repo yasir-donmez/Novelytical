@@ -7,26 +7,53 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function DestekPage() {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        name: "",
+        username: "",
         email: "",
         subject: "",
         message: ""
+    });
+
+    // Autofill when user loads
+    useState(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                username: user.displayName || "",
+                email: user.email || ""
+            }));
+        }
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        // Simulate sending (you can integrate with email service later)
-        await new Promise(r => setTimeout(r, 1000));
+        try {
+            // Send to backend API
+            const api = (await import("@/lib/axios")).default;
+            await api.post('/support', {
+                ...formData,
+                userId: user?.uid // Optional: link to user if logged in
+            });
 
-        toast.success("Mesajınız alındı! En kısa sürede dönüş yapacağız.");
-        setFormData({ name: "", email: "", subject: "", message: "" });
-        setLoading(false);
+            toast.success("Mesajınız alındı! En kısa sürede dönüş yapacağız.");
+            if (!user) {
+                setFormData({ username: "", email: "", subject: "", message: "" });
+            } else {
+                setFormData(p => ({ ...p, subject: "", message: "" }));
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Mesaj gönderilemedi. Lütfen daha sonra tekrar deneyin.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -74,12 +101,14 @@ export default function DestekPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="text-sm font-medium mb-1 block">Adınız</label>
+                                <label className="text-sm font-medium mb-1 block">Kullanıcı Adı</label>
                                 <Input
-                                    placeholder="Adınız Soyadınız"
-                                    value={formData.name}
-                                    onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+                                    placeholder="Kullanıcı Adınız"
+                                    value={formData.username}
+                                    onChange={e => setFormData(p => ({ ...p, username: e.target.value }))}
                                     required
+                                    readOnly={!!user}
+                                    className={user ? "bg-muted" : ""}
                                 />
                             </div>
                             <div>
@@ -90,6 +119,8 @@ export default function DestekPage() {
                                     value={formData.email}
                                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                                     required
+                                    readOnly={!!user}
+                                    className={user ? "bg-muted" : ""}
                                 />
                             </div>
                         </div>

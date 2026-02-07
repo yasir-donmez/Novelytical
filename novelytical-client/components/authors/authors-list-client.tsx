@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, BookOpen, Star } from "lucide-react";
-import { ProductionImageLoader } from "@/components/production-image-loader";
+import { ProductionImageLoader } from "@/components/ui/production-image-loader";
 import { getNovelStats, calculateRank } from "@/services/novel-stats-service";
 import type { NovelListDto } from "@/types/novel";
 

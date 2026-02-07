@@ -1,6 +1,6 @@
 'use client';
 
-import { ScrollableSection } from '@/components/scrollable-section';
+import { ScrollableSection } from '@/components/layout/scrollable-section';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function LaneSkeleton({ title, icon, variant = 'default', hideBorder = false }: { title?: string, icon?: React.ReactNode, variant?: 'default' | 'trending', hideBorder?: boolean }) {

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Novelytical.Application.Interfaces;
-using Novelytical.Data;
+using MediatR;
+using Novelytical.Application.Features.Library.Commands.AddOrUpdateLibrary;
+using Novelytical.Application.Features.Library.Queries.GetNovelStatus;
+using Novelytical.Application.Features.Library.Queries.GetUserLibrary;
 using System.Security.Claims;
 
 namespace Novelytical.Web.Controllers.Api;
@@ -10,11 +12,11 @@ namespace Novelytical.Web.Controllers.Api;
 [Route("api/[controller]")]
 public class LibraryController : ControllerBase
 {
-    private readonly ILibraryService _libraryService;
+    private readonly IMediator _mediator;
 
-    public LibraryController(ILibraryService libraryService)
+    public LibraryController(IMediator mediator)
     {
-        _libraryService = libraryService;
+        _mediator = mediator;
     }
 
     [HttpPost]
@@ -24,7 +26,15 @@ public class LibraryController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _libraryService.AddOrUpdateAsync(uid, request.NovelId, request.Status, request.CurrentChapter);
+        var command = new AddOrUpdateLibraryCommand
+        {
+            FirebaseUid = uid,
+            NovelId = request.NovelId,
+            Status = request.Status,
+            CurrentChapter = request.CurrentChapter
+        };
+
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result);
@@ -37,8 +47,29 @@ public class LibraryController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _libraryService.GetUserLibraryAsync(uid);
+        var query = new GetUserLibraryQuery { TargetUserId = uid, RequesterUserId = uid };
+        var result = await _mediator.Send(query);
+        
         if (!result.Succeeded) return BadRequest(result.Message);
+
+        return Ok(result.Data);
+    }
+
+    [HttpGet("{targetUserId}")]
+    public async Task<IActionResult> GetUserLibrary(string targetUserId)
+    {
+        var requesterId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        var query = new GetUserLibraryQuery { TargetUserId = targetUserId, RequesterUserId = requesterId };
+        var result = await _mediator.Send(query);
+        
+        if (!result.Succeeded) 
+        {
+            if (result.Message.Contains("gizli") || result.Message.Contains("takip"))
+                return StatusCode(403, new { message = result.Message });
+                
+            return BadRequest(new { message = result.Message });
+        }
 
         return Ok(result.Data);
     }
@@ -50,8 +81,9 @@ public class LibraryController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _libraryService.GetNovelStatusAsync(uid, novelId);
-        // If status is null, user hasn't added it yet. Return 200 with null or special response.
+        var query = new GetNovelStatusQuery { FirebaseUid = uid, NovelId = novelId };
+        var result = await _mediator.Send(query);
+        
         return Ok(new { status = result.Data });
     }
 }

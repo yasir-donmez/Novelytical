@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Novelytical.Application.Features.Users.Queries.GetProfileByUid;
 using Novelytical.Application.Features.Users.Commands.SyncUser;
 using Novelytical.Application.Features.Users.Commands.UpdateProfile;
+using Novelytical.Application.Features.Users.Commands.DeleteAccount;
 
 namespace Novelytical.Web.Controllers.Api;
 
@@ -63,6 +64,18 @@ public class UsersController : ControllerBase
             Bio = request.Bio, 
             AvatarUrl = request.AvatarUrl 
         });
+        return Ok(result);
+    }
+    [HttpDelete("me")]
+    [Authorize]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(uid)) return Unauthorized();
+
+        var result = await _mediator.Send(new DeleteAccountCommand { Uid = uid });
+        if (!result.Succeeded) return BadRequest(result.Message);
+
         return Ok(result);
     }
 }

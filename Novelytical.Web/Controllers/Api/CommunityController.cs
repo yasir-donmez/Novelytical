@@ -1,7 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MediatR;
 using Novelytical.Application.DTOs;
-using Novelytical.Application.Interfaces;
+using Novelytical.Application.Features.Community.Commands.AddPostComment;
+using Novelytical.Application.Features.Community.Commands.CreatePost;
+using Novelytical.Application.Features.Community.Commands.DeletePost;
+using Novelytical.Application.Features.Community.Commands.DeletePostComment;
+using Novelytical.Application.Features.Community.Commands.VotePost;
+using Novelytical.Application.Features.Community.Queries.GetLatestPosts;
+using Novelytical.Application.Features.Community.Queries.GetPostComments;
+using Novelytical.Application.Features.Community.Queries.GetPostVoters;
+using Novelytical.Application.Features.Community.Queries.GetUserPosts;
 using System.Security.Claims;
 
 namespace Novelytical.Web.Controllers.Api;
@@ -10,11 +19,11 @@ namespace Novelytical.Web.Controllers.Api;
 [Route("api/[controller]")]
 public class CommunityController : ControllerBase
 {
-    private readonly ICommunityService _communityService;
+    private readonly IMediator _mediator;
 
-    public CommunityController(ICommunityService communityService)
+    public CommunityController(IMediator mediator)
     {
-        _communityService = communityService;
+        _mediator = mediator;
     }
 
     [HttpPost]
@@ -24,7 +33,17 @@ public class CommunityController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _communityService.CreatePostAsync(uid, request);
+        var command = new CreatePostCommand
+        {
+            FirebaseUid = uid,
+            Content = request.Content,
+            Type = request.Type,
+            RoomTitle = request.RoomTitle,
+            DurationHours = request.DurationHours,
+            Options = request.Options
+        };
+
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result.Data);
@@ -35,7 +54,8 @@ public class CommunityController : ControllerBase
     {
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         
-        var result = await _communityService.GetLatestPostsAsync(uid, take);
+        var query = new GetLatestPostsQuery { FirebaseUid = uid, Take = take };
+        var result = await _mediator.Send(query);
         return Ok(result.Data);
     }
 
@@ -43,7 +63,9 @@ public class CommunityController : ControllerBase
     public async Task<IActionResult> GetUserPosts(string firebaseUid)
     {
         var currentUid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var result = await _communityService.GetUserPostsAsync(currentUid ?? "", firebaseUid);
+        
+        var query = new GetUserPostsQuery { CurrentFirebaseUid = currentUid, TargetFirebaseUid = firebaseUid };
+        var result = await _mediator.Send(query);
         return Ok(result.Data);
     }
 
@@ -54,7 +76,8 @@ public class CommunityController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _communityService.VoteAsync(uid, id, request.OptionId);
+        var command = new VotePostCommand { FirebaseUid = uid, PostId = id, OptionId = request.OptionId };
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
         
         return Ok(result.Data);
@@ -67,15 +90,18 @@ public class CommunityController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _communityService.DeletePostAsync(uid, id);
+        var command = new DeletePostCommand { FirebaseUid = uid, PostId = id };
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result.Data);
     }
+    
     [HttpGet("{id}/comments")]
     public async Task<IActionResult> GetComments(int id)
     {
-        var result = await _communityService.GetCommentsAsync(id);
+        var query = new GetPostCommentsQuery { PostId = id };
+        var result = await _mediator.Send(query);
         return Ok(result.Data);
     }
 
@@ -86,7 +112,8 @@ public class CommunityController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _communityService.AddCommentAsync(uid, id, request.Content);
+        var command = new AddPostCommentCommand { FirebaseUid = uid, PostId = id, Content = request.Content };
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result.Data);
@@ -99,25 +126,20 @@ public class CommunityController : ControllerBase
         var uid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(uid)) return Unauthorized();
 
-        var result = await _communityService.DeleteCommentAsync(uid, commentId);
+        var command = new DeletePostCommentCommand { FirebaseUid = uid, CommentId = commentId };
+        var result = await _mediator.Send(command);
         if (!result.Succeeded) return BadRequest(result.Message);
 
         return Ok(result.Data);
     }
+    
     [HttpGet("{id}/voters")]
     public async Task<IActionResult> GetVoters(int id)
     {
-        var result = await _communityService.GetVotersAsync(id);
+        var query = new GetPostVotersQuery { PostId = id };
+        var result = await _mediator.Send(query);
         return Ok(result.Data);
     }
 }
 
-public class VoteRequest
-{
-    public int OptionId { get; set; }
-}
 
-public class AddPostCommentRequest
-{
-    public string Content { get; set; } = string.Empty;
-}

@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Footer } from "@/components/footer";
-import { QueryProvider } from "@/components/query-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { UserNav } from "@/components/user-nav";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Footer } from "@/components/layout/footer";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { UserNav } from "@/components/layout/user-nav";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
-import { ScrollManager } from "@/components/scroll-manager";
+import { ScrollManager } from "@/components/layout/scroll-manager";
 import NotificationBell from "@/components/notifications/notification-bell";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader } from "@/components/layout/site-header";
 import { ChatFloatingDialog } from "@/components/chat/chat-floating-dialog";
-import { PageWrapper } from "@/components/page-wrapper";
+import { PageWrapper } from "@/components/layout/page-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

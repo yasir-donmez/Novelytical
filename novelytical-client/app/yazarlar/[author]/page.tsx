@@ -8,20 +8,20 @@ import { FollowService } from "@/services/follow-service";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { NovelListDto } from "@/types/novel";
-import { NovelCard } from "@/components/novel-card";
+import { NovelCard } from "@/components/features/novel/novel-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Star, TrendingUp, Users, BookMarked, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NovelCardSkeleton } from "@/components/novel-card-skeleton";
+import { NovelCardSkeleton } from "@/components/features/novel/novel-card-skeleton";
 import Link from "next/link";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RatingStars } from "@/components/rating-stars";
-import { RatingCriteriaTooltip } from "@/components/rating-criteria-tooltip";
+import { RatingStars } from "@/components/ui/rating-stars";
+import { RatingCriteriaTooltip } from "@/components/ui/rating-criteria-tooltip";
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollableSection } from "@/components/scrollable-section";
-import { ProductionImageLoader } from "@/components/production-image-loader";
+import { ScrollableSection } from "@/components/layout/scrollable-section";
+import { ProductionImageLoader } from "@/components/ui/production-image-loader";
 
 interface AuthorStats {
     totalNovels: number;

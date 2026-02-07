@@ -103,6 +103,35 @@ public class FirebaseNotificationService : INotificationService
         await notificationsRef.AddAsync(notifData);
     }
 
+    public async Task NotifyFollowAsync(string recipientFirebaseUid, string followerName, string followerImage, string followerId)
+    {
+        if (_firestoreDb == null) return;
+
+        var shouldSend = await CheckUserSetting(recipientFirebaseUid, "pushFollows");
+        if (!shouldSend) return;
+
+        var notificationsRef = _firestoreDb.Collection("notifications");
+        // Unique ID to prevent duplicate notifications for same follow action
+        var notifId = $"follow_{followerId}_{recipientFirebaseUid}";
+        var notifRef = notificationsRef.Document(notifId);
+
+        var notifData = new
+        {
+            recipientId = recipientFirebaseUid,
+            type = "follow",
+            content = $"{followerName} sizi takip etti.",
+            sourceId = followerId,
+            sourceLink = $"/profil/{followerId}",
+            senderId = followerId,
+            senderName = followerName,
+            senderImage = followerImage,
+            isRead = false,
+            createdAt = FieldValue.ServerTimestamp
+        };
+
+        await notifRef.SetAsync(notifData);
+    }
+
     private async Task<bool> CheckUserSetting(string uid, string settingKey)
     {
         try

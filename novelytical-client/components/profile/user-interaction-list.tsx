@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { ProductionImageLoader } from "@/components/production-image-loader";
+import { ProductionImageLoader } from "@/components/ui/production-image-loader";
 import { getReviewsByUserId, Review } from "@/services/review-service";
 import { getCommentsByUserId, Comment } from "@/services/comment-service";
 import { novelService } from "@/services/novelService";

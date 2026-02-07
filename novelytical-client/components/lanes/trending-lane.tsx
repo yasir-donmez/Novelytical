@@ -1,5 +1,5 @@
-import { ScrollableSection } from '@/components/scrollable-section';
-import { NovelCard } from '@/components/novel-card';
+import { ScrollableSection } from '@/components/layout/scrollable-section';
+import { NovelCard } from '@/components/features/novel/novel-card';
 import { fetchNovels } from '@/lib/data/novels';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';

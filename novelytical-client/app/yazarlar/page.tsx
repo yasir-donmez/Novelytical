@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { Users } from "lucide-react";
-import { PaginationClient } from "@/components/pagination-client";
+import { PaginationClient } from "@/components/ui/pagination-client";
 import { AuthorsListClient } from "@/components/authors/authors-list-client";
 import type { NovelListDto } from "@/types/novel";
 

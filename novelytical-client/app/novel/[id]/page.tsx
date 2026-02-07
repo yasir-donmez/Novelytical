@@ -3,11 +3,11 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import NovelDetailClient from './novel-detail-client';
 import { getNovelById } from '@/lib/data/novels';
-import { NovelDetailSkeleton } from '@/components/novel-detail-skeleton';
-import { AuthorNovelsServer } from '@/components/author-novels-server';
-import { SimilarNovelsServer } from '@/components/similar-novels-server';
-import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
-import InteractionTabs from '@/components/interaction-tabs';
+import { NovelDetailSkeleton } from '@/components/features/novel/novel-detail-skeleton';
+import { AuthorNovelsServer } from '@/components/features/novel/author-novels-server';
+import { SimilarNovelsServer } from '@/components/features/novel/similar-novels-server';
+import { NovelCardSkeleton } from '@/components/features/novel/novel-card-skeleton';
+import InteractionTabs from '@/components/features/novel/interaction-tabs';
 
 interface PageProps {
     params: Promise<{

@@ -38,8 +38,6 @@ public static class ServiceExtensions
 
 
 
-        services.AddScoped<ICommunityService, Services.CommunityService>();
-        services.AddScoped<ILibraryService, Services.LibraryService>();
         return services;
     }
 }

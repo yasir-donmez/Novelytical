@@ -1,5 +1,5 @@
-import { ScrollableSection } from '@/components/scrollable-section';
-import { NovelCard } from '@/components/novel-card';
+import { ScrollableSection } from '@/components/layout/scrollable-section';
+import { NovelCard } from '@/components/features/novel/novel-card';
 import { fetchNovels, type FetchNovelsParams } from '@/lib/data/novels';
 import { LaneSkeleton } from './lane-skeleton';
 import type { NovelListDto } from '@/types/novel';

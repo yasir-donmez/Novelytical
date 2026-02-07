@@ -48,8 +48,8 @@ services:
       - ConnectionStrings__Redis=novelytical-redis:6379
       - Seq__ServerUrl=${SEQ_SERVER_URL:-http://seq:5341}
       - ASPNETCORE_ENVIRONMENT=Development
-    # ports: # 🔒 REMOVED - Nginx handles external traffic
-    #   - "5050:8080"
+    ports:
+      - "5050:8080"
     depends_on:
       novelytical-postgres:
         condition: service_healthy
@@ -90,30 +90,14 @@ services:
     container_name: novelytical-client
     environment:
       - API_URL=http://novelytical-web:8080 # 🐳 Internal Docker Network
-      - NEXT_PUBLIC_API_URL=https://localhost # 🌍 Browser Access via Nginx
-    # ports: # 🔒 REMOVED - Nginx handles external traffic
-    #   - "3000:3000"
+      - NEXT_PUBLIC_API_URL=http://localhost:5050 # 🌍 Direct Access to Backend
+    ports:
+      - "3000:3000"
     networks:
       - novelytical-network
     depends_on:
       - novelytical-web
     restart: on-failure
-
-  novelytical-nginx:
-    image: nginx:alpine
-    container_name: novelytical-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    networks:
-      - novelytical-network
-    depends_on:
-      - novelytical-web
-      - novelytical-client
-    restart: always
 
 networks:
   novelytical-network:

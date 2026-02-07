@@ -39,7 +39,7 @@ jobs:
       SCRAPE_MODE: fast
       ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
       ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_URL }}
-      Seq__ServerUrl: ${{ secrets.SEQ_SERVER_URL }}
+
 
     steps:
       - name: Checkout code
@@ -86,7 +86,7 @@ jobs:
       SCRAPE_MODE: slow
       ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
       ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_URL }}
-      Seq__ServerUrl: ${{ secrets.SEQ_SERVER_URL }}
+
 
     steps:
       - name: Checkout code

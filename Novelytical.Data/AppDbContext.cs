@@ -28,6 +28,7 @@ namespace Novelytical.Data
         public DbSet<CommunityPost> CommunityPosts { get; set; }
         public DbSet<PollOption> PollOptions { get; set; }
         public DbSet<PollVote> PollVotes { get; set; }
+        public DbSet<SupportTicket> SupportTickets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

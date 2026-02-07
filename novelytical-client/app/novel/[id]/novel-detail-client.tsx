@@ -2,19 +2,19 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-import { ProductionImageLoader } from '@/components/production-image-loader';
+import { ProductionImageLoader } from '@/components/ui/production-image-loader';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RatingStars } from '@/components/rating-stars';
-import { SocialShare } from '@/components/social-share';
+import { RatingStars } from '@/components/ui/rating-stars';
+import { SocialShare } from '@/components/ui/social-share';
 import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ChevronDown, ChevronUp, Eye, Star, Info, TrendingUp, Send } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LibraryAction from '@/components/novel/library-action';
-import { ShareWithFriendDialog } from '@/components/share-with-friend-dialog';
-import { RatingCriteriaTooltip } from '@/components/rating-criteria-tooltip';
+import { ShareWithFriendDialog } from '@/components/modals/share-with-friend-dialog';
+import { RatingCriteriaTooltip } from '@/components/ui/rating-criteria-tooltip';
 import { getReviewsByNovelId } from '@/services/review-service';
 import { incrementViewCount, getNovelStats, calculateRank, type NovelStats } from '@/services/novel-stats-service';
 import type { NovelDetailDto } from '@/types/novel';

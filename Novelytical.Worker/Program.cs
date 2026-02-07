@@ -15,12 +15,21 @@ try
 {
     var builder = Host.CreateApplicationBuilder(args);
 
-    builder.Services.AddSerilog((services, lc) => lc
-        .ReadFrom.Configuration(builder.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .WriteTo.Seq(builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
+    builder.Services.AddSerilog((services, lc) => 
+    {
+        lc
+            .ReadFrom.Configuration(builder.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .WriteTo.Console();
+        
+        // Only add Seq if URL is properly configured
+        var seqUrl = builder.Configuration["Seq:ServerUrl"];
+        if (!string.IsNullOrEmpty(seqUrl) && !seqUrl.Contains("localhost"))
+        {
+            lc.WriteTo.Seq(seqUrl);
+        }
+    });
 
     // 1. Veritabanı Bağlantısını Yapılandırıyoruz
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

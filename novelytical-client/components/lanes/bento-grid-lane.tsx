@@ -1,5 +1,5 @@
 import { fetchNovels } from '@/lib/data/novels';
-import { NovelCard } from '@/components/novel-card';
+import { NovelCard } from '@/components/features/novel/novel-card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';

@@ -1,4 +1,4 @@
-import { HeroServer } from '@/components/hero-server';
+import { HeroServer } from '@/components/features/novel/hero-server';
 
 export default function DiscoveryLayout({
     children,

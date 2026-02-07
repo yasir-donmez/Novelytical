@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { ProductionImageLoader } from "@/components/production-image-loader";
+import { ProductionImageLoader } from "@/components/ui/production-image-loader";
 import { getUserLibrary, LibraryItem, ReadingStatus, updateLibraryProgress } from "@/services/library-service";
 import { novelService } from "@/services/novelService";
 import { useAuth } from "@/contexts/auth-context";
@@ -221,22 +221,39 @@ export default function UserLibraryList({ userId }: { userId?: string }) {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const libraryItems = await getUserLibrary(targetUserId);
-
-                const itemsWithNovels = await Promise.all(libraryItems.map(async (item) => {
-                    try {
-                        const novelData = await novelService.getNovelById(item.novelId);
-                        return { ...item, novel: novelData as unknown as NovelListDto };
-                    } catch (e) {
-                        console.error(`[UserLibraryList] Failed to load details for novel ${item.novelId}:`, e);
-                        // Return item without novel data (will display fallback)
-                        return item;
+                // Use Backend API instead of direct Firestore
+                const api = (await import("@/lib/axios")).default;
+                try {
+                    const response = await api.get<any[]>(`/library/${targetUserId}`);
+                    // Map backend DTO to frontend LibrarySummary
+                    const mappedItems: LibrarySummary[] = response.data.map(item => ({
+                        id: `${targetUserId}_${item.novelId}`,
+                        userId: targetUserId,
+                        novelId: item.novelId,
+                        slug: item.novelSlug,
+                        status: item.status === 1 ? 'reading' : item.status === 2 ? 'completed' : item.status === 3 ? 'plan_to_read' : 'reading',
+                        currentChapter: item.currentChapter,
+                        updatedAt: { toDate: () => new Date(item.addedAt) } as any, // Mock Timestamp
+                        novel: {
+                            id: item.novelId,
+                            title: item.novelTitle,
+                            slug: item.novelSlug,
+                            coverUrl: item.coverImage,
+                            author: "Unknown", // Backend DTO might need author update if critical
+                            chapterCount: 0 // Optional
+                        } as unknown as NovelListDto
+                    }));
+                    setAllItems(mappedItems);
+                } catch (err: any) {
+                    if (err.response && err.response.status === 403) {
+                         toast.error(err.response.data.message || "Bu kütüphane gizli.");
+                         setAllItems([]); // Clear items
+                    } else {
+                        console.error("Error fetching library from API", err);
                     }
-                }));
-
-                setAllItems(itemsWithNovels);
+                }
             } catch (error) {
-                console.error("Error fetching library", error);
+                console.error("Error in library fetch", error);
             } finally {
                 setLoading(false);
             }
