@@ -1,6 +1,6 @@
 'use client';
 
-import { NovelCard } from '@/components/novel-card';
+import { NovelCard } from '@/components/features/novel/novel-card';
 import type { NovelListDto } from '@/types/novel';
 
 interface RankedNovelGridProps {

@@ -1,4 +1,4 @@
-import { NovelCardSkeleton } from '@/components/novel-card-skeleton';
+import { NovelCardSkeleton } from '@/components/features/novel/novel-card-skeleton';
 
 export function NovelGridSkeleton() {
     return (
