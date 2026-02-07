@@ -1,5 +1,5 @@
 import { Library } from 'lucide-react';
-import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
+import { NovelGridSkeleton } from '@/components/features/novel/novel-grid-skeleton';
 
 export default function Loading() {
     return (

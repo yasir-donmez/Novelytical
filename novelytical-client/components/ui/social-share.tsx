@@ -1,7 +1,7 @@
 'use client';
 
 import { Twitter, Facebook, Link as LinkIcon, Share2 } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from './button';
 import { toast } from 'sonner';
 
 interface SocialShareProps {

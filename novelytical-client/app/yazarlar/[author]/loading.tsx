@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, User, BookMarked, TrendingUp, Star, Users, BookOpen, Info, ChevronLeft, ChevronRight } from "lucide-react";
-import { NovelCardSkeleton } from "@/components/novel-card-skeleton";
+import { NovelCardSkeleton } from "@/components/features/novel/novel-card-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

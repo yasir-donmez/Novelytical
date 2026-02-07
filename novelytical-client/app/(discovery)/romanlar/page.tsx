@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import { NovelGridServer } from '@/components/novel-grid-server';
+import { NovelGridServer } from '@/components/features/novel/novel-grid-server';
 import { Library } from 'lucide-react';
-import { NovelGridSkeleton } from '@/components/novel-grid-skeleton';
-import { HomeTags } from '@/components/home-tags';
+import { NovelGridSkeleton } from '@/components/features/novel/novel-grid-skeleton';
+import { HomeTags } from '@/components/features/novel/home-tags';
 
 function NovelGridFallback() {
     return <NovelGridSkeleton />;

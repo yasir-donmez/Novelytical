@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import ReviewSection from "./reviews/review-section";
-import CommentSection from "./comments/comment-section";
+import ReviewSection from "@/components/reviews/review-section";
+import CommentSection from "@/components/comments/comment-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Star, MapPin } from "lucide-react";
 import { ReadingJourney } from "./reading-journey";

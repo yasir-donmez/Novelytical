@@ -1,4 +1,4 @@
-import { HeroSection } from '@/components/hero-section';
+import { HeroSection } from '@/components/features/novel/hero-section';
 import { fetchNovels } from '@/lib/data/novels';
 import { STATIC_HERO_COVERS } from '@/lib/data/static-hero-covers';
 
