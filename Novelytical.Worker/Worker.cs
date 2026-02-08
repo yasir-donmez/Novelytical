@@ -483,6 +483,45 @@ namespace Novelytical.Worker
             // Extract slug from SourceUrl (e.g., /book/shadow-slave -> shadow-slave)
             var slug = scrapedData.SourceUrl?.Split('/').LastOrDefault() ?? "";
             
+            // 🚀 OPTIMIZATION: Partial Fetch Check (Ag Tasarrufu)
+            // Once sadece karsilastirma yapilacak alanlari cek
+            var existing = await dbContext.Novels
+                .Where(n => n.SourceUrl == scrapedData.SourceUrl || n.Title == scrapedData.Title || n.Slug == slug)
+                .Select(n => new 
+                { 
+                    n.Id, 
+                    n.ChapterCount, 
+                    n.ViewCount, 
+                    n.LastUpdated,
+                    n.Author,
+                    n.Status,
+                    n.ScrapedRating,
+                    n.CoverUrl
+                })
+                .FirstOrDefaultAsync();
+
+            if (existing != null)
+            {
+                // Degisiklik kontrolu
+                bool basicChanged = 
+                    existing.ChapterCount != scrapedData.ChapterCount ||
+                    existing.ViewCount != scrapedData.ViewCount ||
+                    (scrapedData.ScrapedRating > 0 && existing.ScrapedRating != scrapedData.ScrapedRating) ||
+                    (!string.IsNullOrEmpty(scrapedData.Status) && existing.Status != scrapedData.Status) ||
+                    (!string.IsNullOrEmpty(scrapedData.Author) && scrapedData.Author != "Unknown" && existing.Author != scrapedData.Author) ||
+                    (!string.IsNullOrEmpty(scrapedData.CoverUrl) && existing.CoverUrl != scrapedData.CoverUrl);
+
+                // Zaman kontrolu (5 dakika fark varsa guncellemeye deger olabilir)
+                bool timeChanged = (existing.LastUpdated - scrapedData.LastUpdated).Duration() > TimeSpan.FromMinutes(5);
+                
+                if (!basicChanged && !timeChanged)
+                {
+                    // Degisiklik yok, veritabanini yorma.
+                    return;
+                }
+            }
+
+            // Degisiklik varsa veya yeni ise TAM veriyi cek (Include Tags vs)
             var dbNovel = await dbContext.Novels
                 .Include(n => n.NovelTags)
                     .ThenInclude(nt => nt.Tag)

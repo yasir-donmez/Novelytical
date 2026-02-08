@@ -149,30 +149,30 @@ public class GetNovelsQueryHandler : IRequestHandler<GetNovelsQuery, PagedRespon
                 _ => query.OrderByDescending(n => n.Rating).ThenBy(n => n.Id)
             };
 
-            var pagedEntities = await query
+            novels = await query
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
+                .Select(n => new NovelListDto
+                {
+                    Id = n.Id,
+                    Slug = n.Slug,
+                    Title = n.Title,
+                    Author = n.Author ?? string.Empty,
+                    Rating = n.Rating,
+                    ScrapedRating = n.ScrapedRating,
+                    ViewCount = n.ViewCount,
+                    SiteViewCount = n.SiteViewCount,
+                    Status = n.Status,
+                    ChapterCount = n.ChapterCount,
+                    LastUpdated = n.LastUpdated,
+
+                    CoverUrl = n.CoverUrl,
+                    DominantColor = n.DominantColor,
+                    CommentCount = n.CommentCount,
+                    ReviewCount = n.ReviewCount,
+                    Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
+                })
                 .ToListAsync(cancellationToken);
-
-            novels = pagedEntities.Select(n => new NovelListDto
-            {
-                Id = n.Id,
-                Slug = n.Slug,
-                Title = n.Title,
-                Author = n.Author ?? string.Empty,
-                Rating = n.Rating,
-                ScrapedRating = n.ScrapedRating,
-                ViewCount = n.ViewCount,
-                Status = n.Status,
-                ChapterCount = n.ChapterCount,
-                LastUpdated = n.LastUpdated,
-
-                CoverUrl = n.CoverUrl,
-                DominantColor = n.DominantColor, // Added
-                CommentCount = n.CommentCount,  // Added
-                ReviewCount = n.ReviewCount,    // Added
-                Tags = n.NovelTags.OrderBy(nt => nt.TagId).Select(nt => nt.Tag.Name).Take(3).ToList()
-            }).ToList();
 
             // Calculate global rank positions (omitted for brevity in replacement constraint, assuming identical logic)
             // ... Actually I must include it or I break it. I will keep it.
