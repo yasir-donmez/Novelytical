@@ -85,7 +85,7 @@ namespace Novelytical.Worker
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // 🎯 GitHub Actions Mode: SCRAPE_MODE environment variable ile kontrol
-            var mode = Environment.GetEnvironmentVariable("SCRAPE_MODE")?.ToLower() ?? "fast";
+            var mode = Environment.GetEnvironmentVariable("SCRAPE_MODE")?.ToLower() ?? "none"; // Default changed to none to save quota
             
             _logger.LogInformation("🚀 Worker başlatılıyor. Mode: {Mode}", mode);
 
@@ -111,9 +111,13 @@ namespace Novelytical.Worker
                         await IndexMissingNovels(stoppingToken);
                         break;
                     
+                    case "none":
+                    case "stopped":
+                        _logger.LogInformation("⏸️ Worker durduruldu (Quota saving mode).");
+                        break;
+
                     default:
-                        _logger.LogWarning("⚠️ Bilinmeyen mode: {Mode}. 'fast' kullanılıyor.", mode);
-                        await RunFastTrackOnce(stoppingToken);
+                        _logger.LogWarning("⚠️ Bilinmeyen mode: {Mode}. İşlem yapılmıyor.", mode);
                         break;
                 }
 
